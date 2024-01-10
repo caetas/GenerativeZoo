@@ -1,0 +1,11 @@
+# This file contains values from Cookiecutter
+
+default_context:
+  project_name: "GenerativeZoo"
+  repo_name: "GenerativeZoo"
+  description: "A short description of the project. No quotes."
+  organization: "None"
+  license: "No license"
+  organization_email: "none@none.pt"
+  line_length: "120"
+  python_minimal_version: "3.9"
