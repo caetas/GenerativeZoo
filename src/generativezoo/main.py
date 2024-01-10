@@ -1,31 +1,18 @@
-# -*- coding: utf-8 -*-
-
-"""Main module."""
-from logger import FhpLogger
-
-fhplog = FhpLogger(
-    config_file_path="~/zuliprc-old",
-    user_id="tomas.pereira@aicos.fraunhofer.pt",
-    to=["Logging"],
-    msg_type="stream",
-    topic="sc4c",
-)
+import numpy as np
+import torch
+from models.VAE.VanillaVAE import VanillaVAE
+from data.Dataloaders import cifar_train_loader, cifar_val_loader
 
 
-@fhplog.train_logger
-def train():
-    for i in range(20):
-        if i % 10 == 0:
-            fhplog.send_message("avg loss: %.5f, epoch: %d" % (0, i))
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+train_loader = cifar_train_loader(256)
+val_loader = cifar_val_loader(32)
+print(device)
 
+# mock data for testing
+x = torch.randn(1, 3, 32, 32).to(device)
+# Create the model
+model = VanillaVAE(input_shape = 32, input_channels = 3, latent_dim = 128, hidden_dims=[32,64,128,256]).to(device)
 
-def main():
-    """
-
-    :return:
-    """
-    pass
-
-
-if __name__ == "__main__":
-    main()
+model.train()
+model.train_model(train_loader, epochs=100, device=device)
