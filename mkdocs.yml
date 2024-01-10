@@ -1,0 +1,19 @@
+site_name: GenerativeZoo
+site_description: A short description of the project. No quotes.
+site_author: Francisco Caetano
+
+#repo_url:
+
+theme:
+    name: 'material'
+    locale: en
+    font: false
+
+nav:
+    - Home: index.md
+
+# WIP
+#markdown_extensions:
+#  - mkautodoc
+#plugins:
+#  - mkdocs-jupyter

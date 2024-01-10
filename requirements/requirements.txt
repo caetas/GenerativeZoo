@@ -1,0 +1,20 @@
+# Update often the projects requirements. Please run the following command with .venv activated
+# $ source .venv/bin/activate
+# $ pip3 freeze > requirements/requirements.txt
+# or alternatively
+# make update-requirements
+boto3==1.20.8
+# hydra-core==1.2.0
+loguru>=0.5.0
+# hydra-colorlog
+# hydra-optuna-sweeper
+# hydra-ax-sweeper
+# hydra-ray-launcher
+# hydra-submitit-launcher
+mlflow-skinny==1.28.0
+numpy
+psycopg2-binary==2.9.2
+# Python-dotenv reads key-value pairs from a .env file and can set them as environment variables.
+# It helps in the development of applications following the 12-factor (https://12factor.net/) principles.
+python-dotenv==0.19.2
+s3fs

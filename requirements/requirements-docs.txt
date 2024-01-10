@@ -1,0 +1,6 @@
+# Documentation
+pydocstyle
+mkdocs
+mkdocs-material
+mkautodoc
+
