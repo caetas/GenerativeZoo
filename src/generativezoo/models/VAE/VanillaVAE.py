@@ -6,7 +6,7 @@ import torchvision
 from matplotlib import pyplot as plt
 import numpy as np
 import os
-from config import figures_dir
+from config import figures_dir, models_dir
 
 class VanillaVAE(nn.Module):
     def __init__(self, input_shape, input_channels, latent_dim, hidden_dims = None, lr = 1e-3):
@@ -72,6 +72,10 @@ class VanillaVAE(nn.Module):
         mu = self.fc_mu(x)
         logvar = self.fc_logvar(x)
         return mu, logvar
+    
+    def load_state_dictionary(self, path):
+        self.load_state_dict(torch.load(path))
+        return self
 
     def decode(self, z):
         z = self.decoder_input(z)
@@ -93,9 +97,12 @@ class VanillaVAE(nn.Module):
         return self.decode(z)
     
     def loss_function(self, recon_x, x, mu, logvar):
-        MSE = F.mse_loss(recon_x, x, reduction = 'sum')
-        KLD = torch.mean(-0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim = 1), dim=0)
-        return MSE + KLD
+        loss_mse = nn.MSELoss()
+        mse = loss_mse(x, recon_x)
+        #KLD = torch.mean(-0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim = 1), dim=0)
+        #MSE = F.mse_loss(recon_x, x, reduction='sum')
+        kld = torch.mean(-0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1), dim=0)
+        return mse + kld*0.00005
     
     def create_grid(self, device, figsize=(10, 10), title=None):
         samples = self.generate(torch.randn(9, self.latent_dim).to(device)).detach().cpu()
@@ -126,19 +133,21 @@ class VanillaVAE(nn.Module):
                 self.optimizer.step()
                 acc_loss += loss.item()
             #write below the bar
-            epochs_bar.set_description("Loss: {:.4f}".format(acc_loss/len(data_loader.dataset)))
+            epochs_bar.set_description("Loss: {:.8f}".format(acc_loss/len(data_loader.dataset)))
             epochs_bar.refresh()
-            if epoch % 10 == 0:
+            if epoch % 5 == 0:
                 self.create_grid(device, title=f"Epoch_{epoch}")
+        torch.save(self.state_dict(), os.path.join(models_dir, f"VAE_{epoch}.pt"))
     
     def eval_model(self, data_loader, device):
         self.eval()
         with torch.no_grad():
+            acc_loss = 0.0
             for _,(data,_) in enumerate(data_loader):
                 x = data.to(device)
                 recon_x, mu, logvar = self(x)
                 loss = self.loss_function(recon_x, x, mu, logvar)
-                print("Loss: {:.4f}".format(loss/len(data_loader.dataset)))
-                break
+                acc_loss += loss.item()
+            print("Loss: {:.4f}".format(acc_loss/len(data_loader.dataset)))
 
     
