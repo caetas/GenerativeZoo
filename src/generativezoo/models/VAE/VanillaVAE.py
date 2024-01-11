@@ -99,8 +99,6 @@ class VanillaVAE(nn.Module):
     def loss_function(self, recon_x, x, mu, logvar):
         loss_mse = nn.MSELoss()
         mse = loss_mse(x, recon_x)
-        #KLD = torch.mean(-0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim = 1), dim=0)
-        #MSE = F.mse_loss(recon_x, x, reduction='sum')
         kld = torch.mean(-0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1), dim=0)
         return mse + kld*0.00005
     
