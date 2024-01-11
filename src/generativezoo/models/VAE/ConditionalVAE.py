@@ -9,7 +9,7 @@ import os
 from config import figures_dir, models_dir
 
 class ConditionalVAE(nn.Module):
-    def __init__(self, input_shape, input_channels, latent_dim, num_classes, hidden_dims = None, lr = 1e-3):
+    def __init__(self, input_shape, input_channels, latent_dim, num_classes, hidden_dims = None, lr = 5e-3, batch_size = 64):
         super(ConditionalVAE, self).__init__()
 
         self.num_classes = num_classes
@@ -18,6 +18,7 @@ class ConditionalVAE(nn.Module):
         self.final_channels = input_channels
         self.latent_dim = latent_dim
         self.lr = lr
+        self.batch_size = batch_size
 
         self.embed_class = nn.Linear(num_classes, self.input_shape**2)
         self.embed_data = nn.Conv2d(self.input_channels, self.input_channels, kernel_size=1)
@@ -90,7 +91,7 @@ class ConditionalVAE(nn.Module):
     def forward(self, x, y):
         x = self.embed_data(x)
         y_emb = self.embed_class(y)
-        y_emb = y_emb.view(-1, self.input_channels, self.input_shape, self.input_shape)
+        y_emb = y_emb.view(-1,self.input_shape, self.input_shape).unsqueeze(1)
         x = torch.cat([x, y_emb], dim = 1)
         mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
@@ -101,7 +102,7 @@ class ConditionalVAE(nn.Module):
         loss_mse = nn.MSELoss()
         mse = loss_mse(x, recon_x)
         kld = torch.mean(-0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1), dim=0)
-        return mse + kld*0.00005
+        return mse + kld/(self.batch_size**2)
     
     def generate(self, z, y):
         z = torch.cat([z, y], dim = 1)

@@ -1,21 +1,23 @@
 import numpy as np
 import torch
 from models.VAE.ConditionalVAE import ConditionalVAE
+from models.VAE.VQVAE import VQVAE
 from data.Dataloaders import cifar_train_loader, cifar_val_loader, mnist_train_loader, mnist_val_loader
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-train_loader = mnist_train_loader(256)
+batch_size = 64
+train_loader = cifar_train_loader(batch_size=batch_size)
+#train_loader = mnist_train_loader(batch_size=batch_size)
+val_loader = mnist_val_loader(batch_size=batch_size)
 print(device)
 
 # mock data for testing
-x = torch.randn(1, 1, 28, 28).to(device)
-# y should be a float
-y = torch.tensor([0, 1, 0, 0, 0, 0 ,0, 0, 0, 0]).float().to(device)
-# unsqueeze to add a batch dimension
-y = y.unsqueeze(0)
+x = torch.randn(1, 3, 32, 32).to(device)
 # Create the model
-#model = VanillaVAE(input_shape = 32, input_channels = 3, latent_dim = 128, hidden_dims=[16,32,64,128]).to(device)
-model = ConditionalVAE(input_shape = 28, input_channels = 1, latent_dim = 32, num_classes=10, hidden_dims=[32, 64]).to(device)
-model.train()
-model.train_model(train_loader, epochs=50, device=device)
+model = VQVAE(input_shape = 32, input_channels = 3, embedding_dim = 64, num_embeddings = 512, batch_size=batch_size).to(device)
+model.train_model(train_loader, epochs=100, device=device)
+#model = ConditionalVAE(input_shape = 32, input_channels = 3, latent_dim = 128, hidden_dims=[16,32,64,128], batch_size=batch_size, num_classes=10).to(device)
+#model = ConditionalVAE(input_shape = 28, input_channels = 1, latent_dim = 64, num_classes=10, hidden_dims=[64, 128]).to(device)
+#model.train()
+#model.train_model(train_loader, epochs=100, device=device)

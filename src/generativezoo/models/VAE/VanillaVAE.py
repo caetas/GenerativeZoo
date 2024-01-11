@@ -9,7 +9,7 @@ import os
 from config import figures_dir, models_dir
 
 class VanillaVAE(nn.Module):
-    def __init__(self, input_shape, input_channels, latent_dim, hidden_dims = None, lr = 1e-3):
+    def __init__(self, input_shape, input_channels, latent_dim, hidden_dims = None, lr = 5e-3, batch_size = 64):
         super(VanillaVAE, self).__init__()
 
         self.input_shape = input_shape
@@ -17,6 +17,7 @@ class VanillaVAE(nn.Module):
         self.final_channels = input_channels
         self.latent_dim = latent_dim
         self.lr = lr
+        self.batch_size = batch_size
 
         if hidden_dims is None:
             hidden_dims = [32, 64, 128, 256, 512]
@@ -100,7 +101,7 @@ class VanillaVAE(nn.Module):
         loss_mse = nn.MSELoss()
         mse = loss_mse(x, recon_x)
         kld = torch.mean(-0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1), dim=0)
-        return mse + kld*0.00005
+        return mse + kld/(self.batch_size**2)
     
     def create_grid(self, device, figsize=(10, 10), title=None):
         samples = self.generate(torch.randn(9, self.latent_dim).to(device)).detach().cpu()
