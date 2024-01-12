@@ -157,6 +157,9 @@ class VQVAE(nn.Module):
 
         self.decoder = nn.Sequential(*modules)
 
+    def load_pretrained_weights(self, pretrained_model_path):
+        self.load_state_dict(torch.load(pretrained_model_path))
+        return self
     
     def encode(self, x):
         return self.encoder(x)
@@ -178,6 +181,25 @@ class VQVAE(nn.Module):
         loss = recon_loss + vq_loss
         return loss
     
+    def create_histogram(self, data_loader, device, title=None):
+        # create a matrix of size (num_embeddings, embedding_dim)
+        embedding_matrix = np.zeros((self.embedding_dim, self.num_embeddings), dtype=np.int32)
+        # iterate over the validation set and accumulate the embeddings
+        for _, (x, _) in enumerate(data_loader):
+            x = x.to(device)
+            z = self.encode(x)
+            _,_,encoding_inds = self.quantize(z)
+            for i in range(encoding_inds.shape[0]):
+                ind = encoding_inds[i]
+                embedding_matrix[i % self.embedding_dim, ind] += 1
+        embedding_matrix = embedding_matrix.astype(np.float32)
+        #convert to probabilities
+        embedding_matrix = embedding_matrix / np.sum(embedding_matrix, axis=1, keepdims=True)
+        # save histogram as array file
+        np.save(os.path.join(models_dir, f"VQVAE_histogram.npy"), embedding_matrix)
+        return embedding_matrix
+            
+    
     def create_grid(self, val_loader, device, figsize=(10, 10), title=None):
         N = 9
         x, _ = next(iter(val_loader))
@@ -185,14 +207,15 @@ class VQVAE(nn.Module):
         # ecode and quantize
         z = self.encode(x)
         latents_shape = z.shape
-        _,_,encoding_inds = self.quantize(z)
+        histogram_array = np.load(os.path.join(models_dir, f"VQVAE_histogram.npy"))
 
         #samp ind should be long Tensor
         samp_ind = torch.zeros((latents_shape[2]*latents_shape[3]*N, 1), dtype=torch.long).to(device)
-
+        # create linspace of indices from 0 to num_embeddings -1 
+        indices = np.linspace(0, self.num_embeddings - 1, self.num_embeddings, dtype=np.int32)
         for i in range(samp_ind.shape[0]):
-            ind = i#= np.random.randint(0, encoding_inds.shape[0])
-            samp_ind[i] = encoding_inds[ind]
+            ind = np.random.choice(indices, 1, p=histogram_array[i % self.embedding_dim])
+            samp_ind[i] = torch.tensor(ind, dtype=torch.long).to(device)
         encoding_one_hot = torch.zeros(samp_ind.size(0), self.num_embeddings, device=device)
         encoding_one_hot.scatter_(1, samp_ind, 1)  # [BHW x K]
         # Quantize the latents
