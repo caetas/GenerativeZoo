@@ -76,7 +76,7 @@ def get_mnist_dataset():
                                  shuffle=True,
                                  pin_memory=True)
     for batch_idx, (data, target) in enumerate(training_loader):
-        return data.numpy()
+        return data.numpy(), target.numpy()
 
 def get_noisy_array(images, t, forward_diffusion):
     out_array = np.zeros_like(images)
@@ -99,13 +99,39 @@ def get_noisy_array(images, t, forward_diffusion):
     return out_array
 
 
-dataset = get_mnist_dataset()
+dataset, target = get_mnist_dataset()
 # flatten the dataset
 dataset = dataset.reshape(60000, 784)
 beta_start = 0.0001
 beta_end = 0.02
 timesteps = 300
 
+'''
+pca = PCA(n_components=1)
+pca.fit(dataset)
+
+embeddings = pca.transform(dataset)
+
+# create class_embeddings, which should be a list of lists, each list containing the embeddings of a class
+class_embeddings = []
+for i in range(10):
+    class_embeddings.append([])
+for i in range(len(embeddings)):
+    class_embeddings[target[i]].append(float(embeddings[i]))
+
+# plot the embeddings in 2D. each color represents a class
+fig = plt.figure(figsize=(10,10))
+#plt.scatter(embeddings[:,0], embeddings[:,1], c=target, cmap='jet', s=1)
+plt.hist(class_embeddings, bins=300, stacked=True)
+#ignore everything below this line
+plt.show()
+
+# plot each individual histogram overlapped
+fig = plt.figure(figsize=(10,10))
+for i in range(10):
+    plt.hist(class_embeddings[i], bins=500, alpha=0.3)
+plt.show()
+'''
 t_range = [t for t in range(0, timesteps)]
 
 reverse_transform = Compose([
@@ -127,11 +153,19 @@ noisy_imgs = dataset.copy()
 for t in range(0, timesteps, timesteps // 15):
 
     embeddings = pca.transform(noisy_imgs)
+    if t == 0:
+        xmin = embeddings[:,0].min()
+        xmax = embeddings[:,0].max()
+        ymin = embeddings[:,1].min()
+        ymax = embeddings[:,1].max()
     fig = plt.figure(figsize=(10,10))
-    plt.hist2d(embeddings[:,0], embeddings[:,1], bins=(300,300), cmap='jet')
+    plt.hist2d(embeddings[:,0], embeddings[:,1], bins=(300,300), cmap='jet', range=[[xmin, xmax], [ymin, ymax]])
+    #plt.scatter(embeddings[:,0], embeddings[:,1], c=target, cmap='jet', s=1)
     # remove axis
     plt.axis('off')
     plt.title('t = ' + str(t))
+    plt.xlim(xmin, xmax)
+    plt.ylim(ymin, ymax)
     # a«save image
     plt.savefig('./mnist_pca_' + str(t) + '.png')
     # add t as title
@@ -143,6 +177,8 @@ import imageio.v2 as imageio
 import os
 # get all the files in the directory .png
 files = os.listdir('./')
+# get all files containing the string mnist
+files = [file for file in files if 'mnist' in file]
 files = [file for file in files if '.png' in file]
 # sort the files
 files.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
@@ -163,10 +199,15 @@ for t in range(0, timesteps, timesteps // 15):
 
     embeddings = pca.transform(noisy_imgs)
     fig = plt.figure(figsize=(10,10))
+    if t == 0:
+        xmin = embeddings[:,0].min()
+        xmax = embeddings[:,0].max()
     plt.hist(embeddings, bins=300, color='blue')
     # remove axis
     plt.axis('off')
     plt.title('t = ' + str(t))
+    plt.xlim(xmin, xmax)
+    plt.ylim(0, 1000)
     # a«save image
     plt.savefig('./mnist_pca_' + str(t) + '.png')
     # add t as title
@@ -178,6 +219,7 @@ import imageio.v2 as imageio
 import os
 # get all the files in the directory .png
 files = os.listdir('./')
+files = [file for file in files if 'mnist' in file]
 files = [file for file in files if '.png' in file]
 # sort the files
 files.sort(key=lambda f: int(''.join(filter(str.isdigit, f))))
@@ -187,4 +229,3 @@ for file in files:
     images.append(imageio.imread(file))
 # save the images as gif
 imageio.mimsave('./single_mnist_pca.gif', images, fps=5)
-

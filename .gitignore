@@ -127,7 +127,7 @@ data/raw/*
 test/data
 
 #figures
-reports/figures/*.png
+reports/figures/*
 
 # Mac OS-specific storage files
 .DS_Store
@@ -213,4 +213,6 @@ references/
 # Instructions
 src/README.md
 
+# images in src/generativezoo
+src/generativezoo/*.png
 # EOF

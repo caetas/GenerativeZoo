@@ -306,6 +306,10 @@ class DDPM(nn.Module):
         
         return self.final_conv(x)
     
+    def load_pretrained_weights(self, pretrained_weights_path):
+        pretrained_state_dict = torch.load(pretrained_weights_path)
+        self.load_state_dict(pretrained_state_dict, strict=False)
+    
 class LinearScheduler():
     def __init__(self, beta_start=0.0001, beta_end=0.02, timesteps=1000):
         self.timesteps = timesteps
