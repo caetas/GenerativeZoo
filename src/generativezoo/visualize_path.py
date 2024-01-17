@@ -10,31 +10,38 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from tqdm import tqdm
 
+class mod_Scheduler():
+    def __init__(self, beta_start=0.0001, beta_end=0.02, timesteps=1000):
+        self.timesteps = timesteps
+        self.beta_start = beta_start
+        self.beta_end = beta_end
+        self.betas = self._linear_beta_schedule()
+        alphas = (1 - self.betas).cumprod(dim = 0)
+
+    def _linear_beta_schedule(self):
+        return torch.linspace(self.beta_start, self.beta_end, self.timesteps)
+    
 class mod_Sampler():
     def __init__(self, betas, sqrt_one_minus_alphas_cumprod, sqrt_one_by_alphas, posterior_variance, timesteps):
         self.betas = betas
-        self.sqrt_one_minus_alphas_cumprod = sqrt_one_minus_alphas_cumprod
-        self.sqrt_one_by_alphas = sqrt_one_by_alphas
-        self.posterior_variance = posterior_variance
+        self.alphas = (1-self.betas).cumprod(dim=0)
         self.timesteps = timesteps
     
     @torch.no_grad()
     def p_sample(self, model, x, t, t_index):
         betas_t = extract_time_index(self.betas, t, x.shape)
-        sqrt_one_minus_alphas_cumprod_t = extract_time_index(self.sqrt_one_minus_alphas_cumprod, t, x.shape)
-        sqrt_one_by_alphas_t = extract_time_index(self.sqrt_one_by_alphas, t, x.shape)
-        
-        # Equation 11 in the paper
-        # Use our model (noise predictor) to predict the mean
-        model_mean = sqrt_one_by_alphas_t * (x - betas_t * model(x, t) / sqrt_one_minus_alphas_cumprod_t)
+        alpha_t = extract_time_index(self.alphas, t, x.shape)
+        x0_t = (x - (1-alpha_t).sqrt()*model(x, t))/alpha_t.sqrt()
 
         if t_index == 0:
-            return model_mean
+            return x0_t
         else:
-            posterior_variance_t = extract_time_index(self.posterior_variance, t, x.shape)
+            alpha_prev_t = extract_time_index(self.alphas, t-1, x.shape)
+            c1 = ((1 - alpha_t/alpha_prev_t) * (1-alpha_prev_t) / (1 - alpha_t)).sqrt()
+            c2  = ((1-alpha_prev_t) - c1**2).sqrt()
             noise = torch.randn_like(x)
-            # Algorithm 2 line 4:
-            return model_mean + torch.sqrt(posterior_variance_t) * noise 
+            return x0_t*alpha_prev_t.sqrt() + c2*model(x,t) +  c1* noise
+
 
     # Algorithm 2 but save all images:
     @torch.no_grad()
@@ -83,7 +90,8 @@ beta_end = 0.02
 timesteps = 300
 image_size = 28
 num_channels = 1
-n_samples = 6000
+n_samples = 100
+batch_size = 100
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 checkpoint_dir = os.path.join(models_dir, "DDPM.pt")
@@ -98,11 +106,22 @@ scheduler = LinearScheduler(beta_start=beta_start, beta_end=beta_end, timesteps=
 forward_diffusion = ForwardDiffusion(sqrt_alphas_cumprod=scheduler.sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod=scheduler.sqrt_one_minus_alphas_cumprod, reverse_transform=reverse_transform)
 sampler = mod_Sampler(betas=scheduler.betas, sqrt_one_minus_alphas_cumprod=scheduler.sqrt_one_minus_alphas_cumprod, sqrt_one_by_alphas=scheduler.sqrt_one_by_alphas, posterior_variance=scheduler.posterior_variance, timesteps=timesteps)
 
-samples = sampler.sample(model=model, image_size=image_size, batch_size=1000, channels=num_channels)
-for i in tqdm(range(1, n_samples//1000)):
-    aux = sampler.sample(model=model, image_size=image_size, batch_size=1000, channels=num_channels)
+samples = sampler.sample(model=model, image_size=image_size, batch_size=batch_size, channels=num_channels)
+for i in tqdm(range(1, n_samples//batch_size)):
+    aux = sampler.sample(model=model, image_size=image_size, batch_size=batch_size, channels=num_channels)
     for j in range(len(aux)):
         samples[j] = np.concatenate((samples[j], aux[j]), axis=0)
+
+# save blue and red samples
+plt.figure(figsize=(5,5))
+plt.imshow(((samples[-1][-2]+1)/2).reshape(28,28), cmap='gray')
+plt.savefig('./Blue.png')
+plt.close()
+
+plt.figure(figsize=(5,5))
+plt.imshow(((samples[-1][-1]+1)/2).reshape(28,28), cmap='gray')
+plt.savefig('./Red.png')
+plt.close()
 
 pca = PCA(n_components=1)
 pca.fit(dataset)
@@ -123,17 +142,6 @@ plt.xlabel('Timesteps')
 # remove y axis
 plt.yticks([])
 plt.savefig('./Timesteps.png')
-plt.close()
-
-# save blue and red samples
-plt.figure(figsize=(5,5))
-plt.imshow(((samples[-1][-2]+1)/2).reshape(28,28), cmap='gray')
-plt.savefig('./Blue.png')
-plt.close()
-
-plt.figure(figsize=(5,5))
-plt.imshow(((samples[-1][-1]+1)/2).reshape(28,28), cmap='gray')
-plt.savefig('./Red.png')
 plt.close()
 
 for i in range(0, map.shape[1], 20):

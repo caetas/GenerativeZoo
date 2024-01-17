@@ -25,7 +25,7 @@ def get_mnist_dataset():
         return data.numpy()
 
 
-batch_size = 100
+batch_size = 10
 n_T = 400
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 guide_w_list = [0.0, 0.5, 2.0]
@@ -52,8 +52,21 @@ for guide_w in guide_w_list:
             if i == class_type:
                 continue
             for j in range(maps.shape[1]):
-                plt.plot(np.flip(maps[i,j,:]), color='blue', alpha=0.2, linewidth=0.4)
+                plt.plot(np.flip(maps[i,j,:]), color='blue', alpha=0.3, linewidth=0.4)
         for j in range(maps.shape[1]):
-            plt.plot(np.flip(maps[class_type,j,:]), color='red', linewidth=0.4)
+            plt.plot(np.flip(maps[class_type,j,:]), color='red', linewidth=1)
         plt.savefig('{}_class_{}.png'.format(guide_w,class_type))
         plt.close()
+    
+    embeddings_zero  = maps[:,:,0].flatten()
+    embeddings_end = maps[:,:,-1].flatten()
+    # plot histogtam of embeddings in separated images
+    plt.figure(figsize=(10,10))
+    plt.hist(embeddings_zero, bins=100)
+    plt.savefig('{}_t0.png'.format(guide_w))
+    plt.close()
+    plt.figure(figsize=(10,10))
+    plt.hist(embeddings_end, bins=100)
+    plt.savefig('{}_t1.png'.format(guide_w))
+    plt.close()
+

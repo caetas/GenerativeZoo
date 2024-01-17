@@ -5,6 +5,10 @@ import torch
 import math
 from functools import partial
 import torch.nn.functional as F
+from tqdm import tqdm
+import numpy as np
+import matplotlib.pyplot as plt
+import os
 
 ######## Code from https://github.com/DhruvSrikanth/DenoisingDiffusionProbabilisticModels/tree/master ##########
 
@@ -309,7 +313,7 @@ class DDPM(nn.Module):
     def load_pretrained_weights(self, pretrained_weights_path):
         pretrained_state_dict = torch.load(pretrained_weights_path)
         self.load_state_dict(pretrained_state_dict, strict=False)
-    
+
 class LinearScheduler():
     def __init__(self, beta_start=0.0001, beta_end=0.02, timesteps=1000):
         self.timesteps = timesteps
@@ -334,8 +338,7 @@ class LinearScheduler():
         return self.betas * (1. - alphas_cumprod_prev) / (1. - alphas_cumprod)
 
     def _linear_beta_schedule(self):
-        return torch.linspace(self.beta_start, self.beta_end, self.timesteps)
-    
+        return torch.linspace(self.beta_start, self.beta_end, self.timesteps)  
 
 def extract_time_index(a, t, x_shape):
     batch_size = t.shape[0]
@@ -364,30 +367,26 @@ class ForwardDiffusion():
         return noisy_image
     
 class Sampler():
-    def __init__(self, betas, sqrt_one_minus_alphas_cumprod, sqrt_one_by_alphas, posterior_variance, timesteps):
+    def __init__(self, betas, timesteps, ddpm = 1.0):
         self.betas = betas
-        self.sqrt_one_minus_alphas_cumprod = sqrt_one_minus_alphas_cumprod
-        self.sqrt_one_by_alphas = sqrt_one_by_alphas
-        self.posterior_variance = posterior_variance
+        self.alphas = (1-self.betas).cumprod(dim=0)
         self.timesteps = timesteps
+        self.ddpm = ddpm
     
     @torch.no_grad()
     def p_sample(self, model, x, t, t_index):
         betas_t = extract_time_index(self.betas, t, x.shape)
-        sqrt_one_minus_alphas_cumprod_t = extract_time_index(self.sqrt_one_minus_alphas_cumprod, t, x.shape)
-        sqrt_one_by_alphas_t = extract_time_index(self.sqrt_one_by_alphas, t, x.shape)
-        
-        # Equation 11 in the paper
-        # Use our model (noise predictor) to predict the mean
-        model_mean = sqrt_one_by_alphas_t * (x - betas_t * model(x, t) / sqrt_one_minus_alphas_cumprod_t)
+        alpha_t = extract_time_index(self.alphas, t, x.shape)
+        x0_t = (x - (1-alpha_t).sqrt()*model(x, t))/alpha_t.sqrt()
 
         if t_index == 0:
-            return model_mean
+            return x0_t
         else:
-            posterior_variance_t = extract_time_index(self.posterior_variance, t, x.shape)
+            alpha_prev_t = extract_time_index(self.alphas, t-1, x.shape)
+            c1 = self.ddpm*((1 - alpha_t/alpha_prev_t) * (1-alpha_prev_t) / (1 - alpha_t)).sqrt()
+            c2  = ((1-alpha_prev_t) - c1**2).sqrt()
             noise = torch.randn_like(x)
-            # Algorithm 2 line 4:
-            return model_mean + torch.sqrt(posterior_variance_t) * noise 
+            return x0_t*alpha_prev_t.sqrt() + c2*model(x,t) +  c1* noise
 
     # Algorithm 2 but save all images:
     @torch.no_grad()
@@ -408,5 +407,64 @@ class Sampler():
     def sample(self, model, image_size, batch_size=16, channels=3):
         return self.p_sample_loop(model, shape=(batch_size, channels, image_size, image_size))
 
+def get_loss(forward_diffusion_model, denoising_model, x_start, t, noise=None, loss_type="l2"):
+    if noise is None:
+        noise = torch.randn_like(x_start)
 
+    x_noisy = forward_diffusion_model.q_sample(x_start=x_start, t=t, noise=noise)
+    predicted_noise = denoising_model(x_noisy, t)
+
+    if loss_type == 'l1':
+        loss = F.l1_loss(noise, predicted_noise)
+    elif loss_type == 'l2':
+        loss = F.mse_loss(noise, predicted_noise)
+    elif loss_type == "huber":
+        loss = F.smooth_l1_loss(noise, predicted_noise)
+    else:
+        raise NotImplementedError()
+
+    return loss
+
+def train(image_size, num_channels, epochs, timesteps, sample_and_save_freq, save_folder, forward_diffusion_model, denoising_model, criterion, optimizer, dataloader, sampler, device):
+    best_loss = np.inf
+    loss_type="huber"
+    for epoch in range(epochs):
+        acc_loss = 0.0
+        with tqdm(dataloader, desc=f'Training DDPM') as pbar:
+            for step, batch in enumerate(dataloader):
+                optimizer.zero_grad()
+
+                batch_size = batch[0].shape[0]
+                batch = batch[0].to(device)
+
+                # Algorithm 1 line 3: sample t uniformally for every example in the batch
+                t = torch.randint(0, timesteps, (batch_size,), device=device).long()
+                loss = criterion(forward_diffusion_model=forward_diffusion_model, denoising_model=denoising_model, x_start=batch, t=t, loss_type=loss_type)
+                # if step % 100 == 0:
+                #     print(f"Epoch {epoch} Loss: {loss.item()}")
+                loss.backward()
+                optimizer.step()
+                acc_loss += loss.item() * batch_size
+
+                pbar.set_postfix(Epoch=f"{epoch+1}/{epochs}", Loss=f"{loss:.4f}")
+                pbar.update()
+
+
+                # save generated images
+                if step != 0 and step % sample_and_save_freq == 0:
+                    samples = sampler.sample(model=denoising_model, image_size=image_size, batch_size=16, channels=num_channels)
+                    all_images = samples[-1] 
+                    all_images = (all_images + 1) * 0.5
+                    # all_images is a numpy array, plot 9 images from it
+                    fig = plt.figure(figsize=(10, 10))
+                    # use subplots
+                    for i in range(9):
+                        plt.subplot(3, 3, i+1)
+                        plt.imshow(all_images[i].squeeze(), cmap='gray')
+                        plt.axis('off')
+                    plt.savefig(os.path.join(save_folder,f"Epoch_{epoch}_Step_{step}.png"))
+                    plt.close(fig)
+        if acc_loss/len(dataloader.dataset) < best_loss:
+            best_loss = acc_loss/len(dataloader.dataset)
+            torch.save(denoising_model.state_dict(), os.path.join(save_folder,f"DDPM.pt"))
     
