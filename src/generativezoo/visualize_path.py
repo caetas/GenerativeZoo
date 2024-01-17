@@ -104,7 +104,7 @@ model.load_pretrained_weights(checkpoint_dir)
 
 scheduler = LinearScheduler(beta_start=beta_start, beta_end=beta_end, timesteps=timesteps)
 forward_diffusion = ForwardDiffusion(sqrt_alphas_cumprod=scheduler.sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod=scheduler.sqrt_one_minus_alphas_cumprod, reverse_transform=reverse_transform)
-sampler = mod_Sampler(betas=scheduler.betas, sqrt_one_minus_alphas_cumprod=scheduler.sqrt_one_minus_alphas_cumprod, sqrt_one_by_alphas=scheduler.sqrt_one_by_alphas, posterior_variance=scheduler.posterior_variance, timesteps=timesteps)
+sampler = Sampler(betas=scheduler.betas, timesteps=timesteps, ddpm=0.0)
 
 samples = sampler.sample(model=model, image_size=image_size, batch_size=batch_size, channels=num_channels)
 for i in tqdm(range(1, n_samples//batch_size)):
