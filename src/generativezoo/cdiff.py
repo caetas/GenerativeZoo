@@ -25,7 +25,7 @@ def get_mnist_dataset():
         return data.numpy()
 
 
-batch_size = 100
+batch_size = 10
 n_T = 400
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 guide_w_list = [0.0, 0.5, 2.0]
@@ -38,6 +38,8 @@ checkpoint_dir = os.path.join(models_dir, 'model_39.pth')
 
 for guide_w in guide_w_list:
     gen_images = inference(checkpoint_dir,'./', batch_size, n_T=n_T, device=device, guide_w=guide_w)
+
+    exit()
 
     maps = np.zeros((gen_images.shape[1],gen_images.shape[2], gen_images.shape[0])) # n_classes, samp_per_class, n_T
     for i in range(gen_images.shape[1]):
