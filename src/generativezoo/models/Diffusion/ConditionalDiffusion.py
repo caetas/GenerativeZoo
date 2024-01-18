@@ -245,7 +245,7 @@ class DDPM(nn.Module):
         # return MSE between added noise, and our predicted noise
         return self.loss_mse(noise, self.nn_model(x_t, c, _ts / self.n_T, context_mask))
 
-    def sample(self, n_sample, size, device, guide_w = 0.0, ddpm = 1.0):
+    def sample(self, n_sample, size, device, guide_w = 0.0, ddpm = 0.0):
         # we follow the guidance sampling scheme described in 'Classifier-Free Diffusion Guidance'
         # to make the fwd passes efficient, we concat two versions of the dataset,
         # one with context_mask=0 and the other context_mask=1
@@ -298,6 +298,7 @@ class DDPM(nn.Module):
         
         x_i_store = np.array(x_i_store)
         return x_i, x_i_store
+
     
 def train_mnist(dataloader):
 

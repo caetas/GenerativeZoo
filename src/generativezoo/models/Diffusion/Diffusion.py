@@ -406,6 +406,49 @@ class Sampler():
     @torch.no_grad()
     def sample(self, model, image_size, batch_size=16, channels=3):
         return self.p_sample_loop(model, shape=(batch_size, channels, image_size, image_size))
+    
+class Accelerated_Sampler():
+    def __init__(self, betas, timesteps=1000, reduced_timesteps=100, ddpm=1.0):
+        self.betas = betas
+        self.alphas = (1-self.betas).cumprod(dim=0)
+        self.timesteps = timesteps
+        self.reduced_timesteps = reduced_timesteps
+        self.ddpm = ddpm
+        self.scaling = timesteps//reduced_timesteps
+    
+    @torch.no_grad()
+    def p_sample(self, model, x, t, tau_index):
+        betas_t = extract_time_index(self.betas, t, x.shape)
+        alpha_t = extract_time_index(self.alphas, t, x.shape)
+        x0_t = (x - (1-alpha_t).sqrt()*model(x, t))/alpha_t.sqrt()
+
+        if tau_index == 0:
+            return x0_t
+        else:
+            alpha_prev_t = extract_time_index(self.alphas, t-self.scaling, x.shape)
+            c1 = self.ddpm*((1 - alpha_t/alpha_prev_t) * (1-alpha_prev_t) / (1 - alpha_t)).sqrt()
+            c2  = ((1-alpha_prev_t) - c1**2).sqrt()
+            noise = torch.randn_like(x)
+            return x0_t*alpha_prev_t.sqrt() + c2*model(x,t) +  c1* noise
+    
+    @torch.no_grad()
+    def p_sample_loop(self, model, shape):
+        device = next(model.parameters()).device
+
+        b = shape[0]
+        # start from pure noise (for each example in the batch)
+        img = torch.randn(shape, device=device)
+        imgs = []
+        
+        for i in reversed(range(0, self.reduced_timesteps)):
+            scaled_i = i*self.scaling
+            img = self.p_sample(model, img, torch.full((b,), scaled_i, device=device, dtype=torch.long), i)
+            imgs.append(img.cpu().numpy())
+        return imgs
+    
+    @torch.no_grad()
+    def sample(self, model, image_size, batch_size=16, channels=3):
+        return self.p_sample_loop(model, shape=(batch_size, channels, image_size, image_size))
 
 def get_loss(forward_diffusion_model, denoising_model, x_start, t, noise=None, loss_type="l2"):
     if noise is None:

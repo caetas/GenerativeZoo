@@ -25,7 +25,7 @@ def get_mnist_dataset():
         return data.numpy()
 
 
-batch_size = 10
+batch_size = 100
 n_T = 400
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 guide_w_list = [0.0, 0.5, 2.0]

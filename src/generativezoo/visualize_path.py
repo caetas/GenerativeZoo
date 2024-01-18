@@ -90,8 +90,8 @@ beta_end = 0.02
 timesteps = 300
 image_size = 28
 num_channels = 1
-n_samples = 100
-batch_size = 100
+n_samples = 20
+batch_size = 10
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 checkpoint_dir = os.path.join(models_dir, "DDPM.pt")
@@ -104,13 +104,24 @@ model.load_pretrained_weights(checkpoint_dir)
 
 scheduler = LinearScheduler(beta_start=beta_start, beta_end=beta_end, timesteps=timesteps)
 forward_diffusion = ForwardDiffusion(sqrt_alphas_cumprod=scheduler.sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod=scheduler.sqrt_one_minus_alphas_cumprod, reverse_transform=reverse_transform)
-sampler = Sampler(betas=scheduler.betas, timesteps=timesteps, ddpm=0.0)
+#sampler = Sampler(betas=scheduler.betas, timesteps=timesteps, ddpm=0.0)
+sampler = Accelerated_Sampler(betas=scheduler.betas, timesteps=timesteps, reduced_timesteps=15, ddpm=1.0)
 
 samples = sampler.sample(model=model, image_size=image_size, batch_size=batch_size, channels=num_channels)
 for i in tqdm(range(1, n_samples//batch_size)):
     aux = sampler.sample(model=model, image_size=image_size, batch_size=batch_size, channels=num_channels)
     for j in range(len(aux)):
         samples[j] = np.concatenate((samples[j], aux[j]), axis=0)
+
+# plot 10 random samples in a row
+plt.figure(figsize=(50,5))
+for i in range(10):
+    plt.subplot(1,10,i+1)
+    plt.imshow(((samples[-1][i]+1)/2).reshape(28,28), cmap='gray')
+    plt.axis('off')
+plt.show()
+
+exit()
 
 # save blue and red samples
 plt.figure(figsize=(5,5))
