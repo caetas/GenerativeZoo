@@ -100,9 +100,9 @@ model = DDPM(n_features=image_size, in_channels=num_channels, channel_scale_fact
 model.load_pretrained_weights(checkpoint_dir)
 
 ns = NoiseScheduleVP('discrete', betas=betas, )
-dpm_solver = DPM_Solver(model, ns, algorithm_type="dpmsolver")
+dpm_solver = DPM_Solver(model, ns, algorithm_type="dpmsolver++")
 x = torch.randn(1, 1, 28, 28).to(device)
-x_sample = dpm_solver.sample(x, steps=timesteps//2 - 1, order=3,
+x_sample = dpm_solver.sample(x, steps=timesteps, order=2,
                             skip_type='time_uniform', method='singlestep')
 
 plt.figure(figsize=(5,5))

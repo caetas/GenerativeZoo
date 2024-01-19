@@ -552,6 +552,7 @@ class DPM_Solver:
         Return the data prediction model (with corrector).
         """
         noise = self.noise_prediction_fn(x, t)
+        t = t/self.noise_schedule.total_N
         alpha_t, sigma_t = self.noise_schedule.marginal_alpha(t), self.noise_schedule.marginal_std(t)
         x0 = (x - sigma_t * noise) / alpha_t
         if self.correcting_x0_fn is not None:
@@ -743,7 +744,7 @@ class DPM_Solver:
             phi_1 = torch.expm1(-h)
 
             if model_s is None:
-                model_s = self.model_fn(x, s.ns.total_N)
+                model_s = self.model_fn(x, s*ns.total_N)
             x_s1 = (
                 (sigma_s1 / sigma_s) * x
                 - (alpha_s1 * phi_11) * model_s
