@@ -6,6 +6,7 @@ import os
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Lambda, ToPILImage
+from models.Diffusion.DPM_functions import *
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from tqdm import tqdm
@@ -85,6 +86,29 @@ reverse_transform = Compose([
      #ToPILImage(),
 ])
 
+beta_start = 0.0001
+beta_end = 0.02
+timesteps = 300
+image_size = 28
+num_channels = 1
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+checkpoint_dir = os.path.join(models_dir, "DDPM.pt")
+betas = torch.linspace(beta_start, beta_end, timesteps)
+
+model = DDPM(n_features=image_size, in_channels=num_channels, channel_scale_factors=(1, 2, 4,)).to(device)
+model.load_pretrained_weights(checkpoint_dir)
+
+ns = NoiseScheduleVP('discrete', betas=betas, )
+dpm_solver = DPM_Solver(model, ns, algorithm_type="dpmsolver")
+x = torch.randn(1, 1, 28, 28).to(device)
+x_sample = dpm_solver.sample(x, steps=timesteps//2 - 1, order=3,
+                            skip_type='time_uniform', method='singlestep')
+
+plt.figure(figsize=(5,5))
+plt.imshow(((x_sample[0].cpu().detach().numpy()+1)/2).reshape(28,28), cmap='gray')
+plt.show()
+exit()
 beta_start = 0.0001
 beta_end = 0.02
 timesteps = 300
