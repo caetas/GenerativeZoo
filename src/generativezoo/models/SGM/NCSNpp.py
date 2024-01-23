@@ -590,7 +590,10 @@ def train(config, workdir, dataloader, valoader, reports_dir):
       eval_batch = eval_batch.to(config.device)
       eval_loss = eval_step_fn(state, eval_batch)
       print("step: %d, eval_loss: %.5e" % (step, eval_loss.item()))
+      ema.store(score_model.parameters())
+      ema.copy_to(score_model.parameters())
       sample, n = sampling_fn(score_model)
+      ema.restore(score_model.parameters())
       sample = sample.permute(0, 2, 3, 1).cpu().detach().numpy()
       sample = (sample+1)/2
       plt.imshow(sample[0], cmap='gray')
@@ -665,7 +668,10 @@ def sample(config, workdir, num_samples, checkpoint_path=None):
   sampling_fn = sampling.get_sampling_fn(config, sde, sampling_shape, inverse_scaler, sampling_eps)
 
   # Generate samples
+  ema.store(score_model.parameters())
+  ema.copy_to(score_model.parameters())
   sample, n = sampling_fn(score_model)
+  ema.restore(score_model.parameters())
   sample = sample.permute(0, 2, 3, 1).cpu().detach().numpy()
   sample = (sample+1)/2
   # plot the first 9 samples in a 3x3 grid
@@ -718,7 +724,10 @@ def sample_pds(config, workdir, speed_up, num_samples, alpha, checkpoint_path=No
   sampling_fn = sampling_pds.get_sampling_fn(config, sde, sampling_shape, inverse_scaler, sampling_eps, freq_mask_path=None, space_mask_path=None, alpha = alpha)
 
   # Generate samples
+  ema.store(score_model.parameters())
+  ema.copy_to(score_model.parameters())
   sample, n = sampling_fn(score_model)
+  ema.restore(score_model.parameters())
   sample = sample.permute(0, 2, 3, 1).cpu().detach().numpy()
   sample = (sample+1)/2
   # plot the first 9 samples in a 3x3 grid
