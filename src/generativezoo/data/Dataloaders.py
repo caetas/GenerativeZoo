@@ -31,6 +31,7 @@ def cifar_val_loader(batch_size):
 def mnist_train_loader(batch_size):
     training_data = datasets.MNIST(root=data_raw_dir, train=True, download=True,
                                   transform=transforms.Compose([
+                                      transforms.Resize(32),
                                       transforms.ToTensor(),
                                       transforms.Normalize((0.5,), (0.5,))
                                   ]))
@@ -44,6 +45,7 @@ def mnist_train_loader(batch_size):
 def mnist_val_loader(batch_size):
     validation_data = datasets.MNIST(root=data_raw_dir, train=False, download=True,
                                   transform=transforms.Compose([
+                                      transforms.Resize(32),
                                       transforms.ToTensor(),
                                       transforms.Normalize((0.5,), (0.5,))
                                   ]))

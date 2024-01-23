@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torchvision
 import torch.nn.functional as F
+import os
 
 import math
 import matplotlib.pyplot as plt
@@ -634,7 +635,7 @@ def train(dataloader, n_steps = 10, sigma_min = 0.005, sigma_max = 10, annealed_
                 print('\n', end - start)
                 plt.figure(figsize=(10, 10))
                 plt.imshow(sample)
-                plt.savefig(report_dir + 'NCSN_{}.png'.format(c_i))
+                plt.savefig(os.path.join(report_dir,'NCSN_{}.png'.format(c_i)))
                 plt.close()
                 losses.reset()
 
