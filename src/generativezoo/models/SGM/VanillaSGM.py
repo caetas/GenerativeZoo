@@ -144,8 +144,8 @@ def marginal_prob_std(t, sigma, device):
   Returns:
     The standard deviation.
   """    
-  t = torch.tensor(t, device=device)
-  #t = t.clone().detach().to(device)
+  #t = torch.tensor(t, device=device)
+  t = t.clone().detach().to(device)
   return torch.sqrt((sigma**(2 * t) - 1.) / 2. / np.log(sigma))
 
 def diffusion_coeff(t, sigma, device):
@@ -178,6 +178,22 @@ def loss_fn(model, x, marginal_prob_std, eps=1e-5):
   score = model(perturbed_x, random_t)
   loss = torch.mean(torch.sum((score * std[:, None, None, None] + z)**2, dim=(1,2,3)))
   return loss
+
+def outlier_score(model, x, marginal_prob_std, eps=1e-5):
+  t_list = [0.001, 0.01, 0.05, 0.1, 0.2]
+  for t in t_list:
+    random_t = torch.ones(x.shape[0], device=x.device) * t
+    z = torch.randn_like(x)
+    std = marginal_prob_std(random_t)
+    perturbed_x = x + z * std[:, None, None, None]
+    score = model(perturbed_x, random_t)
+    loss = torch.sum((score * std[:, None, None, None] + z)**2, dim=(1,2,3))
+    if t == 0.001:
+      loss_sum = loss
+    else:
+      loss_sum += loss
+  
+  return loss_sum/len(t_list)
 
 def Euler_Maruyama_sampler(score_model, 
                            marginal_prob_std,
@@ -345,13 +361,15 @@ def outlier_detection(checkpoint_dir, val_loader, out_loader, device, sigma = 25
     for x,_ in val_loader:
         x = x.to(device)
         #absolute value of the score_model output
-        score = torch.mean(torch.abs(model(x, 0.001*torch.ones(x.shape[0], device=device))), dim=(1,2,3))
+        #score = torch.mean(torch.abs(model(x, 0.001*torch.ones(x.shape[0], device=device))), dim=(1,2,3))
+        score = outlier_score(model, x, marginal_prob_std_fn)
         val_scores.append(score.cpu().numpy())
     val_scores = np.concatenate(val_scores, axis=0)
     out_scores = []
     for x,_ in out_loader:
         x = x.to(device)
-        score = torch.mean(torch.abs(model(x, 0.001*torch.ones(x.shape[0], device=device))), dim=(1,2,3))  
+        #score = torch.mean(torch.abs(model(x, 0.001*torch.ones(x.shape[0], device=device))), dim=(1,2,3))
+        score = outlier_score(model, x, marginal_prob_std_fn)  
         out_scores.append(score.cpu().numpy())
     out_scores = np.concatenate(out_scores, axis=0)
     # Compute the AUC score.
@@ -378,10 +396,6 @@ def train(dataloader, device, sigma = 25.0, n_epochs = 50, lr = 1e-4, input_size
         n_epochs: The number of training epochs.
         lr: The learning rate.
     """
-    mlflow.set_experiment('VanillaSGM')
-    mlflow.start_run()
-    # set run name
-    mlflow.set_tag('mlflow.runName', model_name)
     mlflow.log_param('sigma', sigma)
     mlflow.log_param('sigma', sigma)
     mlflow.log_param('n_epochs', n_epochs)

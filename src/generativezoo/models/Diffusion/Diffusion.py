@@ -5,11 +5,13 @@ import torch
 import math
 from functools import partial
 import torch.nn.functional as F
-from tqdm import tqdm
+from tqdm import tqdm, trange
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 from .DPM_functions import *
+import mlflow
+from sklearn.metrics import roc_auc_score
 
 ######## Code from https://github.com/DhruvSrikanth/DenoisingDiffusionProbabilisticModels/tree/master ##########
 
@@ -366,49 +368,8 @@ class ForwardDiffusion():
         x_noisy = self.q_sample(x_start, t, noise)
         noisy_image = self.reverse_transform(x_noisy.squeeze())
         return noisy_image
-    
+
 class Sampler():
-    def __init__(self, betas, timesteps, ddpm = 1.0):
-        self.betas = betas
-        self.alphas = (1-self.betas).cumprod(dim=0)
-        self.timesteps = timesteps
-        self.ddpm = ddpm
-    
-    @torch.no_grad()
-    def p_sample(self, model, x, t, t_index):
-        betas_t = extract_time_index(self.betas, t, x.shape)
-        alpha_t = extract_time_index(self.alphas, t, x.shape)
-        x0_t = (x - (1-alpha_t).sqrt()*model(x, t))/alpha_t.sqrt()
-
-        if t_index == 0:
-            return x0_t
-        else:
-            alpha_prev_t = extract_time_index(self.alphas, t-1, x.shape)
-            c1 = self.ddpm*((1 - alpha_t/alpha_prev_t) * (1-alpha_prev_t) / (1 - alpha_t)).sqrt()
-            c2  = ((1-alpha_prev_t) - c1**2).sqrt()
-            noise = torch.randn_like(x)
-            return x0_t*alpha_prev_t.sqrt() + c2*model(x,t) +  c1* noise
-
-    # Algorithm 2 but save all images:
-    @torch.no_grad()
-    def p_sample_loop(self, model, shape):
-        device = next(model.parameters()).device
-
-        b = shape[0]
-        # start from pure noise (for each example in the batch)
-        img = torch.randn(shape, device=device)
-        imgs = []
-        
-        for i in reversed(range(0, self.timesteps)):
-            img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
-            imgs.append(img.cpu().numpy())
-        return imgs
-
-    @torch.no_grad()
-    def sample(self, model, image_size, batch_size=16, channels=3):
-        return self.p_sample_loop(model, shape=(batch_size, channels, image_size, image_size))
-    
-class Accelerated_Sampler():
     def __init__(self, betas, timesteps=1000, reduced_timesteps=100, ddpm=1.0):
         self.betas = betas
         self.alphas = (1-self.betas).cumprod(dim=0)
@@ -441,7 +402,7 @@ class Accelerated_Sampler():
         img = torch.randn(shape, device=device)
         imgs = []
         
-        for i in reversed(range(0, self.reduced_timesteps)):
+        for i in tqdm(range(self.reduced_timesteps-1,-1,-1), desc="Sampling", leave=False):
             scaled_i = i*self.scaling
             img = self.p_sample(model, img, torch.full((b,), scaled_i, device=device, dtype=torch.long), i)
             imgs.append(img.cpu().numpy())
@@ -469,15 +430,13 @@ def get_loss(forward_diffusion_model, denoising_model, x_start, t, noise=None, l
 
     return loss
 
-def train(image_size, num_channels, epochs, timesteps, sample_and_save_freq, save_folder, forward_diffusion_model, denoising_model, criterion, optimizer, dataloader, sampler, device):
+def train(image_size, num_channels, epochs, timesteps, sample_and_save_freq, forward_diffusion_model, denoising_model, criterion, optimizer, dataloader, sampler, device, loss_type):
     best_loss = np.inf
-    loss_type="huber"
     for epoch in range(epochs):
         acc_loss = 0.0
         with tqdm(dataloader, desc=f'Training DDPM') as pbar:
             for step, batch in enumerate(dataloader):
                 optimizer.zero_grad()
-
                 batch_size = batch[0].shape[0]
                 batch = batch[0].to(device)
 
@@ -493,7 +452,6 @@ def train(image_size, num_channels, epochs, timesteps, sample_and_save_freq, sav
                 pbar.set_postfix(Epoch=f"{epoch+1}/{epochs}", Loss=f"{loss:.4f}")
                 pbar.update()
 
-
                 # save generated images
                 if step != 0 and step % sample_and_save_freq == 0:
                     samples = sampler.sample(model=denoising_model, image_size=image_size, batch_size=16, channels=num_channels)
@@ -502,16 +460,76 @@ def train(image_size, num_channels, epochs, timesteps, sample_and_save_freq, sav
                     # all_images is a numpy array, plot 9 images from it
                     fig = plt.figure(figsize=(10, 10))
                     # use subplots
-                    for i in range(9):
-                        plt.subplot(3, 3, i+1)
+                    for i in range(16):
+                        plt.subplot(4, 4, i+1)
                         plt.imshow(all_images[i].squeeze(), cmap='gray')
                         plt.axis('off')
-                    plt.savefig(os.path.join(save_folder,f"Epoch_{epoch}_Step_{step}.png"))
+                    mlflow.log_figure(fig, f"Epoch_{epoch}_Step_{step}.png")
+                    #plt.savefig(os.path.join(save_folder,f"Epoch_{epoch}_Step_{step}.png"))
                     plt.close(fig)
         if acc_loss/len(dataloader.dataset) < best_loss:
             best_loss = acc_loss/len(dataloader.dataset)
-            torch.save(denoising_model.state_dict(), os.path.join(save_folder,f"DDPM.pt"))
+            #torch.save(denoising_model.state_dict(), os.path.join(save_folder,f"DDPM.pt"))
+            mlflow.pytorch.log_state_dict(denoising_model.state_dict(), "DDPM")
+        mlflow.log_metric("Loss", acc_loss/len(dataloader.dataset), step=epoch)
 
+def outlier_score(forward_diffusion_model, denoising_model, x_start, t, loss_type):
+    noise = torch.randn_like(x_start)
+
+    x_noisy = forward_diffusion_model.q_sample(x_start=x_start, t=t, noise=noise)
+    predicted_noise = denoising_model(x_noisy, t)
+
+    if loss_type == 'l1':
+        loss = nn.L1Loss(reduction = 'none')
+        elementwise_loss = torch.mean(loss(noise, predicted_noise).reshape(x_start.shape), dim=(1,2,3))
+    elif loss_type == 'l2':
+        loss = nn.MSELoss(reduction = 'none')
+        elementwise_loss = torch.mean(loss(noise, predicted_noise).reshape(x_start.shape), dim=(1,2,3))
+    elif loss_type == "huber":
+        loss = nn.HuberLoss(reduction = 'none')
+        elementwise_loss = torch.mean(loss(noise, predicted_noise).reshape(x_start.shape), dim=(1,2,3))
+    else:
+        raise NotImplementedError()
+
+    return elementwise_loss
+
+def outlier_detection(denoising_model, val_loader, out_loader, device, forward_diffusion_model, loss_type):
+    denoising_model.eval()
+    val_loss = 0.0
+    with torch.no_grad():
+        val_scores = []
+        for step, batch in enumerate(val_loader):
+            batch_size = batch[0].shape[0]
+            batch = batch[0].to(device)
+            t = torch.ones((batch_size,), device=device).long() * 10
+            score = outlier_score(forward_diffusion_model=forward_diffusion_model, denoising_model=denoising_model, x_start=batch, t=t, loss_type=loss_type)
+            val_scores.append(score.cpu().numpy())
+        
+        val_scores = np.concatenate(val_scores)
+
+    out_scores = []
+
+    with torch.no_grad():
+        out_scores = []
+        for step, batch in enumerate(out_loader):
+            batch_size = batch[0].shape[0]
+            batch = batch[0].to(device)
+            t = torch.ones((batch_size,), device=device).long() * 10
+            out_scores.append(outlier_score(forward_diffusion_model=forward_diffusion_model, denoising_model=denoising_model, x_start=batch, t=t, loss_type=loss_type).cpu().numpy())
+
+        out_scores = np.concatenate(out_scores)
+    
+    y_true = np.concatenate([np.zeros_like(val_scores), np.ones_like(out_scores)], axis=0)
+    y_score = np.concatenate([val_scores, out_scores], axis=0)
+    auc_score = roc_auc_score(y_true, y_score)
+    if auc_score < 0.2:
+      auc_score = 1. - auc_score
+    print('AUC score: {:.10f}'.format(auc_score))
+
+    plt.hist(val_scores, bins=100, alpha=0.5, label='val')
+    plt.hist(out_scores, bins=100, alpha=0.5, label='out')
+    plt.legend(loc='upper right')
+    plt.show()
 
 class DPM_Solver:
     def __init__(self, model, noise_schedule, algorithm_type = "dpmsolver++", correcting_x0_fn=None, correcting_xt_fn=None, thresholding_max_val=1., dynamic_thresholding_ratio=0.995,):
@@ -1362,3 +1380,45 @@ class DPM_Solver:
         else:
             return x
    
+'''    
+class Sampler():
+    def __init__(self, betas, timesteps, ddpm = 1.0):
+        self.betas = betas
+        self.alphas = (1-self.betas).cumprod(dim=0)
+        self.timesteps = timesteps
+        self.ddpm = ddpm
+    
+    @torch.no_grad()
+    def p_sample(self, model, x, t, t_index):
+        betas_t = extract_time_index(self.betas, t, x.shape)
+        alpha_t = extract_time_index(self.alphas, t, x.shape)
+        x0_t = (x - (1-alpha_t).sqrt()*model(x, t))/alpha_t.sqrt()
+
+        if t_index == 0:
+            return x0_t
+        else:
+            alpha_prev_t = extract_time_index(self.alphas, t-1, x.shape)
+            c1 = self.ddpm*((1 - alpha_t/alpha_prev_t) * (1-alpha_prev_t) / (1 - alpha_t)).sqrt()
+            c2  = ((1-alpha_prev_t) - c1**2).sqrt()
+            noise = torch.randn_like(x)
+            return x0_t*alpha_prev_t.sqrt() + c2*model(x,t) +  c1* noise
+
+    # Algorithm 2 but save all images:
+    @torch.no_grad()
+    def p_sample_loop(self, model, shape):
+        device = next(model.parameters()).device
+
+        b = shape[0]
+        # start from pure noise (for each example in the batch)
+        img = torch.randn(shape, device=device)
+        imgs = []
+        
+        for i in tqdm(reversed(range(0, self.timesteps)), desc="Sampling"):
+            img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
+            imgs.append(img.cpu().numpy())
+        return imgs
+
+    @torch.no_grad()
+    def sample(self, model, image_size, batch_size=16, channels=3):
+        return self.p_sample_loop(model, shape=(batch_size, channels, image_size, image_size))
+'''    

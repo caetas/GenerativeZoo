@@ -4,12 +4,18 @@ from utils.util import parse_args_VanillaSGM
 from config import models_dir
 import torch
 import os
+import mlflow
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 args = parse_args_VanillaSGM()
 normalize = False
 
 if args.train:
+    mlflow.set_experiment('VanillaSGM')
+    mlflow.start_run()
+    # set run name
+    mlflow.set_tag('mlflow.runName', model_name='VanillaSGM_' + args.dataset)
+    mlflow.log_param('dataset', args.dataset)
     dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize)
     train(dataloader, device, n_epochs=args.n_epochs, input_size=input_size, in_channels=channels, model_name='VanillaSGM_' + args.dataset, lr=args.lr, sigma = args.sigma)
 elif args.sample:
