@@ -121,6 +121,7 @@ data/processed/*
 data/interim/*
 data/external/*
 data/raw/*
+src/generativezoo/garbage/
 # models directory
 /models/
 # test data directory

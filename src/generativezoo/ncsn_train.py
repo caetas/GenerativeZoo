@@ -1,4 +1,4 @@
-from models.Score.NCSN import train
+from models.SGM.NCSN import train
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from config import data_raw_dir

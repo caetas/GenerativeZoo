@@ -1,64 +1,24 @@
 from models.SGM.VanillaSGM import train, sample, outlier_detection
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
-from config import data_raw_dir, models_dir
+from data.Dataloaders import *
+from utils.util import parse_args_VanillaSGM
+from config import models_dir
 import torch
 import os
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+args = parse_args_VanillaSGM()
+normalize = False
 
-def mnist_train_loader(batch_size):
-    training_data = datasets.MNIST(root=data_raw_dir, train=True, download=True,
-                                  transform=transforms.Compose([
-                                      transforms.ToTensor(),
-                                  ]))
-
-    training_loader = DataLoader(training_data, 
-                                 batch_size=batch_size, 
-                                 shuffle=True,
-                                 pin_memory=True)
-    return training_loader
-
-def mnist_val_loader(batch_size):
-    validation_data = datasets.MNIST(root=data_raw_dir, train=False, download=True,
-                                  transform=transforms.Compose([
-                                      transforms.ToTensor(),
-                                  ]))
-
-    validation_loader = DataLoader(validation_data,
-                                   batch_size=batch_size,
-                                   shuffle=True,
-                                   pin_memory=True)
-    return validation_loader
-
-def fashion_mnist_train_loader(batch_size):
-    training_data = datasets.FashionMNIST(root=data_raw_dir, train=True, download=True,
-                                  transform=transforms.Compose([
-                                      transforms.ToTensor(),
-                                  ]))
-
-    training_loader = DataLoader(training_data, 
-                                 batch_size=batch_size, 
-                                 shuffle=True,
-                                 pin_memory=True)
-    return training_loader
-
-def fashion_mnist_val_loader(batch_size):
-    validation_data = datasets.FashionMNIST(root=data_raw_dir, train=False, download=True,
-                                  transform=transforms.Compose([
-                                      transforms.ToTensor(),
-                                  ]))
-
-    validation_loader = DataLoader(validation_data,
-                                   batch_size=batch_size,
-                                   shuffle=True,
-                                   pin_memory=True)
-    return validation_loader
-
-dataloader = mnist_train_loader(64)
-val_loader_a = mnist_val_loader(64)
-val_loader_b = fashion_mnist_val_loader(64)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#train(dataloader, device, n_epochs=50)
-#sample(os.path.join(models_dir, 'VanillaSGM.pt'), sampler_type='Euler-Maruyama', device = device, num_samples=16, num_steps=500)
-outlier_detection(os.path.join(models_dir, 'VanillaSGM.pt'),val_loader_a, val_loader_b, device)
+if args.train:
+    dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize)
+    train(dataloader, device, n_epochs=args.n_epochs, input_size=input_size, in_channels=channels, model_name='VanillaSGM_' + args.dataset, lr=args.lr, sigma = args.sigma)
+elif args.sample:
+    _, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize)
+    sample(args.checkpoint, sampler_type=args.sampler_type, device = device, num_samples=args.num_samples, num_steps=args.num_steps, channels=channels, input_size=input_size)
+elif args.outlier_detection:
+    dataloader_a, input_size_a, channels_a = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize)
+    dataloader_b, input_size_b, channels_b = pick_dataset(args.out_dataset, 'val', args.batch_size, normalize=normalize)
+    outlier_detection(args.checkpoint, dataloader_a, dataloader_b, device, args.sigma, input_size=input_size_a, channels=channels_a)
+else:
+    raise ValueError('Please specify at least one of the following: train, sample, outlier_detection')
 
