@@ -10,8 +10,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from .DPM_functions import *
-import mlflow
+import wandb
 from sklearn.metrics import roc_auc_score
+from config import data_raw_dir, models_dir
 
 ######## Code from https://github.com/DhruvSrikanth/DenoisingDiffusionProbabilisticModels/tree/master ##########
 
@@ -453,25 +454,37 @@ def train(image_size, num_channels, epochs, timesteps, sample_and_save_freq, for
                 pbar.update()
 
                 # save generated images
-                if step != 0 and step % sample_and_save_freq == 0:
-                    samples = sampler.sample(model=denoising_model, image_size=image_size, batch_size=16, channels=num_channels)
-                    all_images = samples[-1] 
-                    all_images = (all_images + 1) * 0.5
-                    # all_images is a numpy array, plot 9 images from it
-                    fig = plt.figure(figsize=(10, 10))
-                    # use subplots
-                    for i in range(16):
-                        plt.subplot(4, 4, i+1)
+            if epoch % sample_and_save_freq == 0:
+                samples = sampler.sample(model=denoising_model, image_size=image_size, batch_size=1, channels=num_channels)
+                all_images = samples[-1] 
+                all_images = (all_images + 1) * 0.5
+                # all_images is a numpy array, plot 9 images from it
+                fig = plt.figure(figsize=(10, 10))
+                n_row = np.sqrt(all_images.shape[0]).astype(int)
+                n_col = n_row
+                # use subplots
+                for i in range(n_row*n_col):
+                    plt.subplot(n_col, n_row, i+1)
+                    if num_channels == 1:
                         plt.imshow(all_images[i].squeeze(), cmap='gray')
-                        plt.axis('off')
-                    mlflow.log_figure(fig, f"Epoch_{epoch}_Step_{step}.png")
-                    #plt.savefig(os.path.join(save_folder,f"Epoch_{epoch}_Step_{step}.png"))
-                    plt.close(fig)
+                    else:
+                        plt.imshow(all_images[i].transpose(1,2,0))
+                    plt.axis('off')
+                #save figure wandb
+                wandb.log({"DDPM Samples": fig})
+                plt.close(fig)
+
         if acc_loss/len(dataloader.dataset) < best_loss:
             best_loss = acc_loss/len(dataloader.dataset)
             #torch.save(denoising_model.state_dict(), os.path.join(save_folder,f"DDPM.pt"))
-            mlflow.pytorch.log_state_dict(denoising_model.state_dict(), "DDPM")
-        mlflow.log_metric("Loss", acc_loss/len(dataloader.dataset), step=epoch)
+            # log state dict as an artifact to wandb
+            torch.save(denoising_model.state_dict(), os.path.join(models_dir,"DDPMTooth.pt"))
+            #artifact = wandb.Artifact("DDPM.pt", type="model")
+            #artifact.add_file("DDPM.pt")
+            #wandb.log_artifact(artifact)
+            # delete local artifact
+            #os.remove("DDPM.pt")
+        wandb.log({"DDPM Loss": acc_loss/len(dataloader.dataset)})
 
 def outlier_score(forward_diffusion_model, denoising_model, x_start, t, loss_type):
     noise = torch.randn_like(x_start)
@@ -501,10 +514,9 @@ def outlier_detection(denoising_model, val_loader, out_loader, device, forward_d
         for step, batch in enumerate(val_loader):
             batch_size = batch[0].shape[0]
             batch = batch[0].to(device)
-            t = torch.ones((batch_size,), device=device).long() * 10
+            t = torch.ones((batch_size,), device=device).long() * 0
             score = outlier_score(forward_diffusion_model=forward_diffusion_model, denoising_model=denoising_model, x_start=batch, t=t, loss_type=loss_type)
             val_scores.append(score.cpu().numpy())
-        
         val_scores = np.concatenate(val_scores)
 
     out_scores = []
@@ -514,9 +526,8 @@ def outlier_detection(denoising_model, val_loader, out_loader, device, forward_d
         for step, batch in enumerate(out_loader):
             batch_size = batch[0].shape[0]
             batch = batch[0].to(device)
-            t = torch.ones((batch_size,), device=device).long() * 10
+            t = torch.ones((batch_size,), device=device).long() * 0
             out_scores.append(outlier_score(forward_diffusion_model=forward_diffusion_model, denoising_model=denoising_model, x_start=batch, t=t, loss_type=loss_type).cpu().numpy())
-
         out_scores = np.concatenate(out_scores)
     
     y_true = np.concatenate([np.zeros_like(val_scores), np.ones_like(out_scores)], axis=0)

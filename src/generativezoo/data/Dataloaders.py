@@ -1,7 +1,11 @@
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
 from config import data_raw_dir
 from medmnist import ChestMNIST, TissueMNIST, OCTMNIST, PneumoniaMNIST
+import os
+from glob import glob
+from PIL import Image
 
 def cifar_train_loader(batch_size, normalize = False):
 
@@ -324,7 +328,158 @@ def svhn_val_loader(batch_size, normalize = False):
                                 pin_memory=True)
     return validation_loader
 
-def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False):
+class MVTecDataset(Dataset):
+
+    def __init__(self, root, dataset = 'bottle', train = False, good = True, transform=None):
+        self.root = root
+        self.transform = transform
+        self.train = train
+        self.good = good
+        if train:
+            self.imgs = glob(os.path.join(root, dataset, 'train', 'good', '*.png'))
+        else:
+            if good:
+                self.imgs = glob(os.path.join(root, dataset, 'test', 'good', '*.png'))
+            else:
+                self.imgs = glob(os.path.join(root, dataset, 'test', '*', '*.png'))
+                self.imgs = [img for img in self.imgs if 'good' not in img]
+        
+    def __len__(self):
+        return len(self.imgs)
+    
+    def __getitem__(self, idx):
+        img = Image.open(self.imgs[idx])
+        if self.transform:
+            img = self.transform(img)
+        return img, 1
+    
+def mvtec_toothbrush_train_loader(batch_size, normalize = False):
+            
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    training_data = MVTecDataset(root=data_raw_dir, dataset = 'toothbrush', train = True, good = True, transform=transform)
+
+    training_loader = DataLoader(training_data, 
+                                batch_size=batch_size, 
+                                shuffle=True,
+                                pin_memory=True)
+    return training_loader
+
+def mvtec_toothbrush_val_loader(batch_size, normalize = False, good = True):
+                
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    validation_data = MVTecDataset(root=data_raw_dir, dataset = 'toothbrush', train = False, good = good, transform=transform)
+
+    validation_loader = DataLoader(validation_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True)
+    return validation_loader
+
+def mvtec_bottle_train_loader(batch_size, normalize = False):
+        
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+        ])
+    
+    training_data = MVTecDataset(root=data_raw_dir, dataset = 'bottle', train = True, good = True, transform=transform)
+
+    training_loader = DataLoader(training_data, 
+                                batch_size=batch_size, 
+                                shuffle=True,
+                                pin_memory=True)
+    return training_loader
+
+def mvtec_bottle_val_loader(batch_size, normalize = False, good = True):
+                    
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+        ])
+    
+    validation_data = MVTecDataset(root=data_raw_dir, dataset = 'bottle', train = False, good = good, transform=transform)
+
+    validation_loader = DataLoader(validation_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True)
+    return validation_loader
+
+def textile_train_loader(batch_size, normalize = False):
+        
+    if normalize:
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+        ])
+    
+    training_data = MVTecDataset(root=data_raw_dir, dataset = 'TextileDefects32', train = True, good = True, transform=transform)
+
+    training_loader = DataLoader(training_data, 
+                                batch_size=batch_size, 
+                                shuffle=True,
+                                pin_memory=True)
+    return training_loader
+
+def textile_val_loader(batch_size, normalize = False, good = True):
+                    
+    if normalize:
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+        ])
+    
+    validation_data = MVTecDataset(root=data_raw_dir, dataset = 'TextileDefects32', train = False, good = good, transform=transform)
+
+    validation_loader = DataLoader(validation_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True)
+    return validation_loader    
+
+def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True):
     if dataset_name == 'mnist':
         if mode == 'train':
             return mnist_train_loader(batch_size, normalize), 28, 1
@@ -365,5 +520,20 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return cifar_train_loader(batch_size, normalize), 32, 3
         elif mode == 'val':
             return cifar_val_loader(batch_size, normalize), 32, 3
+    elif dataset_name == 'bottle':
+        if mode == 'train':
+            return mvtec_bottle_train_loader(batch_size, normalize), 128, 3
+        elif mode == 'val':
+            return mvtec_bottle_val_loader(batch_size, normalize, good), 128, 3
+    elif dataset_name == 'toothbrush':
+        if mode == 'train':
+            return mvtec_toothbrush_train_loader(batch_size, normalize), 128, 3
+        elif mode == 'val':
+            return mvtec_toothbrush_val_loader(batch_size, normalize, good), 128, 3
+    elif dataset_name == 'textile':
+        if mode == 'train':
+            return textile_train_loader(batch_size, normalize), 32, 1
+        elif mode == 'val':
+            return textile_val_loader(batch_size, normalize, good), 32, 1
     else:
         raise ValueError('Dataset name not found.')

@@ -27,6 +27,9 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 import numpy as np
 from tqdm import tqdm
 from tqdm import trange
+from config import data_raw_dir, models_dir
+import os
+import wandb
 
 class ResidualConvBlock(nn.Module):
     def __init__(
@@ -245,7 +248,7 @@ class DDPM(nn.Module):
         # return MSE between added noise, and our predicted noise
         return self.loss_mse(noise, self.nn_model(x_t, c, _ts / self.n_T, context_mask))
 
-    def sample(self, n_sample, size, device, guide_w = 0.0, ddpm = 0.0):
+    def sample(self, n_sample, size, device, n_classes, guide_w = 0.0, ddpm = 0.0):
         # we follow the guidance sampling scheme described in 'Classifier-Free Diffusion Guidance'
         # to make the fwd passes efficient, we concat two versions of the dataset,
         # one with context_mask=0 and the other context_mask=1
@@ -254,7 +257,7 @@ class DDPM(nn.Module):
         # if ddpm = 0, we just use DDIM instead
 
         x_i = torch.randn(n_sample, *size).to(device)  # x_T ~ N(0, 1), sample initial noise
-        c_i = torch.arange(0,10).to(device) # context for us just cycles throught the mnist labels
+        c_i = torch.arange(0,n_classes).to(device) # context for us just cycles throught the mnist labels
         c_i = c_i.repeat(int(n_sample/c_i.shape[0]))
 
         # don't drop context at test time
@@ -364,7 +367,7 @@ class Accelerated_DDPM(nn.Module):
         # return MSE between added noise, and our predicted noise
         return self.loss_mse(noise, self.nn_model(x_t, c, _ts / self.n_T, context_mask))
 
-    def sample(self, n_sample, size, device, guide_w = 0.0, ddpm = 0.0):
+    def sample(self, n_sample, size, device, n_classes, guide_w = 0.0, ddpm = 1.0):
         # we follow the guidance sampling scheme described in 'Classifier-Free Diffusion Guidance'
         # to make the fwd passes efficient, we concat two versions of the dataset,
         # one with context_mask=0 and the other context_mask=1
@@ -373,7 +376,7 @@ class Accelerated_DDPM(nn.Module):
         # if ddpm = 0, we just use DDIM instead
 
         x_i = torch.randn(n_sample, *size).to(device)  # x_T ~ N(0, 1), sample initial noise
-        c_i = torch.arange(0,10).to(device) # context for us just cycles throught the mnist labels
+        c_i = torch.arange(0,n_classes).to(device) # context for us just cycles throught the mnist labels
         c_i = c_i.repeat(int(n_sample/c_i.shape[0]))
 
         # don't drop context at test time
@@ -420,95 +423,80 @@ class Accelerated_DDPM(nn.Module):
         return x_i, x_i_store
 
     
-def train_mnist(dataloader):
+def train(dataloader, beta_start, beta_end, n_epochs, timesteps, lr, n_classes, n_features, drop_prob, device, input_size, channels, name = 'mnist', sample_and_save_freq = 10):
 
-    # hardcoding these here
-    n_epoch = 20
-    batch_size = 256
-    n_T = 400 # 500
-    device = "cuda:0"
-    n_classes = 10
-    n_feat = 128 # 128 ok, 256 better (but slower)
-    lrate = 1e-4
-    save_model = False
-    save_dir = './data/diffusion_outputs10/'
     ws_test = [0.0, 0.5, 2.0] # strength of generative guidance
 
-    ddpm = DDPM(nn_model=ContextUnet(in_channels=1, n_feat=n_feat, n_classes=n_classes), betas=(1e-4, 0.02), n_T=n_T, device=device, drop_prob=0.1)
+    ddpm = DDPM(nn_model=ContextUnet(in_channels=channels, n_feat=n_features, n_classes=n_classes), betas=(beta_start, beta_end), n_T=timesteps, device=device, drop_prob=drop_prob)
     ddpm.to(device)
 
-    optim = torch.optim.Adam(ddpm.parameters(), lr=lrate)
+    optim = torch.optim.Adam(ddpm.parameters(), lr=lr)
+    best_loss = np.inf
 
-    for ep in range(n_epoch):
-        print(f'epoch {ep}')
+    for ep in tqdm(range(n_epochs),desc="Epoch"):
+        
         ddpm.train()
 
         # linear lrate decay
-        optim.param_groups[0]['lr'] = lrate*(1-ep/n_epoch)
+        optim.param_groups[0]['lr'] = lr*(1-ep/n_epochs)
 
-        pbar = tqdm(dataloader)
+        pbar = tqdm(dataloader, leave=False)
         loss_ema = None
+        acc_loss = 0.0
         for x, c in pbar:
             optim.zero_grad()
             x = x.to(device)
             c = c.to(device)
             loss = ddpm(x, c)
+            acc_loss += loss.item() * x.shape[0]
             loss.backward()
+
             if loss_ema is None:
                 loss_ema = loss.item()
             else:
                 loss_ema = 0.95 * loss_ema + 0.05 * loss.item()
+
             pbar.set_description(f"loss: {loss_ema:.4f}")
             optim.step()
+
+        wandb.log({"DDPM Loss": acc_loss/len(dataloader.dataset)})    
+        if acc_loss/len(dataloader.dataset) < best_loss:
+            best_loss = acc_loss/len(dataloader.dataset)
+            torch.save(ddpm.state_dict(), os.path.join(models_dir, 'C-DDPM_{}.pt'.format(name)))
         
         # for eval, save an image of currently generated samples (top rows)
         # followed by real images (bottom rows)
         ddpm.eval()
-        with torch.no_grad():
-            n_sample = 4*n_classes
-            for w_i, w in enumerate(ws_test):
-                x_gen, x_gen_store = ddpm.sample(n_sample, (1, 28, 28), device, guide_w=w)
+        if ep % sample_and_save_freq==0:
+            x_all = torch.Tensor().to(device)
+            with torch.no_grad():
+                n_sample = n_classes
+                for w_i, w in enumerate(ws_test):
+                    x_gen, x_gen_store = ddpm.sample(n_sample, (channels, input_size, input_size), device, n_classes = n_classes, guide_w=w)
 
-                # append some real images at bottom, order by class also
-                x_real = torch.Tensor(x_gen.shape).to(device)
-                for k in range(n_classes):
-                    for j in range(int(n_sample/n_classes)):
-                        try: 
-                            idx = torch.squeeze((c == k).nonzero())[j]
-                        except:
-                            idx = 0
-                        x_real[k+(j*n_classes)] = x[idx]
+                    # append some real images at bottom, order by class also
+                    x_real = torch.Tensor(x_gen.shape).to(device)
+                    for k in range(n_classes):
+                        for j in range(n_sample//n_classes):
+                            try: 
+                                idx = torch.squeeze((c == k).nonzero())[j]
+                            except:
+                                idx = 0
+                            x_real[k+(j*n_classes)] = x[idx]
 
-                x_all = torch.cat([x_gen, x_real])
-                grid = make_grid(x_all*-1 + 1, nrow=10)
-                save_image(grid, save_dir + f"image_ep{ep}_w{w}.png")
-                print('saved image at ' + save_dir + f"image_ep{ep}_w{w}.png")
+                    x_all = torch.cat([x_all, x_gen])
+                grid = make_grid(torch.clamp(((x_all + 1)/2),0,1), nrow=n_classes)
+                # plot image
+                fig = plt.figure(figsize=(10, 5))
+                plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
+                plt.axis('off')
+                wandb.log({"DDPM Samples": fig})
+                plt.close()
 
-                if ep%5==0 or ep == int(n_epoch-1):
-                    # create gif of images evolving over time, based on x_gen_store
-                    fig, axs = plt.subplots(nrows=int(n_sample/n_classes), ncols=n_classes,sharex=True,sharey=True,figsize=(8,3))
-                    def animate_diff(i, x_gen_store):
-                        print(f'gif animating frame {i} of {x_gen_store.shape[0]}', end='\r')
-                        plots = []
-                        for row in range(int(n_sample/n_classes)):
-                            for col in range(n_classes):
-                                axs[row, col].clear()
-                                axs[row, col].set_xticks([])
-                                axs[row, col].set_yticks([])
-                                # plots.append(axs[row, col].imshow(x_gen_store[i,(row*n_classes)+col,0],cmap='gray'))
-                                plots.append(axs[row, col].imshow(-x_gen_store[i,(row*n_classes)+col,0],cmap='gray',vmin=(-x_gen_store[i]).min(), vmax=(-x_gen_store[i]).max()))
-                        return plots
-                    ani = FuncAnimation(fig, animate_diff, fargs=[x_gen_store],  interval=200, blit=False, repeat=True, frames=x_gen_store.shape[0])    
-                    ani.save(save_dir + f"gif_ep{ep}_w{w}.gif", dpi=100, writer=PillowWriter(fps=5))
-                    print('saved image at ' + save_dir + f"gif_ep{ep}_w{w}.gif")
-        # optionally save model
-        if save_model and ep == int(n_epoch-1):
-            torch.save(ddpm.state_dict(), save_dir + f"model_{ep}.pth")
-            print('saved model at ' + save_dir + f"model_{ep}.pth")
 
-def inference(checkpoint_dir, output_dir, n_sample, n_T, device, guide_w = 0.0):
+def sample(checkpoint_dir, n_feat, n_classes, n_T, n_Tau, device, input_shape, channels, factor_ddpm, beta_start, beta_end, guide_w = 0.0):
     # load model
-    ddpm = Accelerated_DDPM(nn_model=ContextUnet(in_channels=1, n_feat=128, n_classes=10), betas=(1e-4, 0.02), n_T=n_T, n_Tau=n_T//20, device=device, drop_prob=0.1)
+    ddpm = Accelerated_DDPM(nn_model=ContextUnet(in_channels=channels, n_feat=n_feat, n_classes=n_classes), betas=(beta_start, beta_end), n_T=n_T, n_Tau=n_Tau, device=device, drop_prob=0.1)
     ddpm.load_state_dict(torch.load(checkpoint_dir))
     ddpm.to(device)
     ddpm.eval()
@@ -517,7 +505,7 @@ def inference(checkpoint_dir, output_dir, n_sample, n_T, device, guide_w = 0.0):
     # sample
     with torch.no_grad():
         for i in tqdm(range(1)):
-            x_gen, x_gen_store = ddpm.sample(n_sample, (1, 28, 28), device, guide_w=guide_w, ddpm=1.0)
+            x_gen, x_gen_store = ddpm.sample(n_classes, (channels, input_shape, input_shape), device, n_classes=n_classes, guide_w=guide_w, ddpm=factor_ddpm)
             #x_gen_store = x_gen_store.reshape(n_T, 10, n_sample//10, 28, 28)
             if i == 0:
                 total_xgen = x_gen_store
@@ -525,12 +513,23 @@ def inference(checkpoint_dir, output_dir, n_sample, n_T, device, guide_w = 0.0):
                 total_xgen = np.append(total_xgen, x_gen_store, axis=2)
     # save images
     
-    for i in range(n_sample):
-        plt.imshow(x_gen[i,0].cpu(),cmap='gray')
+    # plot n_classes images in x_gen
+    fig = plt.figure(figsize=(10,5))
+    for i in range(n_classes):
+        plt.subplot(1,n_classes,i+1)
+        if channels == 1:
+            plt.imshow(((x_gen[i]+1)/2).cpu().squeeze(), cmap='gray')
+        else:
+            plt.imshow(((x_gen[i]+1)/2).cpu().transpose(1,2,0))
         plt.axis('off')
-        #plt.savefig(output_dir + f"image_{i}.png", bbox_inches='tight', pad_inches=0)
-        plt.show()
-        #plt.close()
-        #print('saved image at ' + output_dir + f"image_{i}.png")
+    plt.show()
     
     return (total_xgen*2)-1
+
+def intraclass_detection(checkpoint_dir, val_loader, n_classes, n_feat, n_T, n_Tau, device, input_shape, channels, factor_ddpm, guide_w = 0.0):
+    # load model
+    ddpm = Accelerated_DDPM(nn_model=ContextUnet(in_channels=channels, n_feat=n_feat, n_classes=n_classes), betas=(1e-4, 0.02), n_T=n_T, n_Tau=n_Tau, device=device, drop_prob=0.1)
+    ddpm.load_state_dict(torch.load(checkpoint_dir))
+    ddpm.to(device)
+    ddpm.eval()
+    
