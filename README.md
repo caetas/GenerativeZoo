@@ -1,6 +1,6 @@
 # GenerativeZoo
 
-[![Python](https://img.shields.io/badge/python-3.7+-informational.svg)]()
+[![Python](https://img.shields.io/badge/python-3.9+-informational.svg)]()
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=black)](https://pycqa.github.io/isort)
@@ -44,11 +44,34 @@ or if environment already exists
 
 And then setup all virtualenv using make file recipe
 
-    (3.9) $ make setup-all
+    (python3.9) $ make setup-all
 
 ## Documentation
 
 Full documentation is available here: [`docs/`](docs).
+
+## Models
+
+### VAEs
+- [ ] Vanilla VAE
+- [ ] Conditional VAE
+- [ ] Hierarchical VAE
+- [ ] VQ-VAE
+
+### GANs
+- [ ] Adversarial VAE
+- [ ] Vanilla GAN
+- [ ] Conditional GAN
+- [x] CycleGAN
+
+### DDPMs
+- [x] Unconditional DDPM
+- [x] Conditional DDPM
+
+### SGMs
+- [x] Unconditional SGM
+- [ ] NCSN
+- [ ] NCSN++
 
 ## Dev
 

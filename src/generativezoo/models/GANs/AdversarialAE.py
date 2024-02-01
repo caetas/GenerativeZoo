@@ -216,40 +216,5 @@ class AdversarialAE(nn.Module):
         plt.savefig(os.path.join(figures_dir, f"AdvAE_val_{title}.png"))
 
     def train_model(self, data_loader, val_loader, epochs, device):
-        self.vae.train()
-        self.discriminator.train()
-        optimizer_vae = torch.optim.Adam(self.vae.parameters(), lr=self.lr)
-        optimizer_disc = torch.optim.Adam(self.discriminator.parameters(), lr=self.lr)
+
         
-        epochs_bar = trange(epochs, desc="Epochs")
-
-        for epoch in epochs_bar:
-            for _, (x,_) in enumerate(data_loader):
-                x = x.to(device)
-                optimizer_vae.zero_grad()
-                
-                recon_imgs,mu,log_var = self.vae(x)
-                z_fake = torch.randn(x.shape[0], self.vae.latent_dim).to(device)
-                gen_imgs = self.vae.decode(z_fake)
-
-                with torch.no_grad():
-                    recon_labels = self.discriminator(recon_imgs)
-                    gen_labels = self.discriminator(gen_imgs)
-
-                recon_loss = self.vae.adversarial_loss(recon_labels, torch.ones(x.shape[0], 1).to(device))
-                gen_loss = self.vae.adversarial_loss(gen_labels, torch.zeros(x.shape[0], 1).to(device))
-
-                disc_loss = (recon_loss + gen_loss)/2
-                self.vae.loss_function(recon_imgs, x, mu, log_var, disc_loss).backward()
-                optimizer_vae.step()
-
-                # train discriminator
-                optimizer_disc.zero_grad()
-                real_loss = self.discriminator.loss_function(self.discriminator(x), torch.ones(x.shape[0], 1).to(device))
-                fake_loss = self.discriminator.loss_function(self.discriminator(recon_imgs.detach()), torch.zeros(x.shape[0], 1).to(device))
-                disc_loss_2 = (real_loss + fake_loss)/2
-                disc_loss_2.backward()
-                optimizer_disc.step()
-            
-            if epoch % 5 == 0:
-                self.create_validation_grid(val_loader, device, title=f"Epoch_{epoch}")
