@@ -506,7 +506,7 @@ def outlier_score(forward_diffusion_model, denoising_model, x_start, t, loss_typ
 
     return elementwise_loss
 
-def outlier_detection(denoising_model, val_loader, out_loader, device, forward_diffusion_model, loss_type):
+def outlier_detection(denoising_model, val_loader, out_loader, device, forward_diffusion_model, loss_type, in_name, out_name):
     denoising_model.eval()
     val_loss = 0.0
     with torch.no_grad():
@@ -537,9 +537,10 @@ def outlier_detection(denoising_model, val_loader, out_loader, device, forward_d
       auc_score = 1. - auc_score
     print('AUC score: {:.10f}'.format(auc_score))
 
-    plt.hist(val_scores, bins=100, alpha=0.5, label='val')
-    plt.hist(out_scores, bins=100, alpha=0.5, label='out')
+    plt.hist(val_scores, bins=100, alpha=0.5, label='In')
+    plt.hist(out_scores, bins=100, alpha=0.5, label='Out')
     plt.legend(loc='upper right')
+    plt.title('{} vs {} AUC: {:.4f}'.format(in_name, out_name, auc_score))
     plt.show()
 
 class DPM_Solver:

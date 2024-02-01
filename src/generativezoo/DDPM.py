@@ -82,7 +82,7 @@ elif args.outlier_detection:
      model = DDPM(n_features=input_size, in_channels=channels, channel_scale_factors=(1, 2, 4,)).to(device)
      model.load_state_dict(torch.load(args.checkpoint))
      dataloader_b, input_size_b, channels_b = pick_dataset(args.out_dataset, 'val', args.batch_size, normalize=normalize, good = False)
-     outlier_detection(denoising_model=model, val_loader=dataloader_a, out_loader=dataloader_b, device=device, forward_diffusion_model=forward_diffusion_model, loss_type=args.loss_type)
-     pass
+     outlier_detection(denoising_model=model, val_loader=dataloader_a, out_loader=dataloader_b, device=device, forward_diffusion_model=forward_diffusion_model, loss_type=args.loss_type, in_name=args.dataset, out_name=args.out_dataset)
+
 else:
      raise ValueError('Please specify at least one of the following: train, sample, outlier_detection')

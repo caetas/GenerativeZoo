@@ -80,13 +80,13 @@ class UnetDown(nn.Module):
         return self.model(x)
     
 class UnetUp(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, padding = 0):
         super(UnetUp, self).__init__()
         '''
         process and upscale the image feature maps
         '''
         layers = [
-            nn.ConvTranspose2d(in_channels, out_channels, 2, 2),
+            nn.ConvTranspose2d(in_channels, out_channels, 2, 2, output_padding = padding),
             ResidualConvBlock(out_channels, out_channels),
             ResidualConvBlock(out_channels, out_channels),
         ]
@@ -116,7 +116,7 @@ class EmbedFC(nn.Module):
         return self.model(x)
     
 class ContextUnet(nn.Module):
-    def __init__(self, in_channels, n_feat = 256, n_classes=10):
+    def __init__(self, in_channels, n_feat = 256, n_classes=10, input_size=28):
         super(ContextUnet, self).__init__()
 
         self.in_channels = in_channels
@@ -137,7 +137,7 @@ class ContextUnet(nn.Module):
 
         self.up0 = nn.Sequential(
             # nn.ConvTranspose2d(6 * n_feat, 2 * n_feat, 7, 7), # when concat temb and cemb end up w 6*n_feat
-            nn.ConvTranspose2d(2 * n_feat, 2 * n_feat, 7, 7), # otherwise just have 2*n_feat
+            nn.ConvTranspose2d(2 * n_feat, 2 * n_feat, input_size//4, input_size//4), # otherwise just have 2*n_feat
             nn.GroupNorm(8, 2 * n_feat),
             nn.ReLU(),
         )
@@ -154,7 +154,6 @@ class ContextUnet(nn.Module):
     def forward(self, x, c, t, context_mask):
         # x is (noisy) image, c is context label, t is timestep, 
         # context_mask says which samples to block the context on
-
         x = self.init_conv(x)
         down1 = self.down1(x)
         down2 = self.down2(down1)
@@ -426,8 +425,8 @@ class Accelerated_DDPM(nn.Module):
 def train(dataloader, beta_start, beta_end, n_epochs, timesteps, lr, n_classes, n_features, drop_prob, device, input_size, channels, name = 'mnist', sample_and_save_freq = 10):
 
     ws_test = [0.0, 0.5, 2.0] # strength of generative guidance
-
-    ddpm = DDPM(nn_model=ContextUnet(in_channels=channels, n_feat=n_features, n_classes=n_classes), betas=(beta_start, beta_end), n_T=timesteps, device=device, drop_prob=drop_prob)
+    
+    ddpm = DDPM(nn_model=ContextUnet(in_channels=channels, n_feat=n_features, n_classes=n_classes, input_size=input_size), betas=(beta_start, beta_end), n_T=timesteps, device=device, drop_prob=drop_prob)
     ddpm.to(device)
 
     optim = torch.optim.Adam(ddpm.parameters(), lr=lr)
