@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-from tqdm import trange
+from tqdm import trange, tqdm
 import torchvision
 from matplotlib import pyplot as plt
 import numpy as np
@@ -23,7 +23,7 @@ class VanillaVAE(nn.Module):
             hidden_dims = [32, 64, 128, 256, 512]
         
         # each layer decreases the h and w by 2, so we need to divide by 2**(number of layers) to know the factor for the flattened input
-        self.multiplier = int(self.input_shape/(2**len(hidden_dims)))
+        self.multiplier = np.round(self.input_shape/(2**len(hidden_dims)), 0).astype(int)
         self.last_channel = hidden_dims[-1]
         modules = []
 
@@ -135,7 +135,7 @@ class Discriminator(nn.Module):
             hidden_dims = [32, 64, 128, 256]
         
         # each layer decreases the h and w by 2, so we need to divide by 2**(number of layers) to know the factor for the flattened input
-        self.multiplier = int(self.input_shape/(2**len(hidden_dims)))
+        self.multiplier = np.round(self.input_shape/(2**len(hidden_dims)), 0).astype(int)
         self.last_channel = hidden_dims[-1]
         modules = []
 
@@ -217,4 +217,75 @@ class AdversarialAE(nn.Module):
 
     def train_model(self, data_loader, val_loader, epochs, device):
 
+        # Initialize generator and discriminator
+        vae = self.vae
+        discriminator = self.discriminator
+
+        # Loss function
+        adversarial_loss = torch.nn.BCELoss()
+
+        # Optimizers
+        optimizer_VAE = torch.optim.Adam(vae.parameters(), lr=self.lr)
+        optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=self.lr)
+
+        epochs_bar = trange(epochs, desc="Loss: ------", leave=True)
+        # ----------
+        #  Training
+        # ----------
+        for epoch in epochs_bar:
+            for (imgs, _) in tqdm(data_loader, desc = 'Batches', leave=False):
+
+                # Adversarial ground truths
+                valid = torch.ones(imgs.size(0), 1).to(device)
+                fake = torch.zeros(imgs.size(0), 1).to(device)
+
+                # Configure input
+                real_imgs = imgs.to(device)
+
+                # -----------------
+                #  Train Generator
+                # -----------------
+
+                optimizer_VAE.zero_grad()
+
+                # Generate a batch of images
+                recon_imgs, mu, logvar = vae(real_imgs)
+                noise = torch.randn(imgs.size(0), vae.latent_dim).to(device)
+                gen_imgs = vae.decode(noise)
+
+                # Loss measures generator's ability to fool the discriminator
+                validity_recon = discriminator(recon_imgs)
+                validity_gen = discriminator(gen_imgs)
+                g_loss = 0.002*adversarial_loss(validity_recon, valid) + 0.002*adversarial_loss(validity_gen, valid) + vae.loss_function(recon_imgs, real_imgs, mu, logvar)
+
+                g_loss.backward()
+                optimizer_VAE.step()
+
+                epochs_bar.set_description(f"Loss: {g_loss.item():.5f}")
+
+                # ---------------------
+                #  Train Discriminator
+                # ---------------------
+
+                optimizer_D.zero_grad()
+
+                # Loss for real images
+                validity_real = discriminator(real_imgs)
+                d_real_loss = adversarial_loss(validity_real, valid)
+
+                # Loss for fake images
+                validity_fake = discriminator(gen_imgs.detach())
+                d_fake_loss = adversarial_loss(validity_fake, fake)
+
+                # Total discriminator loss
+                d_loss = (d_real_loss + d_fake_loss) / 2
+
+                d_loss.backward()
+                optimizer_D.step()
+
+            if epoch % 5 == 0:
+                self.create_grid(device, title=f"Epoch {epoch}")
+                self.create_validation_grid(val_loader, device, title=f"Epoch {epoch}")
         
+        torch.save(vae.state_dict(), os.path.join(models_dir, "AdvAE_vae.pt"))
+        torch.save(discriminator.state_dict(), os.path.join(models_dir, "AdvAE_discriminator.pt"))

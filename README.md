@@ -29,7 +29,7 @@ You will need:
 
 Clone this repository (requires git ssh keys)
 
-    git clone --recursive <ssh link>
+    git clone --recursive git@github.com:caetas/GenerativeZoo.git
     cd generativezoo
 
 Install dependencies
@@ -52,26 +52,49 @@ Full documentation is available here: [`docs/`](docs).
 
 ## Models
 
-### VAEs
-- [ ] Vanilla VAE
-- [ ] Conditional VAE
+### Implemented Models
+
+The listed models are already implemented and fully integrated in the model zoo.
+
+#### VAEs
+- Vanilla VAE
+- Conditional VAE
+
+#### GANs
+- Adversarial VAE
+- Vanilla GAN
+- Conditional GAN
+- CycleGAN
+
+#### DDPMs
+- Unconditional DDPM
+- Conditional DDPM
+- Diffusion AE
+
+#### SGMs
+- Unconditional SGM
+
+### Future Models
+
+These models are currently under development and will be added to the repository in the future.
+
+#### VAEs
 - [ ] Hierarchical VAE
 - [ ] VQ-VAE
 
-### GANs
-- [ ] Adversarial VAE
-- [ ] Vanilla GAN
-- [ ] Conditional GAN
-- [x] CycleGAN
+#### GANs
+- [ ] VQ-GAN
 
-### DDPMs
-- [x] Unconditional DDPM
-- [x] Conditional DDPM
-
-### SGMs
-- [x] Unconditional SGM
+#### SGMs
 - [ ] NCSN
 - [ ] NCSN++
+
+#### Autoregressive
+- [ ] VQ-VAE + Transformer
+- [ ] VQ-VAE + Mamba
+
+#### Flow-Based Models
+- [ ] Flow++
 
 ## Dev
 
@@ -102,8 +125,8 @@ If you publish work that uses GenerativeZoo, please cite GenerativeZoo as follow
 
 ```bibtex
 @misc{GenerativeZoo,
-  author = {None},
-  title = {A short description of the project. No quotes.},
+  author = {Francisco Caetano},
+  title = {A model zoo for generative models.},
   year = {2024},
 }
 ```

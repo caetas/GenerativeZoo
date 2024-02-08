@@ -314,6 +314,71 @@ class DDPM(nn.Module):
         
         return self.final_conv(x)
     
+    def generate_masks(self, x, time):
+        x = self.init_conv(x)
+
+        t = self.time_projection(time) if exists(self.time_projection) else None
+
+        noisy_latent_representation_stack = []
+
+        # downsample
+        for block1, block2, attn, downsample in self.encoder:
+            x = block1(x, time_emb=t)
+            x = block2(x, time_emb=t)
+            x = attn(x)
+            noisy_latent_representation_stack.append(x)
+            x = downsample(x)
+        
+        # bottleneck
+        x = self.mid_block1(x, time_emb=t)
+        x = self.mid_attn(x)
+        x = self.mid_block2(x, time_emb=t)
+
+        # upsample
+        for block1, block2, attn, upsample in self.decoder:
+            x = torch.cat((x, noisy_latent_representation_stack.pop()), dim=1)
+            x = block1(x, time_emb=t)
+            x = block2(x, time_emb=t)
+            x = attn(x)
+            break
+        
+        return x
+    
+    def modulation(self, x, time, mask, factor):
+        x = self.init_conv(x)
+
+        t = self.time_projection(time) if exists(self.time_projection) else None
+
+        noisy_latent_representation_stack = []
+
+        # downsample
+        for block1, block2, attn, downsample in self.encoder:
+            x = block1(x, time_emb=t)
+            x = block2(x, time_emb=t)
+            x = attn(x)
+            noisy_latent_representation_stack.append(x)
+            x = downsample(x)
+        
+        # bottleneck
+        x = self.mid_block1(x, time_emb=t)
+        x = self.mid_attn(x)
+        x = self.mid_block2(x, time_emb=t)
+
+        c = 0
+        # upsample
+        for block1, block2, attn, upsample in self.decoder:
+            x = torch.cat((x, noisy_latent_representation_stack.pop()), dim=1)
+            x = block1(x, time_emb=t)
+            x = block2(x, time_emb=t)
+            x = attn(x)
+            if c == 0:
+                x = x + factor * mask
+            x = upsample(x)
+            c += 1
+        
+        return self.final_conv(x)
+
+    
     def load_pretrained_weights(self, pretrained_weights_path):
         pretrained_state_dict = torch.load(pretrained_weights_path)
         self.load_state_dict(pretrained_state_dict, strict=False)
@@ -478,7 +543,7 @@ def train(image_size, num_channels, epochs, timesteps, sample_and_save_freq, for
             best_loss = acc_loss/len(dataloader.dataset)
             #torch.save(denoising_model.state_dict(), os.path.join(save_folder,f"DDPM.pt"))
             # log state dict as an artifact to wandb
-            torch.save(denoising_model.state_dict(), os.path.join(models_dir,"DDPMTooth.pt"))
+            torch.save(denoising_model.state_dict(), os.path.join(models_dir,"DDPMCifar.pt"))
             #artifact = wandb.Artifact("DDPM.pt", type="model")
             #artifact.add_file("DDPM.pt")
             #wandb.log_artifact(artifact)

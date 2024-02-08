@@ -60,7 +60,7 @@ if args.train:
 
                 name = 'DDPM_{}'.format(args.dataset))
      sampler = Sampler(betas=scheduler.betas, timesteps=args.timesteps, reduced_timesteps=args.timesteps, ddpm=args.ddpm)
-     model = DDPM(n_features=input_size, in_channels=channels, channel_scale_factors=(1, 2, 4,)).to(device)
+     model = DDPM(n_features=input_size*2, init_channels=128, in_channels=channels, channel_scale_factors=(1, 2, 2, 2)).to(device)
      optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
      criterion = get_loss
      train(image_size=input_size, num_channels=channels, dataloader=dataloader, device=device, epochs=args.n_epochs, timesteps=args.timesteps, sample_and_save_freq=args.sample_and_save_freq, forward_diffusion_model=forward_diffusion, denoising_model=model, criterion=criterion, optimizer=optimizer, sampler=sampler, loss_type=args.loss_type)

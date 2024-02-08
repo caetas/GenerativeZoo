@@ -47,15 +47,17 @@ def cifar_val_loader(batch_size, normalize = False):
                                    pin_memory=True)
     return validation_loader
 
-def mnist_train_loader(batch_size, normalize = False):
+def mnist_train_loader(batch_size, normalize = False, input_shape = 28):
 
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape),
             transforms.ToTensor(),
         ])
 
@@ -67,15 +69,17 @@ def mnist_train_loader(batch_size, normalize = False):
                                  pin_memory=True)
     return training_loader
 
-def mnist_val_loader(batch_size, normalize = False):
+def mnist_val_loader(batch_size, normalize = False, input_shape = 28):
 
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape),
             transforms.ToTensor(),
         ])
 
@@ -207,7 +211,7 @@ def tissuemnist_val_loader(batch_size, normalize = False):
                                 pin_memory=True)
     return validation_loader
 
-def pneumoniamnist_train_loader(batch_size, normalize = False):
+def pneumoniamnist_train_loader(batch_size, normalize = False, size = 28):
                             
     if normalize:
         transform = transforms.Compose([
@@ -219,7 +223,7 @@ def pneumoniamnist_train_loader(batch_size, normalize = False):
             transforms.ToTensor(),
         ])
 
-    training_data = PneumoniaMNIST(root=data_raw_dir, split='train', download=True, transform=transform)
+    training_data = PneumoniaMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = size)
 
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
@@ -227,7 +231,7 @@ def pneumoniamnist_train_loader(batch_size, normalize = False):
                                 pin_memory=True)
     return training_loader  
 
-def pneumoniamnist_val_loader(batch_size, normalize = False):
+def pneumoniamnist_val_loader(batch_size, normalize = False, size = 28):
                                     
     if normalize:
         transform = transforms.Compose([
@@ -239,7 +243,7 @@ def pneumoniamnist_val_loader(batch_size, normalize = False):
             transforms.ToTensor(),
         ])
     
-    validation_data = PneumoniaMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
+    validation_data = PneumoniaMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = size)
 
     validation_loader = DataLoader(validation_data,
                                 batch_size=batch_size,
