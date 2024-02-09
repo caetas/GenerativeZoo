@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import os
 from config import figures_dir, models_dir
+import wandb
 
 class VanillaVAE(nn.Module):
     def __init__(self, input_shape, input_channels, latent_dim, hidden_dims = None, lr = 5e-3, batch_size = 64):
@@ -97,29 +98,12 @@ class VanillaVAE(nn.Module):
     def generate(self, z):
         return self.decode(z)
     
-    def loss_function(self, recon_x, x, mu, logvar, al = 0.0):
+    def loss_function(self, recon_x, x, mu, logvar):
         loss_mse = nn.MSELoss()
         mse = loss_mse(x, recon_x)
         kld = torch.mean(-0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1), dim=0)
         return mse + kld/(self.batch_size**2)
     
-    def adversarial_loss(self, x, y):
-        loss = nn.BCEWithLogitsLoss()
-        return loss(x, y)
-    
-    def create_grid(self, device, figsize=(10, 10), title=None):
-        samples = self.generate(torch.randn(9, self.latent_dim).to(device)).detach().cpu()
-        samples = (samples + 1) / 2
-        fig = plt.figure(figsize=figsize)
-        grid_size = int(np.sqrt(samples.shape[0]))
-        grid = torchvision.utils.make_grid(samples, nrow=grid_size).permute(1, 2, 0)
-        # save grid image
-        plt.imshow(grid)
-        plt.axis('off')
-        if title:
-            plt.title(title)
-        plt.savefig(os.path.join(figures_dir, f"AdvVAE_{title}.png"))
-        plt.close(fig)
 
 class Discriminator(nn.Module):
     def __init__(self, input_shape, input_channels, hidden_dims = None, lr = 5e-3, batch_size = 64):
@@ -164,21 +148,26 @@ class Discriminator(nn.Module):
         loss = nn.BCEWithLogitsLoss()
         return loss(x, y)
     
-class AdversarialAE(nn.Module):
-    def __init__(self, input_shape, input_channels, latent_dim, hidden_dims = None, lr = 5e-3, batch_size = 64):
-        super(AdversarialAE, self).__init__()
-        self.vae = VanillaVAE(input_shape, input_channels, latent_dim, hidden_dims, lr, batch_size)
-        self.discriminator = Discriminator(input_shape, input_channels, hidden_dims, lr, batch_size)
+class AdversarialVAE(nn.Module):
+    def __init__(self, input_shape, device, input_channels, latent_dim, n_epochs, hidden_dims = None, lr = 5e-3, batch_size = 64, gen_weight = 0.002, recon_weight = 0.002, sample_and_save_frequency = 10):
+        super(AdversarialVAE, self).__init__()
+        self.device = device
+        self.vae = VanillaVAE(input_shape, input_channels, latent_dim, hidden_dims, lr, batch_size).to(self.device)
+        self.discriminator = Discriminator(input_shape, input_channels, hidden_dims, lr, batch_size).to(self.device)
         self.lr = lr
         self.batch_size = batch_size
+        self.gen_weight = gen_weight
+        self.recon_weight = recon_weight
+        self.n_epochs = n_epochs
+        self.sample_and_save_frequency = sample_and_save_frequency
 
     def forward(self, x):
         image,_,_ = self.vae(x)
         label = self.discriminator(image)
         return image, label
     
-    def create_grid(self, device, figsize=(10, 10), title=None):
-        samples = self.vae.generate(torch.randn(9, self.vae.latent_dim).to(device)).detach().cpu()
+    def create_grid(self, figsize=(10, 10), title=None, train = False):
+        samples = self.vae.generate(torch.randn(9, self.vae.latent_dim).to(self.device)).detach().cpu()
         samples = (samples + 1) / 2
         fig = plt.figure(figsize=figsize)
         grid_size = int(np.sqrt(samples.shape[0]))
@@ -188,13 +177,16 @@ class AdversarialAE(nn.Module):
         plt.axis('off')
         if title:
             plt.title(title)
-        plt.savefig(os.path.join(figures_dir, f"AdvAE_{title}.png"))
+        if train:
+            wandb.log({f"Samples": fig})
+        else:
+            plt.savefig(os.path.join(figures_dir, f"AdvAE_{title}.png"))
         plt.close(fig)
 
-    def create_validation_grid(self, data_loader, device, figsize=(10, 10), title=None):
+    def create_validation_grid(self, data_loader, figsize=(10, 10), title=None, train = False):
         # get a batch of data
         x, _ = next(iter(data_loader))[:10]
-        x = x.to(device)
+        x = x.to(self.device)
         # get reconstruction
         with torch.no_grad():
             recon_x,_,_ = self.vae(x)
@@ -213,34 +205,41 @@ class AdversarialAE(nn.Module):
                 ax.get_yaxis().set_visible(False)
         if title:
             plt.title(title)
-        plt.savefig(os.path.join(figures_dir, f"AdvAE_val_{title}.png"))
+        if train:
+            wandb.log({f"Reconstruction": fig})
+        else:
+            plt.savefig(os.path.join(figures_dir, f"AdvAE_val_{title}.png"))
+        plt.close(fig)
+        
 
-    def train_model(self, data_loader, val_loader, epochs, device):
-
-        # Initialize generator and discriminator
-        vae = self.vae
-        discriminator = self.discriminator
+    def train_model(self, data_loader, val_loader):
 
         # Loss function
         adversarial_loss = torch.nn.BCELoss()
 
         # Optimizers
-        optimizer_VAE = torch.optim.Adam(vae.parameters(), lr=self.lr)
-        optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=self.lr)
+        optimizer_VAE = torch.optim.Adam(self.vae.parameters(), lr=self.lr)
+        optimizer_D = torch.optim.Adam(self.discriminator.parameters(), lr=self.lr)
 
-        epochs_bar = trange(epochs, desc="Loss: ------", leave=True)
+        best_loss = np.inf
+
+        epochs_bar = trange(self.n_epochs, desc="Loss: ------", leave=True)
         # ----------
         #  Training
         # ----------
         for epoch in epochs_bar:
+            
+            acc_g_loss = 0.0
+            acc_d_loss = 0.0
+
             for (imgs, _) in tqdm(data_loader, desc = 'Batches', leave=False):
 
                 # Adversarial ground truths
-                valid = torch.ones(imgs.size(0), 1).to(device)
-                fake = torch.zeros(imgs.size(0), 1).to(device)
+                valid = torch.ones(imgs.size(0), 1).to(self.device)
+                fake = torch.zeros(imgs.size(0), 1).to(self.device)
 
                 # Configure input
-                real_imgs = imgs.to(device)
+                real_imgs = imgs.to(self.device)
 
                 # -----------------
                 #  Train Generator
@@ -249,14 +248,15 @@ class AdversarialAE(nn.Module):
                 optimizer_VAE.zero_grad()
 
                 # Generate a batch of images
-                recon_imgs, mu, logvar = vae(real_imgs)
-                noise = torch.randn(imgs.size(0), vae.latent_dim).to(device)
-                gen_imgs = vae.decode(noise)
+                recon_imgs, mu, logvar = self.vae(real_imgs)
+                noise = torch.randn(imgs.size(0), self.vae.latent_dim).to(self.device)
+                gen_imgs = self.vae.decode(noise)
 
-                # Loss measures generator's ability to fool the discriminator
-                validity_recon = discriminator(recon_imgs)
-                validity_gen = discriminator(gen_imgs)
-                g_loss = 0.002*adversarial_loss(validity_recon, valid) + 0.002*adversarial_loss(validity_gen, valid) + vae.loss_function(recon_imgs, real_imgs, mu, logvar)
+                # Loss measures generator's ability to fool the self.discriminator
+                validity_recon = self.discriminator(recon_imgs)
+                validity_gen = self.discriminator(gen_imgs)
+                g_loss = self.recon_weight*adversarial_loss(validity_recon, valid) + self.gen_weight*adversarial_loss(validity_gen, valid) + self.vae.loss_function(recon_imgs, real_imgs, mu, logvar)
+                acc_g_loss += g_loss.item()*imgs.size(0)
 
                 g_loss.backward()
                 optimizer_VAE.step()
@@ -264,28 +264,34 @@ class AdversarialAE(nn.Module):
                 epochs_bar.set_description(f"Loss: {g_loss.item():.5f}")
 
                 # ---------------------
-                #  Train Discriminator
+                #  Train self.discriminator
                 # ---------------------
 
                 optimizer_D.zero_grad()
 
                 # Loss for real images
-                validity_real = discriminator(real_imgs)
+                validity_real = self.discriminator(real_imgs)
                 d_real_loss = adversarial_loss(validity_real, valid)
 
                 # Loss for fake images
-                validity_fake = discriminator(gen_imgs.detach())
+                validity_fake = self.discriminator(gen_imgs.detach())
                 d_fake_loss = adversarial_loss(validity_fake, fake)
 
-                # Total discriminator loss
+                # Total self.discriminator loss
                 d_loss = (d_real_loss + d_fake_loss) / 2
+                acc_d_loss += d_loss.item()*imgs.size(0)
 
                 d_loss.backward()
                 optimizer_D.step()
 
-            if epoch % 5 == 0:
-                self.create_grid(device, title=f"Epoch {epoch}")
-                self.create_validation_grid(val_loader, device, title=f"Epoch {epoch}")
+            epochs_bar.set_description(f"Loss: {acc_g_loss/len(data_loader.dataset):.4f} - D Loss: {acc_d_loss/len(data_loader.dataset):.4f}")
+            wandb.log({"Generator Loss": acc_g_loss/len(data_loader.dataset), "Discriminator Loss": acc_d_loss/len(data_loader.dataset)})
+
+
+            if epoch % self.sample_and_save_frequency == 0:
+                self.create_grid(title=f"Epoch {epoch}", train=True)
+                self.create_validation_grid(val_loader, title=f"Epoch {epoch}", train=True)
         
-        torch.save(vae.state_dict(), os.path.join(models_dir, "AdvAE_vae.pt"))
-        torch.save(discriminator.state_dict(), os.path.join(models_dir, "AdvAE_discriminator.pt"))
+            if acc_g_loss/len(data_loader.dataset) < best_loss:
+                best_loss = acc_g_loss/len(data_loader.dataset)
+                torch.save(self.vae.state_dict(), os.path.join(models_dir, "AdvAE_vae.pt"))

@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from models.VAE.ConditionalVAE import ConditionalVAE
 from models.VAE.VQVAE import VQVAE
-from models.GANs.AdversarialAE import AdversarialAE
+from models.GANs.AdversarialVAE
 from data.Dataloaders import *
 
 

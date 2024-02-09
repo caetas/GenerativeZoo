@@ -7,6 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import wandb
 from config import models_dir
+import torchvision
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_features):
@@ -67,6 +68,23 @@ class Generator(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+    
+    @torch.no_grad()
+    def sample(self, loader, device):
+        real_A = next(iter(loader)).to(device)
+        fake_B = self(real_A)
+        # create a grid and plot real_A, fake_B
+        real_A = real_A.detach().cpu()
+        fake_B = fake_B.detach().cpu()
+        real_A = real_A*0.5 + 0.5
+        fake_B = fake_B*0.5 + 0.5
+        images = torch.cat((real_A, fake_B), 0)
+        grid = torchvision.utils.make_grid(images, nrow=real_A.size(0))
+        fig = plt.figure(figsize=(5*real_A.size(0)/2, 5))
+        plt.imshow(np.transpose(grid, (1, 2, 0)))
+        plt.axis('off')
+        plt.show()
+
 
 class Discriminator(nn.Module):
     def __init__(self, input_nc):
@@ -101,9 +119,9 @@ class Discriminator(nn.Module):
 def weights_init_normal(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
-        torch.nn.init.normal(m.weight.data, 0.0, 0.02)
+        torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
     elif classname.find('BatchNorm2d') != -1:
-        torch.nn.init.normal(m.weight.data, 1.0, 0.02)
+        torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
         torch.nn.init.constant(m.bias.data, 0.0)
 
 class LambdaLR():
@@ -116,225 +134,181 @@ class LambdaLR():
     def step(self, epoch):
         return 1.0 - max(0, epoch + self.offset - self.decay_start_epoch)/(self.n_epochs - self.decay_start_epoch)
 
-def train(dataloader_A, dataloader_B, testloader_A, testloader_B, n_epochs, lr, decay, in_channels, out_channels, device, sample_and_save_freq=5, name='horse2zebra'):
+class CycleGAN(nn.Module):
+    def __init__(self, in_channels, out_channels, n_epochs, lr, decay, device, sample_and_save_freq=5, name='horse2zebra'):
+        super(CycleGAN, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.n_epochs = n_epochs
+        self.lr = lr
+        self.decay = decay
+        self.device = device
+        self.sample_and_save_freq = sample_and_save_freq
+        self.name = name
+        self.G_AB = Generator(in_channels, out_channels).to(self.device)
+        self.G_BA = Generator(out_channels, in_channels).to(self.device)
+        self.D_A = Discriminator(in_channels).to(self.device)
+        self.D_B = Discriminator(out_channels).to(self.device)
+        self.G_AB.apply(weights_init_normal)
+        self.G_BA.apply(weights_init_normal)
+        self.D_A.apply(weights_init_normal)
+        self.D_B.apply(weights_init_normal)
 
-    G_AB = Generator(in_channels, out_channels).to(device)
-    G_BA = Generator(out_channels, in_channels).to(device)
-    D_A = Discriminator(in_channels).to(device)
-    D_B = Discriminator(out_channels).to(device)
+    def train_model(self, dataloader_A, dataloader_B, testloader_A, testloader_B):
 
-    G_AB.apply(weights_init_normal)
-    G_BA.apply(weights_init_normal)
-    D_A.apply(weights_init_normal)
-    D_B.apply(weights_init_normal)
+        # Losses
+        criterion_GAN = nn.MSELoss()
+        criterion_cycle = nn.L1Loss()
+        criterion_identity = nn.L1Loss()
 
-    # Losses
-    criterion_GAN = nn.MSELoss()
-    criterion_cycle = nn.L1Loss()
-    criterion_identity = nn.L1Loss()
+        # Optimizers & LR schedulers
+        optimizer_G = torch.optim.Adam(itertools.chain(self.G_AB.parameters(), self.G_BA.parameters()), lr=self.lr, betas=(0.5, 0.999))
+        optimizer_D_A = torch.optim.Adam(self.D_A.parameters(), lr=self.lr, betas=(0.5, 0.999))
+        optimizer_D_B = torch.optim.Adam(self.D_B.parameters(), lr=self.lr, betas=(0.5, 0.999))
 
-    # Optimizers & LR schedulers
-    optimizer_G = torch.optim.Adam(itertools.chain(G_AB.parameters(), G_BA.parameters()), lr=lr, betas=(0.5, 0.999))
-    optimizer_D_A = torch.optim.Adam(D_A.parameters(), lr=lr, betas=(0.5, 0.999))
-    optimizer_D_B = torch.optim.Adam(D_B.parameters(), lr=lr, betas=(0.5, 0.999))
+        lr_scheduler_G = torch.optim.lr_scheduler.LambdaLR(optimizer_G, lr_lambda=LambdaLR(self.n_epochs, 0, self.decay).step)
+        lr_scheduler_D_A = torch.optim.lr_scheduler.LambdaLR(optimizer_D_A, lr_lambda=LambdaLR(self.n_epochs, 0, self.decay).step)
+        lr_scheduler_D_B = torch.optim.lr_scheduler.LambdaLR(optimizer_D_B, lr_lambda=LambdaLR(self.n_epochs, 0, self.decay).step)
 
-    lr_scheduler_G = torch.optim.lr_scheduler.LambdaLR(optimizer_G, lr_lambda=LambdaLR(n_epochs, 0, decay).step)
-    lr_scheduler_D_A = torch.optim.lr_scheduler.LambdaLR(optimizer_D_A, lr_lambda=LambdaLR(n_epochs, 0, decay).step)
-    lr_scheduler_D_B = torch.optim.lr_scheduler.LambdaLR(optimizer_D_B, lr_lambda=LambdaLR(n_epochs, 0, decay).step)
+        step_per_epoch = min(len(dataloader_A), len(dataloader_B))
 
-    step_per_epoch = min(len(dataloader_A), len(dataloader_B))
+        best_loss = np.inf
 
-    best_loss = np.inf
+        for epoch in tqdm(range(self.n_epochs), desc='Epochs'):
 
-    for epoch in tqdm(range(n_epochs), desc='Epochs'):
+            acc_loss_G = 0
+            acc_loss_G_GAN = 0
+            acc_loss_G_cycle = 0
+            acc_loss_G_identity = 0
+            acc_loss_D_A = 0
+            acc_loss_D_B = 0
+            elements = 0
 
-        acc_loss_G = 0
-        acc_loss_G_GAN = 0
-        acc_loss_G_cycle = 0
-        acc_loss_G_identity = 0
-        acc_loss_D_A = 0
-        acc_loss_D_B = 0
-        elements = 0
+            for s in tqdm(range(step_per_epoch), desc='Steps', leave=False):
+                    
+                # Set model input
+                real_A = next(iter(dataloader_A)).to(self.device)
+                real_B = next(iter(dataloader_B)).to(self.device)
 
-        for s in tqdm(range(step_per_epoch), desc='Steps', leave=False):
-                
-            # Set model input
-            real_A = next(iter(dataloader_A)).to(device)
-            real_B = next(iter(dataloader_B)).to(device)
+                # Adversarial ground truths
+                valid = torch.ones(real_A.size(0), 1).to(self.device)
+                fake = torch.zeros(real_A.size(0), 1).to(self.device)
 
-            # Adversarial ground truths
-            valid = torch.ones(real_A.size(0), 1).to(device)
-            fake = torch.zeros(real_A.size(0), 1).to(device)
+                # ------------------
+                #  Train Generators
+                # ------------------
 
-            # ------------------
-            #  Train Generators
-            # ------------------
+                optimizer_G.zero_grad()
 
-            optimizer_G.zero_grad()
+                # Identity loss
+                loss_id_A = criterion_identity(self.G_BA(real_A), real_A)
+                loss_id_B = criterion_identity(self.G_AB(real_B), real_B)
 
-            # Identity loss
-            loss_id_A = criterion_identity(G_BA(real_A), real_A)
-            loss_id_B = criterion_identity(G_AB(real_B), real_B)
+                loss_identity = (loss_id_A + loss_id_B) / 2
 
-            loss_identity = (loss_id_A + loss_id_B) / 2
+                # GAN loss
+                fake_B = self.G_AB(real_A)
+                loss_GAN_AB = criterion_GAN(self.D_B(fake_B), valid)
+                fake_A = self.G_BA(real_B)
+                loss_GAN_BA = criterion_GAN(self.D_A(fake_A), valid)
 
-            # GAN loss
-            fake_B = G_AB(real_A)
-            loss_GAN_AB = criterion_GAN(D_B(fake_B), valid)
-            fake_A = G_BA(real_B)
-            loss_GAN_BA = criterion_GAN(D_A(fake_A), valid)
+                loss_GAN = (loss_GAN_AB + loss_GAN_BA) / 2
 
-            loss_GAN = (loss_GAN_AB + loss_GAN_BA) / 2
+                # Cycle loss
+                recovered_A = self.G_BA(fake_B)
+                loss_cycle_A = criterion_cycle(recovered_A, real_A)
+                recovered_B = self.G_AB(fake_A)
+                loss_cycle_B = criterion_cycle(recovered_B, real_B)
 
-            # Cycle loss
-            recovered_A = G_BA(fake_B)
-            loss_cycle_A = criterion_cycle(recovered_A, real_A)
-            recovered_B = G_AB(fake_A)
-            loss_cycle_B = criterion_cycle(recovered_B, real_B)
+                loss_cycle = (loss_cycle_A + loss_cycle_B) / 2
 
-            loss_cycle = (loss_cycle_A + loss_cycle_B) / 2
+                # Total loss
+                loss_G = loss_GAN + 10.0 * loss_cycle + 5.0 * loss_identity
 
-            # Total loss
-            loss_G = loss_GAN + 10.0 * loss_cycle + 5.0 * loss_identity
+                loss_G.backward()
+                optimizer_G.step()
 
-            loss_G.backward()
-            optimizer_G.step()
+                # -----------------------
+                #  Train Discriminator A
+                # -----------------------
 
-            # -----------------------
-            #  Train Discriminator A
-            # -----------------------
+                optimizer_D_A.zero_grad()
 
-            optimizer_D_A.zero_grad()
+                # Real loss
+                loss_real = criterion_GAN(self.D_A(real_A), valid)
+                # Fake loss (on batch of previously generated samples)
+                loss_fake = criterion_GAN(self.D_A(fake_A.detach()), fake)
 
-            # Real loss
-            loss_real = criterion_GAN(D_A(real_A), valid)
-            # Fake loss (on batch of previously generated samples)
-            loss_fake = criterion_GAN(D_A(fake_A.detach()), fake)
+                # Total loss
+                loss_D_A = (loss_real + loss_fake) / 2
 
-            # Total loss
-            loss_D_A = (loss_real + loss_fake) / 2
+                loss_D_A.backward()
+                optimizer_D_A.step()
 
-            loss_D_A.backward()
-            optimizer_D_A.step()
+                # -----------------------
+                #  Train Discriminator B
+                # -----------------------
 
-            # -----------------------
-            #  Train Discriminator B
-            # -----------------------
+                optimizer_D_B.zero_grad()
 
-            optimizer_D_B.zero_grad()
+                # Real loss
+                loss_real = criterion_GAN(self.D_B(real_B), valid)
+                # Fake loss (on batch of previously generated samples)
+                loss_fake = criterion_GAN(self.D_B(fake_B.detach()), fake)
 
-            # Real loss
-            loss_real = criterion_GAN(D_B(real_B), valid)
-            # Fake loss (on batch of previously generated samples)
-            loss_fake = criterion_GAN(D_B(fake_B.detach()), fake)
+                loss_D_B = (loss_real + loss_fake) / 2
 
-            loss_D_B = (loss_real + loss_fake) / 2
+                loss_D_B.backward()
+                optimizer_D_B.step()
 
-            loss_D_B.backward()
-            optimizer_D_B.step()
+                acc_loss_D_A += loss_D_A.item() * real_A.size(0)
+                acc_loss_D_B += loss_D_B.item() * real_B.size(0)
+                acc_loss_G += loss_G.item() * real_A.size(0)
+                acc_loss_G_GAN += loss_GAN.item() * real_A.size(0)
+                acc_loss_G_cycle += loss_cycle.item() * real_A.size(0)
+                acc_loss_G_identity += loss_identity.item() * real_A.size(0)
+                elements += real_A.size(0)
 
-            acc_loss_D_A += loss_D_A.item() * real_A.size(0)
-            acc_loss_D_B += loss_D_B.item() * real_B.size(0)
-            acc_loss_G += loss_G.item() * real_A.size(0)
-            acc_loss_G_GAN += loss_GAN.item() * real_A.size(0)
-            acc_loss_G_cycle += loss_cycle.item() * real_A.size(0)
-            acc_loss_G_identity += loss_identity.item() * real_A.size(0)
-            elements += real_A.size(0)
-
+                # --------------
+            #  Log Progress
             # --------------
-        #  Log Progress
-        # --------------
-        wandb.log({'loss_G': acc_loss_G/elements, 'loss_G_GAN': acc_loss_G_GAN/elements, 'loss_G_cycle': acc_loss_G_cycle/elements, 'loss_G_identity': acc_loss_G_identity/elements, 'loss_D_A': acc_loss_D_A/elements, 'loss_D_B': acc_loss_D_B/elements, 'epoch': epoch})
-        # Update learning rates
-        lr_scheduler_G.step()
-        lr_scheduler_D_A.step()
-        lr_scheduler_D_B.step()
+            wandb.log({'loss_G': acc_loss_G/elements, 'loss_G_GAN': acc_loss_G_GAN/elements, 'loss_G_cycle': acc_loss_G_cycle/elements, 'loss_G_identity': acc_loss_G_identity/elements, 'loss_D_A': acc_loss_D_A/elements, 'loss_D_B': acc_loss_D_B/elements, 'epoch': epoch})
+            # Update learning rates
+            lr_scheduler_G.step()
+            lr_scheduler_D_A.step()
+            lr_scheduler_D_B.step()
 
-        # Save models checkpoints
-        if acc_loss_G/elements < best_loss:
-            best_loss = acc_loss_G/elements
-            torch.save(G_AB.state_dict(), models_dir + '/CycleGAN_{}_G_AB.pth'.format(name))
-            torch.save(G_BA.state_dict(), models_dir + '/CycleGAN_{}_G_BA.pth'.format(name))
+            # Save models checkpoints
+            if acc_loss_G/elements < best_loss:
+                best_loss = acc_loss_G/elements
+                torch.save(self.G_AB.state_dict(), models_dir + '/CycleGAN_{}_G_AB.pth'.format(self.name))
+                torch.save(self.G_BA.state_dict(), models_dir + '/CycleGAN_{}_G_BA.pth'.format(self.name))
 
-        if epoch % sample_and_save_freq == 0:
+            if epoch % self.sample_and_save_freq == 0:
 
-            # select a batch of real samples
-            real_A = next(iter(testloader_A)).to(device)
-            real_B = next(iter(testloader_B)).to(device)
+                # select a batch of real samples
+                real_A = next(iter(testloader_A)).to(self.device)
+                real_B = next(iter(testloader_B)).to(self.device)
 
-            with torch.no_grad():
-                # generate a batch of fake samples
-                fake_A = G_BA(real_B)
-                fake_B = G_AB(real_A)
+                with torch.no_grad():
+                    # generate a batch of fake samples
+                    fake_A = self.G_BA(real_B)
+                    fake_B = self.G_AB(real_A)
 
-            real_A = real_A.detach().cpu().numpy()
-            real_B = real_B.detach().cpu().numpy()
-            fake_A = fake_A.detach().cpu().numpy()
-            fake_B = fake_B.detach().cpu().numpy()
+                real_A = real_A.detach().cpu()
+                real_B = real_B.detach().cpu()
+                fake_A = fake_A.detach().cpu()
+                fake_B = fake_B.detach().cpu()
 
-            real_A = np.transpose(real_A, (0, 2, 3, 1))*0.5 + 0.5
-            real_B = np.transpose(real_B, (0, 2, 3, 1))*0.5 + 0.5
-            fake_A = np.transpose(fake_A, (0, 2, 3, 1))*0.5 + 0.5
-            fake_B = np.transpose(fake_B, (0, 2, 3, 1))*0.5 + 0.5
+                real_A = real_A*0.5 + 0.5
+                real_B = real_B*0.5 + 0.5
+                fake_A = fake_A*0.5 + 0.5
+                fake_B = fake_B*0.5 + 0.5
 
-            # plot an image with real_A.shape[0] rows and 4 columns (real_A, fake_B, real_B, fake_A)
-            n_rows = real_A.shape[0]
-            n_cols = 4
-            fig, axes = plt.subplots(n_rows, n_cols, figsize=(5, 5 * (n_rows // n_cols)))
-            for i, ax in enumerate(axes.flat):
-                if i % 4 == 0:
-                    ax.imshow(real_A[i//4])
-                elif i % 4 == 1:
-                    ax.imshow(fake_B[i//4])
-                elif i % 4 == 2:
-                    ax.imshow(real_B[i//4])
-                elif i % 4 == 3:
-                    ax.imshow(fake_A[i//4])
-                ax.axis('off')
-
-            wandb.log({'samples': wandb.Image(fig)})
-            plt.close(fig)
-
-def test(checkpoint_A, checkpoint_B, test_dataloader_A, test_dataloader_B, in_channels, out_channels, device):
-
-    G_AB = Generator(in_channels, out_channels).to(device)
-    G_BA = Generator(out_channels, in_channels).to(device)
-
-    G_AB.load_state_dict(torch.load(checkpoint_A))
-    G_BA.load_state_dict(torch.load(checkpoint_B))
-
-    # select a batch of real samples
-    real_A = next(iter(test_dataloader_A)).to(device)
-    real_B = next(iter(test_dataloader_B)).to(device)
-
-    with torch.no_grad():
-        # generate a batch of fake samples
-        fake_A = G_BA(real_B)
-        fake_B = G_AB(real_A)
-
-    real_A = real_A.detach().cpu().numpy()
-    real_B = real_B.detach().cpu().numpy()
-    fake_A = fake_A.detach().cpu().numpy()
-    fake_B = fake_B.detach().cpu().numpy()
-
-    real_A = np.transpose(real_A, (0, 2, 3, 1))*0.5 + 0.5
-    real_B = np.transpose(real_B, (0, 2, 3, 1))*0.5 + 0.5
-    fake_A = np.transpose(fake_A, (0, 2, 3, 1))*0.5 + 0.5
-    fake_B = np.transpose(fake_B, (0, 2, 3, 1))*0.5 + 0.5
-
-    # plot an image with real_A.shape[0] rows and 4 columns (real_A, fake_B, real_B, fake_A)
-    n_rows = real_A.shape[0]
-    n_cols = 4
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 10))
-    for i, ax in enumerate(axes.flat):
-        if i % 4 == 0:
-            ax.imshow(real_A[i//4])
-        elif i % 4 == 1:
-            ax.imshow(fake_B[i//4])
-        elif i % 4 == 2:
-            ax.imshow(real_B[i//4])
-        elif i % 4 == 3:
-            ax.imshow(fake_A[i//4])
-        ax.axis('off')
-
-    plt.show()
+                images = torch.cat((real_A, fake_B, real_B, fake_A), 0)
+                grid = torchvision.utils.make_grid(images, nrow=real_A.size(0))
+                fig = plt.figure(figsize=(5*real_A.size(0)/4,5))
+                plt.imshow(np.transpose(grid, (1, 2, 0)))
+                plt.axis('off')
+                wandb.log({'samples': fig})
+                plt.close(fig)

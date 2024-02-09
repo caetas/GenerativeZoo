@@ -46,6 +46,24 @@ def parse_args_ConditionalVAE():
     argparser.add_argument('--n_classes', type=int, default=10, help='number of classes')
     return argparser.parse_args()
 
+def parse_args_AdversarialVAE():
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--train', action='store_true', default=False, help='train model')
+    argparser.add_argument('--test', action='store_true', default=False, help='test model')
+    argparser.add_argument('--sample', action='store_true', default=False, help='sample model')
+    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn'])
+    argparser.add_argument('--batch_size', type=int, default=128, help='batch size')
+    argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
+    argparser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
+    argparser.add_argument('--latent_dim', type=int, default=128, help='latent dimension')
+    argparser.add_argument('--hidden_dims', type=int, nargs='+', default=None, help='hidden dimensions')
+    argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
+    argparser.add_argument('--num_samples', type=int, default=16, help='number of samples')
+    argparser.add_argument('--gen_weight', type=float, default=0.002, help='generator weight')
+    argparser.add_argument('--recon_weight', type=float, default=0.002, help='reconstruction weight')
+    argparser.add_argument('--sample_and_save_frequency', type=int, default=5, help='sample and save frequency')
+    return argparser.parse_args()
+
 def parse_args_VanillaSGM():
     argparser = argparse.ArgumentParser()
     # show choices: mnist | cifar10 | fashionmnist | chestmnist | octmnist | tissuemnist | pneumoniamnist | svhn
@@ -142,6 +160,9 @@ def parse_args_CondGAN():
     argparser.add_argument('--img_size', type=int, default=32, help='image size')
     argparser.add_argument('--channels', type=int, default=1, help='channels')
     argparser.add_argument('--sample_interval', type=int, default=5, help='sample interval')
+    argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
+    argparser.add_argument('--n_samples', type=int, default=9, help='number of samples')
+    argparser.add_argument('--d', type=int, default=128, help='d')
     return argparser.parse_args()
 
 def parse_args_VanillaGAN():
@@ -158,5 +179,8 @@ def parse_args_VanillaGAN():
     argparser.add_argument('--img_size', type=int, default=32, help='image size')
     argparser.add_argument('--channels', type=int, default=1, help='channels')
     argparser.add_argument('--sample_interval', type=int, default=5, help='sample interval')
+    argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
+    argparser.add_argument('--n_samples', type=int, default=9, help='number of samples')
+    argparser.add_argument('--d', type=int, default=128, help='d')
     return argparser.parse_args()
 # EOF

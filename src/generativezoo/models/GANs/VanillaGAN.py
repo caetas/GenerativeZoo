@@ -1,9 +1,13 @@
 from torch import nn
 import torch
 import torch.nn.functional as F
-from tqdm import tqdm
+from tqdm import tqdm, trange
 import matplotlib.pyplot as plt
 import wandb
+import torchvision
+import numpy as np
+from config import models_dir
+import os
 
 ##########################################################################################
 ### https://github.com/TeeyoHuang/conditional-GAN/blob/master/conditional_DCGAN.py     ###
@@ -29,6 +33,7 @@ class Generator(nn.Module):
         self.deconv3 = nn.ConvTranspose2d(d*2, d, 4, 2, 1)
         self.deconv3_bn = nn.BatchNorm2d(d)
         self.deconv4 = nn.ConvTranspose2d(d, channels, 4, 2, 1)
+        self.latent_dim = latent_dim
 
 
     # forward method
@@ -38,6 +43,19 @@ class Generator(nn.Module):
         x = F.relu(self.deconv3_bn(self.deconv3(x)))
         x = F.tanh(self.deconv4(x))
         return x
+    
+    @torch.no_grad()
+    def sample(self, n_samples, device):
+        z = torch.randn(n_samples, self.latent_dim, 1, 1).to(device)
+        imgs = self.forward(z)
+        imgs = (imgs + 1) / 2
+        imgs = imgs.detach().cpu()
+        # create a grid of sqrt(n_samples) x sqrt(n_samples) images
+        grid = torchvision.utils.make_grid(imgs, nrow=int(np.sqrt(n_samples)), normalize=True)
+        # make an image from the grid
+        plt.imshow(grid.permute(1, 2, 0))
+        plt.axis('off')
+        plt.show()
 
 class Discriminator(nn.Module):
     # initializers
@@ -58,81 +76,110 @@ class Discriminator(nn.Module):
         x = F.leaky_relu(self.conv3_bn(self.conv3(x)), 0.2)
         x = F.sigmoid(self.conv4(x))
         return x
+    
+class VanillaGAN(nn.Module):
+    def __init__(self, n_epochs, device, latent_dim, d=128, channels=3, lr = 0.0002, beta1 = 0.5, beta2 = 0.999, img_size = 32, sample_interval = 5):
+        super(VanillaGAN, self).__init__()
+        self.n_epochs = n_epochs
+        self.device = device
+        self.generator = Generator(latent_dim = latent_dim, channels=channels).to(self.device)
+        self.discriminator = Discriminator(channels=channels, d=d).to(self.device)
+        self.latent_dim = latent_dim
+        self.d = d
+        self.channels = channels
+        self.lr = lr
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.img_size = img_size
+        self.sample_interval = sample_interval
+        self.generator.apply(weights_init_normal)
+        self.discriminator.apply(weights_init_normal)
+    
+    def train_model(self, dataloader):
+        # Loss function
+        adversarial_loss = torch.nn.BCELoss()
 
-def train(dataloader, n_epochs, device, lr = 0.0002, beta1 = 0.5, beta2 = 0.999, latent_dim = 100, n_classes = 10, img_size = 32, channels = 3, sample_interval = 5):
+        # Optimizers
+        optimizer_G = torch.optim.Adam(self.generator.parameters(), lr=self.lr, betas=(self.beta1, self.beta2))
+        optimizer_D = torch.optim.Adam(self.discriminator.parameters(), lr=self.lr, betas=(self.beta1, self.beta2))
 
-    # Initialize generator and discriminator
-    generator = Generator(latent_dim = latent_dim, channels=channels).to(device)
-    discriminator = Discriminator(channels=channels).to(device)
+        epochs_bar = trange(self.n_epochs, desc = "Loss: ----", leave = True)
+        best_loss = np.inf
 
-    # Initialize weights
-    generator.apply(weights_init_normal)
-    discriminator.apply(weights_init_normal)
+        for epoch in epochs_bar:
 
-    # Loss function
-    adversarial_loss = torch.nn.BCELoss()
+            acc_g_loss = 0.0
+            acc_d_loss = 0.0
 
-    # Optimizers
-    optimizer_G = torch.optim.Adam(generator.parameters(), lr=lr, betas=(beta1, beta2))
-    optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(beta1, beta2))
+            for (imgs, _) in tqdm(dataloader, leave=False):
 
-    for epoch in tqdm(range(n_epochs)):
-        for (imgs, _) in tqdm(dataloader, leave=False):
+                # Adversarial ground truths
+                valid = torch.ones(imgs.size(0), 1).to(self.device)
+                fake = torch.zeros(imgs.size(0), 1).to(self.device)
 
-            # Adversarial ground truths
-            valid = torch.ones(imgs.size(0), 1).to(device)
-            fake = torch.zeros(imgs.size(0), 1).to(device)
+                # Configure input
+                real_imgs = imgs.to(self.device)
 
-            # Configure input
-            real_imgs = imgs.to(device)
+                # -----------------
+                #  Train Generator
+                # -----------------
 
-            # -----------------
-            #  Train Generator
-            # -----------------
+                optimizer_G.zero_grad()
 
-            optimizer_G.zero_grad()
+                # Sample noise and labels as generator input
+                z = torch.randn(imgs.size(0), self.latent_dim, 1, 1).to(self.device)
 
-            # Sample noise and labels as generator input
-            z = torch.randn(imgs.size(0), latent_dim, 1, 1).to(device)
+                # Generate a batch of images
+                gen_imgs = self.generator(z)
 
-            # Generate a batch of images
-            gen_imgs = generator(z)
+                # Loss measures generator's ability to fool the discriminator
+                validity = self.discriminator(gen_imgs).view(-1, 1)
+                g_loss = adversarial_loss(validity, valid)
+                acc_g_loss += g_loss.item()*imgs.size(0)
 
-            # Loss measures generator's ability to fool the discriminator
-            validity = discriminator(gen_imgs).view(-1, 1)
-            g_loss = adversarial_loss(validity, valid)
+                g_loss.backward()
+                optimizer_G.step()
 
-            g_loss.backward()
-            optimizer_G.step()
+                # ---------------------
+                #  Train Discriminator
+                # ---------------------
 
-            # ---------------------
-            #  Train Discriminator
-            # ---------------------
+                optimizer_D.zero_grad()
 
-            optimizer_D.zero_grad()
+                # Loss for real images
+                validity_real = self.discriminator(real_imgs).view(-1, 1)
+                d_real_loss = adversarial_loss(validity_real, valid)
 
-            # Loss for real images
-            validity_real = discriminator(real_imgs).view(-1, 1)
-            d_real_loss = adversarial_loss(validity_real, valid)
+                # Loss for fake images
+                validity_fake = self.discriminator(gen_imgs.detach()).view(-1, 1)
+                d_fake_loss = adversarial_loss(validity_fake, fake)
 
-            # Loss for fake images
-            validity_fake = discriminator(gen_imgs.detach()).view(-1, 1)
-            d_fake_loss = adversarial_loss(validity_fake, fake)
+                # Total discriminator loss
+                d_loss = (d_real_loss + d_fake_loss) / 2
+                acc_d_loss += d_loss.item()*imgs.size(0)
 
-            # Total discriminator loss
-            d_loss = (d_real_loss + d_fake_loss) / 2
+                d_loss.backward()
+                optimizer_D.step()
+            
+            wandb.log({"Generator Loss": acc_g_loss/len(dataloader.dataset), "Discriminator Loss": acc_d_loss/len(dataloader.dataset)})
+            epochs_bar.set_description("Generator Loss: {:.4f}, Discriminator Loss: {:.4f}".format(acc_g_loss/len(dataloader.dataset), acc_d_loss/len(dataloader.dataset)))
+            
+            if acc_g_loss/len(dataloader.dataset) < best_loss:
+                best_loss = acc_g_loss/len(dataloader.dataset)
+                torch.save(self.generator.state_dict(), os.path.join(models_dir, "VanillaGAN_Generator.pt"))
 
-            d_loss.backward()
-            optimizer_D.step()
-
-        if epoch % sample_interval == 0:
-            # create row of n_classes images
-            z = torch.randn(16, latent_dim, 1, 1).to(device)
-            gen_imgs = generator(z)
-            # plot images
-            plt.figure(figsize=(10, 10))
-            for i in range(16):
-                plt.subplot(4, 4, i + 1)
-                plt.imshow(gen_imgs[i].cpu().detach().numpy().transpose(1, 2, 0)*0.5+0.5, cmap='gray')
+            if epoch % self.sample_interval == 0:
+                # create row of n_classes images
+                z = torch.randn(16, self.latent_dim, 1, 1).to(self.device)
+                gen_imgs = self.generator(z)
+                gen_imgs = (gen_imgs + 1) / 2
+                gen_imgs.clamp(0, 1)
+                # plot images
+                fig = plt.figure(figsize=(10, 10))
+                # create a grid of sqrt(n_samples) x sqrt(n_samples) images
+                grid = torchvision.utils.make_grid(gen_imgs.detach().cpu(), nrow=4, normalize=True)
+                # make an image from the grid
+                plt.imshow(grid.permute(1, 2, 0))
                 plt.axis('off')
-            plt.show()
+                wandb.log({"Generated Images": fig})
+                plt.close(fig)
