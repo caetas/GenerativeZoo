@@ -36,7 +36,7 @@ class DiffAE(nn.Module):
                     spatial_dims=2,
                     in_channels=in_channels,
                     out_channels=in_channels,
-                    num_channels=(64, 128, 128),
+                    num_channels=(64, 128, 256),
                     attention_levels=(False, True, True),
                     num_res_blocks=1,
                     num_head_channels=64,
@@ -84,7 +84,6 @@ class DiffAE(nn.Module):
         reconstruction = reconstruction*0.5 + 0.5
 
         grid = torchvision.utils.make_grid(torch.cat([images[:8],reconstruction[:8]]), nrow=8, padding=2, normalize=False, scale_each=False, pad_value=0)
-        print(grid.shape)
         plt.figure(figsize=(15,5))
         plt.imshow(grid.detach().cpu().numpy().transpose(1,2,0))
         plt.axis('off')
@@ -143,7 +142,7 @@ class DiffAE(nn.Module):
             train_losses.append(train_loss)
             epoch_bar.set_description(f"Train Loss: {train_loss}")
 
-            if val_loader and ((epoch + 1) % 5 == 0 or epoch == 0):
+            if val_loader and ((epoch + 1) % 100 == 0 or epoch == 0):
                 val_loss = self.evaluate(val_loader)
                 val_losses.append(val_loss)
                 epoch_bar.set_description(f"Train Loss: {train_loss} - Val Loss: {val_loss}")
@@ -152,7 +151,7 @@ class DiffAE(nn.Module):
                 # save model if it has the best val loss
                 if val_loss < best_loss:
                     best_loss = val_loss
-                    torch.save(self.state_dict(), os.path.join(models_dir, "DiffAE_best_model_zebras.pth"))
+                    torch.save(self.state_dict(), os.path.join(models_dir, "DiffAE_best_model_brains.pt"))
 
         # plot losses
         plt.figure(figsize=(15,5))
@@ -242,7 +241,7 @@ class DiffAE(nn.Module):
         images = batch[0].to(self.torch_device)
         labels = batch[1]
         latent = self.encoder(images)
-        latent_manipulated = latent + 1.5*self.w
+        latent_manipulated = latent - 1.5*self.w
         # predict new labels
         new_labels = self.clf.predict(latent_manipulated.detach().cpu().numpy())
         print(f"New Labels: {new_labels[:8]}")

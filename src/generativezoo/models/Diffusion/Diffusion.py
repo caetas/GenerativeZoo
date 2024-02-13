@@ -13,6 +13,7 @@ from .DPM_functions import *
 import wandb
 from sklearn.metrics import roc_auc_score
 from config import data_raw_dir, models_dir
+from torchvision.transforms import Compose, Lambda, ToPILImage
 
 ######## Code from https://github.com/DhruvSrikanth/DenoisingDiffusionProbabilisticModels/tree/master ##########
 
@@ -208,7 +209,7 @@ class Upsample(nn.Module):
     def forward(self, x):
         return self.conv(x)
 
-class DDPM(nn.Module):
+class UNet(nn.Module):
     def __init__(self, n_features, init_channels=None, out_channels=None, channel_scale_factors=(1, 2, 4, 8), in_channels=3, with_time_emb=True, resnet_block_groups=8, use_convnext=True, convnext_scale_factor=2):
         super().__init__()
 
@@ -378,10 +379,150 @@ class DDPM(nn.Module):
         
         return self.final_conv(x)
 
+def plot_samples(samples):
+     n_rows = int(np.sqrt(samples.shape[0]))
+     n_cols = n_rows
+     samples = np.transpose(samples, (0, 2, 3, 1))
+     samples = samples * 0.5 + 0.5
+     samples = np.clip(samples, 0, 1)
+     fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 10))
+     for i, ax in enumerate(axes.flat):
+          if samples.shape[-1] == 1:
+               ax.imshow(samples[i].squeeze(), cmap='gray')
+          else:
+               ax.imshow(samples[i])
+          ax.axis('off')
+     plt.show()
+
+class DDPM(nn.Module):
+    def __init__(self, device, args, n_features, image_size, init_channels=None, out_channels=None, channel_scale_factors=(1, 2, 4, 8), in_channels=3, with_time_emb=True, resnet_block_groups=8, use_convnext=True, convnext_scale_factor=2):
+        super().__init__()
+        self.reverse_transform = Compose([
+                                        Lambda(lambda t: (t + 1) / 2),
+                                        Lambda(lambda t: t.permute(1, 2, 0)), # CHW to HWC
+                                        Lambda(lambda t: t * 255.),
+                                        Lambda(lambda t: t.numpy().astype(np.uint8)),
+                                        ToPILImage(),
+                                    ])
+        self.device = device
+        self.denoising_model = UNet(n_features, init_channels, out_channels, channel_scale_factors, in_channels, with_time_emb, resnet_block_groups, use_convnext, convnext_scale_factor).to(self.device)
+        self.scheduler = LinearScheduler(args.beta_start, args.beta_end, args.timesteps)
+        self.forward_diffusion_model = ForwardDiffusion(self.scheduler.sqrt_alphas_cumprod, self.scheduler.sqrt_one_minus_alphas_cumprod, self.reverse_transform)
+        self.sampler = Sampler(self.scheduler.betas, args.timesteps, args.sample_timesteps, args.ddpm)
+        self.optimizer = torch.optim.Adam(self.denoising_model.parameters(), lr = args.lr)
+        self.criterion = get_loss
+        self.n_epochs = args.n_epochs
+        self.timesteps = args.timesteps
+        self.sample_and_save_freq = args.sample_and_save_freq
+        self.loss_type = args.loss_type
+        self.image_size = image_size
+        self.num_channels = in_channels
+        self.dataset = args.dataset
+
+
+    def train_model(self, dataloader):
+        best_loss = np.inf
+        for epoch in range(self.n_epochs):
+            acc_loss = 0.0
+            with tqdm(dataloader, desc=f'Training DDPM') as pbar:
+                for step, batch in enumerate(dataloader):
+                    self.optimizer.zero_grad()
+                    batch_size = batch[0].shape[0]
+                    batch = batch[0].to(self.device)
+                    t = torch.randint(0, self.timesteps, (batch_size,), device=self.device).long()
+                    loss = self.criterion(forward_diffusion_model=self.forward_diffusion_model, denoising_model=self.denoising_model, x_start=batch, t=t, loss_type=self.loss_type)
+                    loss.backward()
+                    self.optimizer.step()
+                    acc_loss += loss.item() * batch_size
+
+                    pbar.set_postfix(Epoch=f"{epoch+1}/{self.n_epochs}", Loss=f"{loss:.4f}")
+                    pbar.update()
+
+                    # save generated images
+                if epoch % self.sample_and_save_freq == 0:
+                    samples = self.sampler.sample(model=self.denoising_model, image_size=self.image_size, batch_size=1, channels=self.num_channels)
+                    all_images = samples[-1] 
+                    all_images = (all_images + 1) * 0.5
+                    # all_images is a numpy array, plot 9 images from it
+                    fig = plt.figure(figsize=(10, 10))
+                    n_row = np.sqrt(all_images.shape[0]).astype(int)
+                    n_col = n_row
+                    # use subplots
+                    for i in range(n_row*n_col):
+                        plt.subplot(n_col, n_row, i+1)
+                        if self.num_channels == 1:
+                            plt.imshow(all_images[i].squeeze(), cmap='gray')
+                        else:
+                            plt.imshow(all_images[i].transpose(1,2,0))
+                        plt.axis('off')
+                    #save figure wandb
+                    wandb.log({"DDPM Samples": fig})
+                    plt.close(fig)
+
+            if acc_loss/len(dataloader.dataset) < best_loss:
+                best_loss = acc_loss/len(dataloader.dataset)
+                torch.save(self.denoising_model.state_dict(), os.path.join(models_dir,'DDPM_' + self.dataset + '.pt'))
+            wandb.log({"DDPM Loss": acc_loss/len(dataloader.dataset)})
     
-    def load_pretrained_weights(self, pretrained_weights_path):
-        pretrained_state_dict = torch.load(pretrained_weights_path)
-        self.load_state_dict(pretrained_state_dict, strict=False)
+    def outlier_score(self, x_start, t):
+        noise = torch.randn_like(x_start)
+
+        x_noisy = self.forward_diffusion_model.q_sample(x_start=x_start, t=t, noise=noise)
+        predicted_noise = self.denoising_model(x_noisy, t)
+
+        if self.loss_type == 'l1':
+            loss = nn.L1Loss(reduction = 'none')
+            elementwise_loss = torch.mean(loss(noise, predicted_noise).reshape(x_start.shape), dim=(1,2,3))
+        elif self.loss_type == 'l2':
+            loss = nn.MSELoss(reduction = 'none')
+            elementwise_loss = torch.mean(loss(noise, predicted_noise).reshape(x_start.shape), dim=(1,2,3))
+        elif self.loss_type == "huber":
+            loss = nn.HuberLoss(reduction = 'none')
+            elementwise_loss = torch.mean(loss(noise, predicted_noise).reshape(x_start.shape), dim=(1,2,3))
+        else:
+            raise NotImplementedError()
+
+        return elementwise_loss
+    
+    @torch.no_grad()
+    def outlier_detection(self, val_loader, out_loader, in_name, out_name):
+        self.denoising_model.eval()
+        val_loss = 0.0
+        val_scores = []
+        for step, batch in enumerate(val_loader):
+            batch_size = batch[0].shape[0]
+            batch = batch[0].to(self.device)
+            t = torch.ones((batch_size,), device=self.device).long() * 0
+            score = outlier_score(forward_diffusion_model=self.forward_diffusion_model, denoising_model=self.denoising_model, x_start=batch, t=t, loss_type=self.loss_type)
+            val_scores.append(score.cpu().numpy())
+        val_scores = np.concatenate(val_scores)
+
+        out_scores = []
+
+        out_scores = []
+        for step, batch in enumerate(out_loader):
+            batch_size = batch[0].shape[0]
+            batch = batch[0].to(self.device)
+            t = torch.ones((batch_size,), device=self.device).long() * 0
+            out_scores.append(outlier_score(forward_diffusion_model=self.forward_diffusion_model, denoising_model=self.denoising_model, x_start=batch, t=t, loss_type=self.loss_type).cpu().numpy())
+        out_scores = np.concatenate(out_scores)
+        
+        y_true = np.concatenate([np.zeros_like(val_scores), np.ones_like(out_scores)], axis=0)
+        y_score = np.concatenate([val_scores, out_scores], axis=0)
+        auc_score = roc_auc_score(y_true, y_score)
+        if auc_score < 0.2:
+            auc_score = 1. - auc_score
+        print('AUC score: {:.10f}'.format(auc_score))
+
+        plt.hist(val_scores, bins=100, alpha=0.5, label='In')
+        plt.hist(out_scores, bins=100, alpha=0.5, label='Out')
+        plt.legend(loc='upper right')
+        plt.title('{} vs {} AUC: {:.4f}'.format(in_name, out_name, auc_score))
+        plt.show()
+    
+    def sample(self, batch_size=16):
+        samps = self.sampler.sample(model=self.denoising_model, image_size=self.image_size, batch_size=batch_size, channels=self.num_channels)[-1]
+        plot_samples(samps)
 
 class LinearScheduler():
     def __init__(self, beta_start=0.0001, beta_end=0.02, timesteps=1000):
@@ -436,13 +577,13 @@ class ForwardDiffusion():
         return noisy_image
 
 class Sampler():
-    def __init__(self, betas, timesteps=1000, reduced_timesteps=100, ddpm=1.0):
+    def __init__(self, betas, timesteps=1000, sample_timesteps=100, ddpm=1.0):
         self.betas = betas
         self.alphas = (1-self.betas).cumprod(dim=0)
         self.timesteps = timesteps
-        self.reduced_timesteps = reduced_timesteps
+        self.sample_timesteps = sample_timesteps
         self.ddpm = ddpm
-        self.scaling = timesteps//reduced_timesteps
+        self.scaling = timesteps//sample_timesteps
     
     @torch.no_grad()
     def p_sample(self, model, x, t, tau_index):
@@ -468,7 +609,7 @@ class Sampler():
         img = torch.randn(shape, device=device)
         imgs = []
         
-        for i in tqdm(range(self.reduced_timesteps-1,-1,-1), desc="Sampling", leave=False):
+        for i in tqdm(range(self.sample_timesteps-1,-1,-1), desc="Sampling", leave=False):
             scaled_i = i*self.scaling
             img = self.p_sample(model, img, torch.full((b,), scaled_i, device=device, dtype=torch.long), i)
             imgs.append(img.cpu().numpy())
@@ -505,12 +646,8 @@ def train(image_size, num_channels, epochs, timesteps, sample_and_save_freq, for
                 optimizer.zero_grad()
                 batch_size = batch[0].shape[0]
                 batch = batch[0].to(device)
-
-                # Algorithm 1 line 3: sample t uniformally for every example in the batch
                 t = torch.randint(0, timesteps, (batch_size,), device=device).long()
                 loss = criterion(forward_diffusion_model=forward_diffusion_model, denoising_model=denoising_model, x_start=batch, t=t, loss_type=loss_type)
-                # if step % 100 == 0:
-                #     print(f"Epoch {epoch} Loss: {loss.item()}")
                 loss.backward()
                 optimizer.step()
                 acc_loss += loss.item() * batch_size

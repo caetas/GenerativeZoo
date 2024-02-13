@@ -1,29 +1,23 @@
-import torch
-import torch.nn as nn
+from config import data_raw_dir
+import os
+import cv2
+import shutil
 
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        self.fc1 = nn.Linear(256, 128)
-        self.fc2 = nn.Linear(128, 10)
+images = os.listdir(os.path.join(data_raw_dir,'headct', 'head_ct'))
 
-    def forward(self, x):
-        x = self.fc1(x)
-        x = self.fc2(x)
-        x = torch.sigmoid(x)
-        return x
+bad_imgs = [os.path.join(data_raw_dir, 'headct', 'head_ct', images[idx]) for idx in range(0,100)]
+good_imgs = [os.path.join(data_raw_dir, 'headct', 'head_ct', images[idx]) for idx in range(100,200)]
 
-model = Net()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-input = torch.randn(10, 256, requires_grad=True)
-# target should be eye(10)
-target = torch.eye(10)
-optimizer.zero_grad()
-output = model(input)
-print(output)
-loss_fn = nn.MSELoss()
-loss = loss_fn(output, target)
-loss.backward()
-output = model(input.grad)
-print(output)
-print(target)
+for idx in range(len(bad_imgs)):
+    #new destination should replace 'head_ct' by os.path.join(train,bad)
+    if idx<90:
+        shutil.move(bad_imgs[idx], bad_imgs[idx].replace('head_ct', os.path.join('train','bad')))
+    else:
+        shutil.move(bad_imgs[idx], bad_imgs[idx].replace('head_ct', os.path.join('test','bad')))
+
+for idx in range(len(good_imgs)):
+    #new destination should replace 'head_ct' by os.path.join(train,bad)
+    if idx<90:
+        shutil.move(good_imgs[idx], good_imgs[idx].replace('head_ct', os.path.join('train','good')))
+    else:
+        shutil.move(good_imgs[idx], good_imgs[idx].replace('head_ct', os.path.join('test','good')))

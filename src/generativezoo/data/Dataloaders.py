@@ -356,6 +356,30 @@ class MVTecDataset(Dataset):
         if self.transform:
             img = self.transform(img)
         return img, 1
+
+class MVTecDatasetFull(Dataset):
+
+    def __init__(self, root, dataset = 'bottle', train = False, transform=None):
+        self.root = root
+        self.transform = transform
+        self.train = train
+        if train:
+            self.imgs = glob(os.path.join(root, dataset, 'train', '*', '*.png'))
+        else:
+            self.imgs = glob(os.path.join(root, dataset, 'test', '*', '*.png'))
+        
+    def __len__(self):
+        return len(self.imgs)
+    
+    def __getitem__(self, idx):
+        img = Image.open(self.imgs[idx]).convert('L')
+        if self.transform:
+            img = self.transform(img)
+        # if image name contains good, label is 0, else 1
+        if 'good' in self.imgs[idx]:
+            return img, 0
+        else:
+            return img, 1
     
 def mvtec_toothbrush_train_loader(batch_size, normalize = False):
             
@@ -481,7 +505,52 @@ def textile_val_loader(batch_size, normalize = False, good = True):
                                 batch_size=batch_size,
                                 shuffle=True,
                                 pin_memory=True)
-    return validation_loader    
+    return validation_loader
+
+def headct_train_loader(batch_size, normalize = False):
+
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((64,64)),
+            transforms.ToTensor(),
+            transforms.RandomHorizontalFlip(),
+            transforms.Normalize((0.5,), (0.5,))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((64,64)),
+            transforms.ToTensor(),
+        ])
+    
+    training_data = MVTecDatasetFull(root=data_raw_dir, dataset = 'headct', train = True, transform=transform)
+
+    training_loader = DataLoader(training_data, 
+                                batch_size=batch_size, 
+                                shuffle=True,
+                                pin_memory=True)
+    return training_loader
+
+def headct_val_loader(batch_size, normalize = False):
+
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((64,64)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((64,64)),
+            transforms.ToTensor(),
+        ])
+    
+    validation_data = MVTecDatasetFull(root=data_raw_dir, dataset = 'headct', train = False, transform = transform)
+
+    validation_loader = DataLoader(validation_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True)
+    return validation_loader
 
 def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True):
     if dataset_name == 'mnist':
@@ -539,5 +608,10 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return textile_train_loader(batch_size, normalize), 32, 1
         elif mode == 'val':
             return textile_val_loader(batch_size, normalize, good), 32, 1
+    elif dataset_name == 'headct':
+        if mode == 'train':
+            return headct_train_loader(batch_size, normalize), 64, 1
+        elif mode == 'val':
+            return headct_val_loader(batch_size, normalize), 64, 1
     else:
         raise ValueError('Dataset name not found.')

@@ -91,10 +91,15 @@ def parse_args_DDPM():
     argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
     argparser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
     argparser.add_argument('--timesteps', type=int, default=300, help='number of timesteps')
+    argparser.add_argument('--n_features', type=int, default = 64, help='number of features')
+    argparser.add_argument('--init_channels', type=int, default = 32, help='initial channels')
+    argparser.add_argument('--channel_scale_factors', type=int, nargs='+', default = [1, 2, 2], help='channel scale factors')
+    argparser.add_argument('--resnet_block_groups', type=int, default = 8, help='resnet block groups')
+    argparser.add_argument('--use_convnext', type=bool, default = True, help='use convnext (default: True)')
+    argparser.add_argument('--convnext_scale_factor', type=int, default = 2, help='convnext scale factor (default: 2)')
     argparser.add_argument('--beta_start', type=float, default=0.0001, help='beta start')
     argparser.add_argument('--beta_end', type=float, default=0.02, help='beta end')
     argparser.add_argument('--sample_and_save_freq', type=int, default=10, help='sample and save frequency')
-    argparser.add_argument('--device', type=str, default='cuda', help='device')
     argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['textile','toothbrush','bottle','mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn'])
     argparser.add_argument('--ddpm', type=float, default=1.0, help='ddim sampling is 0.0, pure ddpm is 1.0')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
@@ -102,7 +107,10 @@ def parse_args_DDPM():
     argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['textile','toothbrush','bottle','mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn'])
     argparser.add_argument('--loss_type', type=str, default='huber', help='loss type', choices=['huber','l2', 'l1'])
     argparser.add_argument('--sample_timesteps', type=int, default=300, help='number of timesteps')
-    return argparser.parse_args()
+    args = argparser.parse_args()
+    args.channel_scale_factors = tuple(args.channel_scale_factors)
+
+    return args
 
 def parse_args_CDDPM():
     argparser = argparse.ArgumentParser()
@@ -115,7 +123,6 @@ def parse_args_CDDPM():
     argparser.add_argument('--timesteps', type=int, default=500, help='number of timesteps')
     argparser.add_argument('--beta_start', type=float, default=0.0001, help='beta start')
     argparser.add_argument('--beta_end', type=float, default=0.02, help='beta end')
-    argparser.add_argument('--device', type=str, default='cuda', help='device')
     argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['textile','toothbrush','bottle','mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn'])
     argparser.add_argument('--ddpm', type=float, default=1.0, help='ddim sampling is 0.0, pure ddpm is 1.0')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
@@ -126,6 +133,7 @@ def parse_args_CDDPM():
     argparser.add_argument('--sample_and_save_freq', type=int, default=10, help='sample and save frequency')
     argparser.add_argument('--drop_prob', type=float, default=0.1, help='dropout probability')
     argparser.add_argument('--guide_w', type=float, default=0.5, help='guide weight')
+    argparser.add_argument('--ws_test', type = float, nargs='+', default = [0.0, 0.5, 2.0], help='guidance weights for test')
     return argparser.parse_args()
 
 def parse_args_CycleGAN():
