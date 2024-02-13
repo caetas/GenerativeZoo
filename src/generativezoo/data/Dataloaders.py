@@ -7,15 +7,17 @@ import os
 from glob import glob
 from PIL import Image
 
-def cifar_train_loader(batch_size, normalize = False):
+def cifar_train_loader(batch_size, normalize = False, input_shape = None):
 
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
 
@@ -25,17 +27,23 @@ def cifar_train_loader(batch_size, normalize = False):
                                  batch_size=batch_size, 
                                  shuffle=True,
                                  pin_memory=True)
-    return training_loader
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 3
+    else:
+        return training_loader, 32, 3
 
-def cifar_val_loader(batch_size, normalize = False):
+def cifar_val_loader(batch_size, normalize = False, input_shape = None):
 
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
 
@@ -45,19 +53,23 @@ def cifar_val_loader(batch_size, normalize = False):
                                    batch_size=batch_size,
                                    shuffle=True,
                                    pin_memory=True)
-    return validation_loader
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 3
+    else:
+        return validation_loader, 32, 3
 
-def mnist_train_loader(batch_size, normalize = False, input_shape = 28):
+def mnist_train_loader(batch_size, normalize = False, input_shape = None):
 
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
         ])
 
@@ -67,19 +79,22 @@ def mnist_train_loader(batch_size, normalize = False, input_shape = 28):
                                  batch_size=batch_size, 
                                  shuffle=True,
                                  pin_memory=True)
-    return training_loader
+    if input_shape is not None:
+        return training_loader, input_shape, 1
+    else:
+        return training_loader, 28, 1
 
-def mnist_val_loader(batch_size, normalize = False, input_shape = 28):
+def mnist_val_loader(batch_size, normalize = False, input_shape = None):
 
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
         ])
 
@@ -89,9 +104,12 @@ def mnist_val_loader(batch_size, normalize = False, input_shape = 28):
                                    batch_size=batch_size,
                                    shuffle=True,
                                    pin_memory=True)
-    return validation_loader
+    if input_shape is not None:
+        return validation_loader, input_shape, 1
+    else:
+        return validation_loader, 28, 1
 
-def chestmnist_train_loader(batch_size, normalize = False):
+def chestmnist_train_loader(batch_size, normalize = False, input_shape = None):
 
     if normalize:
         transform = transforms.Compose([
@@ -102,16 +120,23 @@ def chestmnist_train_loader(batch_size, normalize = False):
         transform = transforms.Compose([
             transforms.ToTensor(),
         ])
-
-    training_data = ChestMNIST(root=data_raw_dir, split='train', download=True, transform=transform)
+    
+    if input_shape is not None:
+        training_data = ChestMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = input_shape)
+    else:
+        training_data = ChestMNIST(root=data_raw_dir, split='train', download=True, transform=transform)
 
     training_loader = DataLoader(training_data, 
                                  batch_size=batch_size, 
                                  shuffle=True,
                                  pin_memory=True)
-    return training_loader
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 1
+    else:
+        return training_loader, 28, 1
 
-def chestmnist_val_loader(batch_size, normalize = False):
+def chestmnist_val_loader(batch_size, normalize = False, input_shape = None):
     
     if normalize:
         transform = transforms.Compose([
@@ -123,15 +148,21 @@ def chestmnist_val_loader(batch_size, normalize = False):
             transforms.ToTensor(),
         ])
 
-    validation_data = ChestMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
+    if input_shape is not None:
+        validation_data = ChestMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = input_shape)
+    else:
+        validation_data = ChestMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
 
     validation_loader = DataLoader(validation_data,
                                 batch_size=batch_size,
                                 shuffle=True,
                                 pin_memory=True)
-    return validation_loader
+    if input_shape is not None:
+        return validation_loader, input_shape, 1
+    else:
+        return validation_loader, 28, 1
 
-def octmnist_train_loader(batch_size, normalize = False):
+def octmnist_train_loader(batch_size, normalize = False, input_shape = None):
     
     if normalize:
         transform = transforms.Compose([
@@ -143,15 +174,22 @@ def octmnist_train_loader(batch_size, normalize = False):
             transforms.ToTensor(),
         ])
 
-    training_data = OCTMNIST(root=data_raw_dir, split='train', download=True, transform=transform)
+    if input_shape is not None:
+        training_data = OCTMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = input_shape)
+    else:
+        training_data = OCTMNIST(root=data_raw_dir, split='train', download=True, transform=transform)
 
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
                                 shuffle=True,
                                 pin_memory=True)
-    return training_loader
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 1
+    else:
+        return training_loader, 28, 1
 
-def octmnist_val_loader(batch_size, normalize = False):
+def octmnist_val_loader(batch_size, normalize = False, input_shape = None):
         
     if normalize:
         transform = transforms.Compose([
@@ -163,15 +201,21 @@ def octmnist_val_loader(batch_size, normalize = False):
             transforms.ToTensor(),
         ])
 
-    validation_data = OCTMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
+    if input_shape is not None:
+        validation_data = OCTMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = input_shape)
+    else:
+        validation_data = OCTMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
 
     validation_loader = DataLoader(validation_data,
                                 batch_size=batch_size,
                                 shuffle=True,
                                 pin_memory=True)
-    return validation_loader
+    if input_shape is not None:
+        return validation_loader, input_shape, 1
+    else:
+        return validation_loader, 28, 1
 
-def tissuemnist_train_loader(batch_size, normalize = False):
+def tissuemnist_train_loader(batch_size, normalize = False, input_shape = None):
             
     if normalize:
         transform = transforms.Compose([
@@ -182,16 +226,23 @@ def tissuemnist_train_loader(batch_size, normalize = False):
         transform = transforms.Compose([
             transforms.ToTensor(),
         ])
-
-    training_data = TissueMNIST(root=data_raw_dir, split='train', download=True, transform=transform)
+    
+    if input_shape is not None:
+        training_data = TissueMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = input_shape)
+    else:
+        training_data = TissueMNIST(root=data_raw_dir, split='train', download=True, transform=transform)
 
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
                                 shuffle=True,
                                 pin_memory=True)
-    return training_loader
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 1
+    else:
+        return training_loader, 28, 1
 
-def tissuemnist_val_loader(batch_size, normalize = False):
+def tissuemnist_val_loader(batch_size, normalize = False, input_shape = None):
                     
     if normalize:
         transform = transforms.Compose([
@@ -202,16 +253,23 @@ def tissuemnist_val_loader(batch_size, normalize = False):
         transform = transforms.Compose([
             transforms.ToTensor(),
         ])
-
-    validation_data = TissueMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
+    
+    if input_shape is not None:
+        validation_data = TissueMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = input_shape)
+    else:
+        validation_data = TissueMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
 
     validation_loader = DataLoader(validation_data,
                                 batch_size=batch_size,
                                 shuffle=True,
                                 pin_memory=True)
-    return validation_loader
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 1
+    else:
+        return validation_loader, 28, 1
 
-def pneumoniamnist_train_loader(batch_size, normalize = False, size = 28):
+def pneumoniamnist_train_loader(batch_size, normalize = False, input_shape = None):
                             
     if normalize:
         transform = transforms.Compose([
@@ -223,15 +281,22 @@ def pneumoniamnist_train_loader(batch_size, normalize = False, size = 28):
             transforms.ToTensor(),
         ])
 
-    training_data = PneumoniaMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = size)
+    if input_shape is not None:
+        training_data = PneumoniaMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = input_shape)
+    else:
+        training_data = PneumoniaMNIST(root=data_raw_dir, split='train', download=True, transform=transform)
 
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
                                 shuffle=True,
                                 pin_memory=True)
-    return training_loader  
 
-def pneumoniamnist_val_loader(batch_size, normalize = False, size = 28):
+    if input_shape is not None:
+        return training_loader, input_shape, 1
+    else:
+        return training_loader, 28, 1 
+
+def pneumoniamnist_val_loader(batch_size, normalize = False, input_shape = None):
                                     
     if normalize:
         transform = transforms.Compose([
@@ -243,23 +308,32 @@ def pneumoniamnist_val_loader(batch_size, normalize = False, size = 28):
             transforms.ToTensor(),
         ])
     
-    validation_data = PneumoniaMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = size)
+    if input_shape is not None:
+        validation_data = PneumoniaMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = input_shape)
+    else:
+        validation_data = PneumoniaMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
 
     validation_loader = DataLoader(validation_data,
                                 batch_size=batch_size,
                                 shuffle=True,
                                 pin_memory=True)
-    return validation_loader
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 1
+    else:
+        return validation_loader, 28, 1
 
-def fashion_mnist_train_loader(batch_size, normalize = False):
+def fashion_mnist_train_loader(batch_size, normalize = False, input_shape = None):
     
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
         ])
     
@@ -269,17 +343,23 @@ def fashion_mnist_train_loader(batch_size, normalize = False):
                                 batch_size=batch_size, 
                                 shuffle=True,
                                 pin_memory=True)
-    return training_loader
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 1
+    else:
+        return training_loader, 28, 1
 
-def fashion_mnist_val_loader(batch_size, normalize = False):
+def fashion_mnist_val_loader(batch_size, normalize = False, input_shape = None):
     
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
         ])
     
@@ -289,18 +369,24 @@ def fashion_mnist_val_loader(batch_size, normalize = False):
                                 batch_size=batch_size,
                                 shuffle=True,
                                 pin_memory=True)
-    return validation_loader
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 1
+    else:
+        return validation_loader, 28, 1
 
 
-def svhn_train_loader(batch_size, normalize = False):
+def svhn_train_loader(batch_size, normalize = False, input_shape = None):
         
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
     
@@ -310,17 +396,23 @@ def svhn_train_loader(batch_size, normalize = False):
                                 batch_size=batch_size, 
                                 shuffle=True,
                                 pin_memory=True)
-    return training_loader
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 3
+    else:
+        return training_loader, 32, 3
 
-def svhn_val_loader(batch_size, normalize = False):
+def svhn_val_loader(batch_size, normalize = False, input_shape = None):
             
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
     
@@ -330,7 +422,11 @@ def svhn_val_loader(batch_size, normalize = False):
                                 batch_size=batch_size,
                                 shuffle=True,
                                 pin_memory=True)
-    return validation_loader
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 3
+    else:
+        return validation_loader, 32, 3
 
 class MVTecDataset(Dataset):
 
@@ -381,17 +477,17 @@ class MVTecDatasetFull(Dataset):
         else:
             return img, 1
     
-def mvtec_toothbrush_train_loader(batch_size, normalize = False):
+def mvtec_toothbrush_train_loader(batch_size, normalize = False, input_shape = None):
             
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize((128,128)),
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
             transforms.ToTensor(),
             transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize((128,128)),
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
             transforms.ToTensor(),
         ])
     
@@ -401,19 +497,23 @@ def mvtec_toothbrush_train_loader(batch_size, normalize = False):
                                 batch_size=batch_size, 
                                 shuffle=True,
                                 pin_memory=True)
-    return training_loader
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 3
+    else:
+        return training_loader, 128, 3
 
-def mvtec_toothbrush_val_loader(batch_size, normalize = False, good = True):
+def mvtec_toothbrush_val_loader(batch_size, normalize = False, good = True, input_shape = None):
                 
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize((128,128)),
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
             transforms.ToTensor(),
             transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize((128,128)),
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
             transforms.ToTensor(),
         ])
     
@@ -423,18 +523,23 @@ def mvtec_toothbrush_val_loader(batch_size, normalize = False, good = True):
                                 batch_size=batch_size,
                                 shuffle=True,
                                 pin_memory=True)
-    return validation_loader
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 3
+    else:
+        return validation_loader, 128, 3
 
-def mvtec_bottle_train_loader(batch_size, normalize = False):
+def mvtec_bottle_train_loader(batch_size, normalize = False, input_shape = None):
         
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize((128,128)),
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
             transforms.ToTensor(),
             transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
             transforms.ToTensor(),
         ])
     
@@ -444,18 +549,23 @@ def mvtec_bottle_train_loader(batch_size, normalize = False):
                                 batch_size=batch_size, 
                                 shuffle=True,
                                 pin_memory=True)
-    return training_loader
-
-def mvtec_bottle_val_loader(batch_size, normalize = False, good = True):
+   
+    if input_shape is not None:
+        return training_loader, input_shape, 3
+    else:
+        return training_loader, 128, 3
+    
+def mvtec_bottle_val_loader(batch_size, normalize = False, good = True, input_shape = None):
                     
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize((128,128)),
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
             transforms.ToTensor(),
             transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
             transforms.ToTensor(),
         ])
     
@@ -465,17 +575,23 @@ def mvtec_bottle_val_loader(batch_size, normalize = False, good = True):
                                 batch_size=batch_size,
                                 shuffle=True,
                                 pin_memory=True)
-    return validation_loader
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 3
+    else:
+        return validation_loader, 128, 3
 
-def textile_train_loader(batch_size, normalize = False):
+def textile_train_loader(batch_size, normalize = False, input_shape = None):
         
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((32,32)),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((32,32)),
             transforms.ToTensor(),
         ])
     
@@ -485,17 +601,23 @@ def textile_train_loader(batch_size, normalize = False):
                                 batch_size=batch_size, 
                                 shuffle=True,
                                 pin_memory=True)
-    return training_loader
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 1
+    else:
+        return training_loader, 32, 1
 
-def textile_val_loader(batch_size, normalize = False, good = True):
+def textile_val_loader(batch_size, normalize = False, good = True, input_shape = None):
                     
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((32,32)),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((32,32)),
             transforms.ToTensor(),
         ])
     
@@ -505,20 +627,24 @@ def textile_val_loader(batch_size, normalize = False, good = True):
                                 batch_size=batch_size,
                                 shuffle=True,
                                 pin_memory=True)
-    return validation_loader
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 1
+    else:
+        return validation_loader, 32, 1
 
-def headct_train_loader(batch_size, normalize = False):
+def headct_train_loader(batch_size, normalize = False, input_shape = None):
 
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize((64,64)),
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
             transforms.ToTensor(),
             transforms.RandomHorizontalFlip(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize((64,64)),
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
             transforms.ToTensor(),
         ])
     
@@ -528,19 +654,23 @@ def headct_train_loader(batch_size, normalize = False):
                                 batch_size=batch_size, 
                                 shuffle=True,
                                 pin_memory=True)
-    return training_loader
+   
+    if input_shape is not None:
+        return training_loader, input_shape, 1
+    else:
+        return training_loader, 64, 1
 
-def headct_val_loader(batch_size, normalize = False):
+def headct_val_loader(batch_size, normalize = False, input_shape = None):
 
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize((64,64)),
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize((64,64)),
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
             transforms.ToTensor(),
         ])
     
@@ -550,68 +680,72 @@ def headct_val_loader(batch_size, normalize = False):
                                 batch_size=batch_size,
                                 shuffle=True,
                                 pin_memory=True)
-    return validation_loader
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 1
+    else:
+        return validation_loader, 64, 1
 
-def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True):
+def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None):
     if dataset_name == 'mnist':
         if mode == 'train':
-            return mnist_train_loader(batch_size, normalize), 28, 1
+            return mnist_train_loader(batch_size, normalize, size)
         elif mode == 'val':
-            return mnist_val_loader(batch_size, normalize), 28, 1
+            return mnist_val_loader(batch_size, normalize, size)
     elif dataset_name == 'chestmnist':
         if mode == 'train':
-            return chestmnist_train_loader(batch_size, normalize), 28, 1
+            return chestmnist_train_loader(batch_size, normalize, size)
         elif mode == 'val':
-            return chestmnist_val_loader(batch_size, normalize), 28, 1
+            return chestmnist_val_loader(batch_size, normalize, size)
     elif dataset_name == 'octmnist':
         if mode == 'train':
-            return octmnist_train_loader(batch_size, normalize), 28, 1
+            return octmnist_train_loader(batch_size, normalize, size)
         elif mode == 'val':
-            return octmnist_val_loader(batch_size, normalize), 28, 1
+            return octmnist_val_loader(batch_size, normalize, size)
     elif dataset_name == 'tissuemnist':
         if mode == 'train':
-            return tissuemnist_train_loader(batch_size, normalize), 28, 1
+            return tissuemnist_train_loader(batch_size, normalize, size)
         elif mode == 'val':
-            return tissuemnist_val_loader(batch_size, normalize), 28, 1
+            return tissuemnist_val_loader(batch_size, normalize, size)
     elif dataset_name == 'pneumoniamnist':
         if mode == 'train':
-            return pneumoniamnist_train_loader(batch_size, normalize), 28, 1
+            return pneumoniamnist_train_loader(batch_size, normalize, size)
         elif mode == 'val':
-            return pneumoniamnist_val_loader(batch_size, normalize), 28, 1
+            return pneumoniamnist_val_loader(batch_size, normalize, size)
     elif dataset_name == 'fashionmnist':
         if mode == 'train':
-            return fashion_mnist_train_loader(batch_size, normalize), 28, 1
+            return fashion_mnist_train_loader(batch_size, normalize, size)
         elif mode == 'val':
-            return fashion_mnist_val_loader(batch_size, normalize), 28, 1
+            return fashion_mnist_val_loader(batch_size, normalize, size)
     elif dataset_name == 'svhn':
         if mode == 'train':
-            return svhn_train_loader(batch_size, normalize), 32, 3
+            return svhn_train_loader(batch_size, normalize, size)
         elif mode == 'val':
-            return svhn_val_loader(batch_size, normalize), 32, 3
+            return svhn_val_loader(batch_size, normalize, size)
     elif dataset_name == 'cifar10':
         if mode == 'train':
-            return cifar_train_loader(batch_size, normalize), 32, 3
+            return cifar_train_loader(batch_size, normalize, size)
         elif mode == 'val':
-            return cifar_val_loader(batch_size, normalize), 32, 3
+            return cifar_val_loader(batch_size, normalize, size)
     elif dataset_name == 'bottle':
         if mode == 'train':
-            return mvtec_bottle_train_loader(batch_size, normalize), 128, 3
+            return mvtec_bottle_train_loader(batch_size, normalize, size)
         elif mode == 'val':
-            return mvtec_bottle_val_loader(batch_size, normalize, good), 128, 3
+            return mvtec_bottle_val_loader(batch_size, normalize, good, size)
     elif dataset_name == 'toothbrush':
         if mode == 'train':
-            return mvtec_toothbrush_train_loader(batch_size, normalize), 128, 3
+            return mvtec_toothbrush_train_loader(batch_size, normalize, size)
         elif mode == 'val':
-            return mvtec_toothbrush_val_loader(batch_size, normalize, good), 128, 3
+            return mvtec_toothbrush_val_loader(batch_size, normalize, good, size)
     elif dataset_name == 'textile':
         if mode == 'train':
-            return textile_train_loader(batch_size, normalize), 32, 1
+            return textile_train_loader(batch_size, normalize, size)
         elif mode == 'val':
-            return textile_val_loader(batch_size, normalize, good), 32, 1
+            return textile_val_loader(batch_size, normalize, good, size)
     elif dataset_name == 'headct':
         if mode == 'train':
-            return headct_train_loader(batch_size, normalize), 64, 1
+            return headct_train_loader(batch_size, normalize, size)
         elif mode == 'val':
-            return headct_val_loader(batch_size, normalize), 64, 1
+            return headct_val_loader(batch_size, normalize, size)
     else:
         raise ValueError('Dataset name not found.')

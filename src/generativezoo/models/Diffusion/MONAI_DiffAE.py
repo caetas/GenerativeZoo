@@ -15,16 +15,17 @@ from generative.inferers import DiffusionInferer
 from generative.networks.nets.diffusion_model_unet import DiffusionModelUNet
 from generative.networks.schedulers.ddim import DDIMScheduler
 from config import models_dir, figures_dir
+import wandb
 
 class DiffAE(nn.Module):
-    def __init__(self, embedding_dimension = 64, num_train_timesteps = 1000, inference_timesteps = 100, lr = 1e-5, num_epochs = 50, in_channels = 3):
+    def __init__(self, embedding_dimension = 64, num_train_timesteps = 1000, inference_timesteps = 100, lr = 1e-5, n_epochs = 50, in_channels = 3, model_channels = (64,128,256), attention_levels = (False, True, True), num_res_blocks = 1, sample_and_save_freq = 50):
         '''Diffusion Autoencoder model
         Args:
             embedding_dimension (int): the dimension of the latent space
             num_train_timesteps (int): the number of timesteps to train the diffusion model
             inference_timesteps (int): the number of timesteps to use for inference
             lr (float): the learning rate for the optimizer
-            num_epochs (int): the number of epochs to train the model
+            n_epochs (int): the number of epochs to train the model
         '''
         super(DiffAE, self).__init__()
         self.embedding_dimension = embedding_dimension
@@ -36,9 +37,9 @@ class DiffAE(nn.Module):
                     spatial_dims=2,
                     in_channels=in_channels,
                     out_channels=in_channels,
-                    num_channels=(64, 128, 256),
-                    attention_levels=(False, True, True),
-                    num_res_blocks=1,
+                    num_channels=model_channels,
+                    attention_levels=attention_levels,
+                    num_res_blocks=num_res_blocks,
                     num_head_channels=64,
                     with_conditioning=True,
                     cross_attention_dim=1,
@@ -50,7 +51,8 @@ class DiffAE(nn.Module):
         self.inferer = DiffusionInferer(self.scheduler)
         self.inference_timesteps = inference_timesteps
         self.lr = lr
-        self.num_epochs = num_epochs
+        self.n_epochs = n_epochs
+        self.sample_and_save_freq = sample_and_save_freq
 
     def forward(self, xt, x_cond, t):
         '''Forward pass of the model
@@ -66,11 +68,12 @@ class DiffAE(nn.Module):
         pred = self.unet(x=xt, context = latent, timesteps = t)
         return pred, latent
     
-    def generate_samples(self, val_loader, name = "generic"):
+    def generate_samples(self, val_loader, name = "generic", train = False):
         '''Generate samples from the model
         Args:
             val_loader (torch.utils.data.DataLoader): the validation data loader
             name (str): the name of the file to save the samples
+            train (bool): whether we are training the model or just sampling
         '''
         self.eval()
         self.scheduler.set_timesteps(num_inference_steps=self.inference_timesteps)
@@ -84,11 +87,14 @@ class DiffAE(nn.Module):
         reconstruction = reconstruction*0.5 + 0.5
 
         grid = torchvision.utils.make_grid(torch.cat([images[:8],reconstruction[:8]]), nrow=8, padding=2, normalize=False, scale_each=False, pad_value=0)
-        plt.figure(figsize=(15,5))
+        fig = plt.figure(figsize=(15,5))
         plt.imshow(grid.detach().cpu().numpy().transpose(1,2,0))
         plt.axis('off')
-        plt.savefig(os.path.join(figures_dir, f"DiffAE_samples_{name}.png"))
-        plt.close()
+        if train:
+            wandb.log({"Samples": fig})
+        else:
+            plt.show()
+        plt.close(fig)
 
     def evaluate(self, val_loader):
         '''Evaluate the model on the validation set
@@ -111,11 +117,12 @@ class DiffAE(nn.Module):
         val_loss /= len(val_loader)
         return val_loss
     
-    def train_model(self, train_loader, val_loader):
+    def train_model(self, train_loader, val_loader, name = 'mnist'):
         '''Train the model
         Args:
             train_loader (torch.utils.data.DataLoader): the training data loader
             val_loader (torch.utils.data.DataLoader): the validation data loader
+            name (str): the name of the file to save the samples
         '''
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
 
@@ -123,11 +130,11 @@ class DiffAE(nn.Module):
         val_losses = []
         best_loss = np.inf
 
-        epoch_bar = trange(self.num_epochs)
+        epoch_bar = trange(self.n_epochs)
         for epoch in epoch_bar:
             self.train()
             train_loss = 0.0
-            for batch in tqdm(train_loader, leave=False, desc = f"Epoch {epoch+1}/{self.num_epochs}"):
+            for batch in tqdm(train_loader, leave=False, desc = f"Epoch {epoch+1}/{self.n_epochs}"):
                 images = batch[0].to(self.torch_device)
                 noise = torch.randn_like(images).to(self.torch_device)
                 timesteps = torch.randint(0, self.inferer.scheduler.num_train_timesteps, (images.size(0),)).to(self.torch_device).long()
@@ -141,17 +148,19 @@ class DiffAE(nn.Module):
             train_loss /= len(train_loader)
             train_losses.append(train_loss)
             epoch_bar.set_description(f"Train Loss: {train_loss}")
+            wandb.log({"Train Loss": train_loss}, step = epoch)
 
-            if val_loader and ((epoch + 1) % 100 == 0 or epoch == 0):
+            if val_loader and ((epoch + 1) % self.sample_and_save_freq == 0 or epoch == 0):
                 val_loss = self.evaluate(val_loader)
                 val_losses.append(val_loss)
                 epoch_bar.set_description(f"Train Loss: {train_loss} - Val Loss: {val_loss}")
-                self.generate_samples(val_loader, name = f"epoch_{str(epoch)}")
+                self.generate_samples(val_loader, name = f"epoch_{str(epoch)}", train = True)
+                wandb.log({"Val Loss": val_loss}, step = epoch)
 
-                # save model if it has the best val loss
-                if val_loss < best_loss:
-                    best_loss = val_loss
-                    torch.save(self.state_dict(), os.path.join(models_dir, "DiffAE_best_model_brains.pt"))
+            # save model if it has the best val loss
+            if train_loss < best_loss:
+                best_loss = train_loss
+                torch.save(self.state_dict(), os.path.join(models_dir, f"DiffAE_{name}.pt"))
 
         # plot losses
         plt.figure(figsize=(15,5))

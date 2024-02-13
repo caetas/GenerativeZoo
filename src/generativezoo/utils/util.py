@@ -136,6 +136,27 @@ def parse_args_CDDPM():
     argparser.add_argument('--ws_test', type = float, nargs='+', default = [0.0, 0.5, 2.0], help='guidance weights for test')
     return argparser.parse_args()
 
+def parse_args_DiffAE():
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--train', action='store_true', default=False, help='train model')
+    argparser.add_argument('--manipulate', action='store_true', default=False, help='manipulate latents')
+    argparser.add_argument('--batch_size', type=int, default=16, help='batch size')
+    argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
+    argparser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
+    argparser.add_argument('--timesteps', type=int, default=1000, help='number of timesteps')
+    argparser.add_argument('--sample_timesteps', type=int, default=100, help='number of timesteps')
+    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['textile','toothbrush','bottle','mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn'])
+    argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
+    argparser.add_argument('--embedding_dim', type=int, default=512, help='embedding dimension')
+    argparser.add_argument('--model_channels', type=int, nargs='+', default=[64, 128, 256], help='model channels')
+    argparser.add_argument('--attention_levels', type=bool, nargs='+', default=[False, True, True], help='attention levels (must match len of model_channels)')
+    argparser.add_argument('--num_res_blocks', type=int, default=1, help='number of res blocks')
+    argparser.add_argument('--sample_and_save_freq', type=int, default=10, help='sample and save frequency')
+    args = argparser.parse_args()
+    args.model_channels = tuple(args.model_channels)
+    args.attention_levels = tuple(args.attention_levels)
+    return args
+
 def parse_args_CycleGAN():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--train', action='store_true', default=False, help='train model')
