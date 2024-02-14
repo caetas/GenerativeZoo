@@ -1,4 +1,6 @@
-#@title Defining a time-dependent score-based model (double click to expand or collapse)
+###################################################################################################################
+####### Code based on https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing #######
+###################################################################################################################
 
 import torch
 import torch.nn as nn
@@ -12,7 +14,7 @@ from scipy import integrate
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
 from sklearn.metrics import roc_auc_score
-import mlflow
+import wandb
 
 class GaussianFourierProjection(nn.Module):
   """Gaussian random features for encoding time steps."""  
@@ -158,7 +160,7 @@ def diffusion_coeff(t, sigma, device):
   Returns:
     The vector of diffusion coefficients.
   """
-  return torch.tensor(sigma**t, device=device)
+  return torch.tensor((sigma**t).clone().detach(), device=device)
 
 def loss_fn(model, x, marginal_prob_std, eps=1e-5):
   """The loss function for training score-based generative models.
@@ -268,7 +270,7 @@ def pc_sampler(score_model,
   step_size = time_steps[0] - time_steps[1]
   x = init_x
   with torch.no_grad():
-    for time_step in tqdm(time_steps, desc = 'PC sampling'):      
+    for time_step in tqdm(time_steps, desc = 'PC sampling', leave=False):      
       batch_time_step = torch.ones(batch_size, device=device) * time_step
       # Corrector step (Langevin MCMC)
       grad = score_model(x, batch_time_step)
@@ -342,164 +344,195 @@ def ode_sampler(score_model,
 
   return x
 
-@torch.no_grad()
-def outlier_detection(checkpoint_dir, val_loader, out_loader, device, sigma = 25.0, eps = 1e-5, channels=1, input_size=28):
-    """Detect outliers with a score-based model.
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'VanillaSGM')):
+    os.makedirs(os.path.join(models_dir, 'VanillaSGM'))
 
+class VanillaSGM(nn.Module):
+  def __init__(self, device, sigma = 25.0, n_epochs = 50, lr = 1e-4, model_channels=[32, 64, 128, 256], embed_dim=256, in_channels=1, input_size=28, dataset='mnist', sample_and_save_freq=10, num_steps = 1000, snr = 0.16, sampler_type = 'PC', atol = 1e-6, rtol = 1e-6, eps = 1e-3):
+    '''
+    Vanilla SGM model
     Args:
-        checkpoint_dir: The directory that contains the checkpoint.
-        val_loader: A PyTorch dataloader that provides validation data.
-        out_loader: A PyTorch dataloader that provides outlier data.
-        device: A PyTorch device object.
-    """
-    marginal_prob_std_fn = functools.partial(marginal_prob_std, sigma=sigma, device=device)
-    diffusion_coeff_fn = functools.partial(diffusion_coeff, sigma=sigma, device=device)
-    model = ScoreNet(marginal_prob_std_fn, in_channels=channels, input_size=input_size).to(device)
-    model.load_state_dict(torch.load(checkpoint_dir))
-    model.eval()
+      device: A PyTorch device object.
+      sigma: The $\sigma$ in our SDE.
+      n_epochs: The number of training epochs.
+      lr: The learning rate.
+      model_channels: The number of channels for feature maps of each resolution.
+      embed_dim: The dimensionality of Gaussian random feature embeddings.
+      in_channels: The number of input channels.
+      input_size: The size of the input image.
+      dataset: The dataset to be used for training
+      sample_and_save_freq: The frequency at which to sample and save the model
+      num_steps: The number of sampling steps.
+      snr: The signal-to-noise ratio for the PC sampler.
+      sampler_type: The type of sampler. One of 'EM', 'PC', and 'ODE'.
+      atol: Tolerance of absolute errors for the ODE sampler.
+      rtol: Tolerance of relative errors for the ODE sampler.
+      eps: The smallest time step for numerical stability.
+    '''
+    super(VanillaSGM, self).__init__()
+    self.device = device
+    self.sigma = sigma
+    self.n_epochs = n_epochs
+    self.lr = lr
+    self.model_channels = model_channels
+    self.embed_dim = embed_dim
+    self.in_channels = in_channels
+    self.input_size = input_size
+    self.marginal_prob_std_fn = functools.partial(marginal_prob_std, sigma=sigma, device=device)
+    self.diffusion_coeff_fn = functools.partial(diffusion_coeff, sigma=sigma, device=device)
+    self.model = ScoreNet(self.marginal_prob_std_fn, self.model_channels, self.embed_dim, in_channels=in_channels, input_size=input_size).to(self.device)
+    self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+    self.dataset = dataset
+    self.sample_and_save_freq = sample_and_save_freq
+    self.num_steps = num_steps
+    self.snr = snr
+    self.sampler_type = sampler_type
+    self.atol = atol
+    self.rtol = rtol
+    self.eps = eps
+
+  def train_model(self, dataloader):
+    '''
+    Train the Vanilla SGM model
+    Args:
+      dataloader: A PyTorch dataloader that provides training data.
+    '''
+    epoch_bar = trange(self.n_epochs, desc='Average loss: N/A')
+    best_loss = np.inf
+
+    create_checkpoint_dir()
+
+    for epoch in epoch_bar:
+      avg_loss = 0.0
+      
+      for x,_ in tqdm(dataloader, desc='Batches', leave=False):
+        x = x.to(self.device)
+
+        self.optimizer.zero_grad()
+        loss = loss_fn(self.model, x, self.marginal_prob_std_fn)
+
+        loss.backward()
+        self.optimizer.step()
+
+        avg_loss += loss.item()*x.shape[0]
+
+      epoch_bar.set_description('Average Loss: {:5f}'.format(avg_loss / len(dataloader.dataset)))
+      wandb.log({'loss': avg_loss / len(dataloader.dataset)}, step = epoch)
+
+      if avg_loss < best_loss:
+        best_loss = avg_loss
+        torch.save(self.model.state_dict(), os.path.join(models_dir,'VanillaSGM', 'VanillaSGM_' + self.dataset + '.pt'))
+
+      if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
+
+        samples = pc_sampler( self.model,
+                              self.marginal_prob_std_fn,
+                              self.diffusion_coeff_fn,
+                              batch_size=16,
+                              num_steps=self.num_steps,
+                              snr=self.snr,
+                              device=self.device,
+                              channels=self.in_channels,
+                              input_size=self.input_size)
+        
+        samples = samples*0.5 + 0.5
+        samples = samples.clamp(0.0, 1.0)
+        sample_grid = make_grid(samples, nrow=int(np.sqrt(16)))
+
+        fig = plt.figure(figsize=(10, 10))
+        plt.imshow(sample_grid.permute(1, 2, 0).cpu().numpy(), vmin=0.0, vmax=1.0)
+        plt.axis('off')
+        wandb.log({'samples': fig}, step = epoch)
+        plt.close(fig)
+  
+  @torch.no_grad()
+  def sample(self, num_samples=64):
+    '''
+    Sample from the Vanilla SGM model
+    Args:
+      num_samples: The number of samples to generate.
+      num_steps: The number of sampling steps.
+      snr: The signal-to-noise ratio for the PC sampler.
+      sampler_type: The type of sampler. One of 'EM', 'PC', and 'ODE'.
+    '''
+    self.model.eval()
+    if self.sampler_type == 'EM':
+      samples = Euler_Maruyama_sampler(self.model, 
+                                        self.marginal_prob_std_fn,
+                                        self.diffusion_coeff_fn,
+                                        batch_size=num_samples, 
+                                        num_steps=self.num_steps, 
+                                        device=self.device,
+                                        eps=self.eps,
+                                        channels=self.in_channels,
+                                        input_size=self.input_size)
+    elif self.sampler_type == 'PC':
+      samples = pc_sampler(self.model, 
+                            self.marginal_prob_std_fn,
+                            self.diffusion_coeff_fn,
+                            batch_size=num_samples, 
+                            num_steps=self.num_steps, 
+                            snr=self.snr, 
+                            device=self.device,
+                            eps=1e-3,
+                            channels=self.in_channels,
+                            input_size=self.input_size)
+      
+    elif self.sampler_type == 'ODE':
+      samples = ode_sampler(self.model,
+                            self.marginal_prob_std_fn,
+                            self.diffusion_coeff_fn,
+                            batch_size=num_samples,
+                            atol=self.atol,
+                            rtol=self.rtol,
+                            device=self.device,
+                            z=None,
+                            eps=self.eps,
+                            channels=self.in_channels,
+                            input_size=self.input_size)
+
+    samples = samples*0.5 + 0.5  
+    samples = samples.clamp(0.0, 1.0)
+    sample_grid = make_grid(samples, nrow=int(np.sqrt(num_samples)))
+    fig = plt.figure(figsize=(10, 10))
+    plt.imshow(sample_grid.permute(1, 2, 0).cpu().numpy(), vmin=0.0, vmax=1.0)
+    plt.axis('off')
+    plt.show()
+
+  @torch.no_grad()
+  def outlier_detection(self, val_loader, out_loader):
+    '''
+    Detect outliers with a score-based model.
+    Args:
+      val_loader: A PyTorch dataloader that provides validation data.
+      out_loader: A PyTorch dataloader that provides outlier data.
+    '''
+    self.model.eval()
     val_scores = []
     for x,_ in val_loader:
-        x = x.to(device)
-        #absolute value of the score_model output
-        #score = torch.mean(torch.abs(model(x, 0.001*torch.ones(x.shape[0], device=device))), dim=(1,2,3))
-        score = outlier_score(model, x, marginal_prob_std_fn)
-        val_scores.append(score.cpu().numpy())
+      x = x.to(self.device)
+      score = outlier_score(self.model, x, self.marginal_prob_std_fn)
+      val_scores.append(score.cpu().numpy())
     val_scores = np.concatenate(val_scores, axis=0)
     out_scores = []
     for x,_ in out_loader:
-        x = x.to(device)
-        #score = torch.mean(torch.abs(model(x, 0.001*torch.ones(x.shape[0], device=device))), dim=(1,2,3))
-        score = outlier_score(model, x, marginal_prob_std_fn)  
-        out_scores.append(score.cpu().numpy())
+      x = x.to(self.device)
+      score = outlier_score(self.model, x, self.marginal_prob_std_fn)  
+      out_scores.append(score.cpu().numpy())
     out_scores = np.concatenate(out_scores, axis=0)
-    # Compute the AUC score.
     y_true = np.concatenate([np.zeros_like(val_scores), np.ones_like(out_scores)], axis=0)
     y_score = np.concatenate([val_scores, out_scores], axis=0)
     auc_score = roc_auc_score(y_true, y_score)
     if auc_score < 0.2:
       auc_score = 1. - auc_score
-    print('AUC score: {:.10f}'.format(auc_score))
+    print('AUC score: {:.4f}'.format(auc_score))
     plt.figure(figsize=(10, 5))
     plt.hist(val_scores, bins=50, alpha=0.5, label='In-distribution')
     plt.hist(out_scores, bins=50, alpha=0.5, label='Out-of-distribution')
     plt.xlabel('Mean Score')
     plt.ylabel('Counts')
     plt.legend()
-    plt.show()
-
-def train(dataloader, device, sigma = 25.0, n_epochs = 50, lr = 1e-4, input_size = 28, in_channels = 1, model_name = 'VanillaSGM'):
-    """Train a score-based model.
-    
-    Args:
-        dataloader: A PyTorch dataloader that provides training data.
-        device: A PyTorch device object.
-        n_epochs: The number of training epochs.
-        lr: The learning rate.
-    """
-    mlflow.log_param('sigma', sigma)
-    mlflow.log_param('sigma', sigma)
-    mlflow.log_param('n_epochs', n_epochs)
-    mlflow.log_param('lr', lr)
-    mlflow.log_param('input_size', input_size)
-    mlflow.log_param('in_channels', in_channels)
-    marginal_prob_std_fn = functools.partial(marginal_prob_std, sigma=sigma, device=device)
-    diffusion_coeff_fn = functools.partial(diffusion_coeff, sigma=sigma, device=device)
-    model = ScoreNet(marginal_prob_std_fn, in_channels=in_channels, input_size=input_size).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    epochs_range = trange(n_epochs, desc='Average loss: N/A')
-    best_loss = np.inf
-    for epoch in epochs_range:
-      avg_loss = 0.0
-      num_items = len(dataloader.dataset)
-      for x,_ in dataloader:
-          x = x.to(device)
-          optimizer.zero_grad()
-          loss = loss_fn(model, x, marginal_prob_std_fn)
-          loss.backward()
-          optimizer.step()
-          avg_loss += loss.item()*x.shape[0]
-      epochs_range.set_description('Average Loss: {:5f}'.format(avg_loss / num_items))
-      mlflow.log_metric('loss', avg_loss / num_items, epoch)
-      if avg_loss < best_loss:
-          best_loss = avg_loss
-          torch.save(model.state_dict(), os.path.join(models_dir, model_name + '.pt'))
-          mlflow.pytorch.log_state_dict(model.state_dict(),model_name)
-      if epoch % 10 == 0:
-        samples = pc_sampler( model, 
-                              marginal_prob_std_fn,
-                              diffusion_coeff_fn,
-                              batch_size=16, 
-                              num_steps=1000, 
-                              snr=0.16, 
-                              device=device,
-                              channels=in_channels,
-                              input_size=input_size)
-        samples = samples.clamp(0.0, 1.0)
-        sample_grid = make_grid(samples, nrow=int(np.sqrt(16)))
-
-        plt.figure(figsize=(10, 10))
-        plt.imshow(sample_grid.permute(1, 2, 0).cpu().numpy(), vmin=0.0, vmax=1.0)
-        plt.axis('off')
-        mlflow.log_figure(plt.gcf(), 'samples_epoch_' + str(epoch) + '.png')
-        #plt.savefig(os.path.join(models_dir, model_name + '_epoch_' + str(epoch) + '.png'))
-        plt.close()
-    mlflow.end_run()
-    return model
-
-def sample(checkpoint_dir, sampler_type, device, sigma = 25.0, num_samples=64, num_steps=500, snr=0.16, channels=1, input_size=28):
-    """Sample from a score-based model.
-
-    Args:
-    checkpoint_dir: The directory that contains the checkpoint.
-    sampler_type: The type of sampler. One of 'Euler-Maruyama', 'PC', and 'ODE'.
-    device: A PyTorch device object.
-    num_samples: The number of samples to generate.
-    num_steps: The number of sampling steps.
-    snr: The signal-to-noise ratio for the PC sampler.
-    """
-    marginal_prob_std_fn = functools.partial(marginal_prob_std, sigma=sigma, device=device)
-    diffusion_coeff_fn = functools.partial(diffusion_coeff, sigma=sigma, device=device)
-    model = ScoreNet(marginal_prob_std_fn, in_channels=channels, input_size=input_size).to(device)
-    model.load_state_dict(torch.load(checkpoint_dir))
-    model.eval()
-    if sampler_type == 'Euler-Maruyama':
-        samples = Euler_Maruyama_sampler(model, 
-                                        marginal_prob_std_fn,
-                                        diffusion_coeff_fn,
-                                        batch_size=num_samples, 
-                                        num_steps=num_steps, 
-                                        device=device,
-                                        channels=channels,
-                                        input_size=input_size)
-        
-    elif sampler_type == 'PC':
-        samples = pc_sampler(model, 
-                                marginal_prob_std_fn,
-                                diffusion_coeff_fn,
-                                batch_size=num_samples, 
-                                num_steps=num_steps, 
-                                snr=snr, 
-                                device=device,
-                                channels=channels,
-                                input_size=input_size)
-
-    elif sampler_type == 'ODE':
-        samples = ode_sampler(model,
-                                marginal_prob_std_fn,
-                                diffusion_coeff_fn,
-                                batch_size=num_samples, 
-                                atol=1e-6, 
-                                rtol=1e-6, 
-                                device=device, 
-                                z=None,
-                                channels=channels,
-                                input_size=input_size)
-    
-        ## Sample visualization.
-    samples = samples.clamp(0.0, 1.0)
-    sample_grid = make_grid(samples, nrow=int(np.sqrt(num_samples)))
-
-    plt.figure(figsize=(10, 10))
-    plt.imshow(sample_grid.permute(1, 2, 0).cpu().numpy(), vmin=0.0, vmax=1.0)
-    plt.axis('off')
     plt.show()

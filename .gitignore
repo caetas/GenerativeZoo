@@ -123,8 +123,7 @@ data/external/*
 data/raw/*
 src/generativezoo/garbage/
 src/generativezoo/wandb/
-# models directory
-/models/
+
 # test data directory
 test/data
 
