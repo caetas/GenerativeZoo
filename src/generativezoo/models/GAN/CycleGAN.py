@@ -1,3 +1,7 @@
+#######################################################################################################################################
+########### Code based on https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/cyclegan/cyclegan.py #############
+#######################################################################################################################################
+
 import torch.nn as nn
 import torch.nn.functional as F
 import itertools

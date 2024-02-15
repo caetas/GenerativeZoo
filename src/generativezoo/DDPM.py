@@ -1,8 +1,7 @@
 import torch
 from data.Dataloaders import *
-from models.Diffusion.Diffusion import *
+from models.DDPM.VanillaDDPM import *
 from utils.util import parse_args_DDPM
-import subprocess
 import wandb
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -10,10 +9,9 @@ args = parse_args_DDPM()
 normalize = True
 
 if args.train:
-     subprocess.run(['wandb', 'login'])
      dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize)
      print(args.channel_scale_factors)
-     model = DDPM(device, args, n_features=args.n_features, init_channels=args.init_channels, channel_scale_factors=args.channel_scale_factors, in_channels=channels, image_size=input_size)
+     model = VanillaDDPM(device, args, n_features=args.n_features, init_channels=args.init_channels, channel_scale_factors=args.channel_scale_factors, in_channels=channels, image_size=input_size)
      
      wandb.init(project='DDPM',
                 
@@ -41,13 +39,13 @@ if args.train:
 
 elif args.sample:
      _, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize)
-     model = DDPM(device, args, n_features=args.n_features, init_channels=args.init_channels, channel_scale_factors=args.channel_scale_factors, in_channels=channels, image_size=input_size)
+     model = VanillaDDPM(device, args, n_features=args.n_features, init_channels=args.init_channels, channel_scale_factors=args.channel_scale_factors, in_channels=channels, image_size=input_size)
      model.denoising_model.load_state_dict(torch.load(args.checkpoint))
      model.sample(args.n_samples)
 
 elif args.outlier_detection:
      dataloader_a, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize)
-     model = DDPM(device, args, n_features=args.n_features, init_channels=args.init_channels, channel_scale_factors=args.channel_scale_factors, in_channels=channels, image_size=input_size)
+     model = VanillaDDPM(device, args, n_features=args.n_features, init_channels=args.init_channels, channel_scale_factors=args.channel_scale_factors, in_channels=channels, image_size=input_size)
      model.denoising_model.load_state_dict(torch.load(args.checkpoint))
      dataloader_b, input_size_b, channels_b = pick_dataset(args.out_dataset, 'val', args.batch_size, normalize=normalize, good = False)
      model.outlier_detection(dataloader_a,dataloader_b, args.dataset, args.out_dataset)

@@ -1,12 +1,7 @@
 import torch
-from torchvision.transforms import Compose, Lambda, ToPILImage
-from matplotlib import pyplot as plt
-import numpy as np
 from data.Dataloaders import *
-from models.Diffusion.ConditionalDiffusion import *
+from models.DDPM.ConditionalDDPM import *
 from utils.util import parse_args_CDDPM
-from config import data_raw_dir, models_dir
-import subprocess
 import wandb
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -16,7 +11,6 @@ normalize = True
 
 if args.train:
     train_dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize)
-    subprocess.run(['wandb', 'login'])
     wandb.init(project='CDDPM',
                 config={
                     'dataset': args.dataset,

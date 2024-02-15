@@ -17,6 +17,7 @@ The Conditional Variational Autoencoder (Conditional VAE) is an extension of the
 | `--checkpoint`  | Checkpoint path                       | `None`  |                                                    |
 | `--num_samples` | Number of samples                     | `16`    |                                                    |
 | `--n_classes` | Number of classes on dataset                    | `10`    |                                                    |
+| `--sample_and_save_frequency`| sample and save frequency            | `5`       |                                                                 |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

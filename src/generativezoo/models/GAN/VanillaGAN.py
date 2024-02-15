@@ -1,3 +1,7 @@
+###################################################################################################
+### Code based onhttps://github.com/TeeyoHuang/conditional-GAN/blob/master/conditional_DCGAN.py ###
+###################################################################################################
+
 from torch import nn
 import torch
 import torch.nn.functional as F
@@ -9,9 +13,11 @@ import numpy as np
 from config import models_dir
 import os
 
-##########################################################################################
-### https://github.com/TeeyoHuang/conditional-GAN/blob/master/conditional_DCGAN.py     ###
-##########################################################################################
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'VanillaGAN')):
+    os.makedirs(os.path.join(models_dir, 'VanillaGAN'))
 
 def weights_init_normal(m):
     classname = m.__class__.__name__
@@ -78,7 +84,7 @@ class Discriminator(nn.Module):
         return x
     
 class VanillaGAN(nn.Module):
-    def __init__(self, n_epochs, device, latent_dim, d=128, channels=3, lr = 0.0002, beta1 = 0.5, beta2 = 0.999, img_size = 32, sample_interval = 5):
+    def __init__(self, n_epochs, device, latent_dim, d=128, channels=3, lr = 0.0002, beta1 = 0.5, beta2 = 0.999, img_size = 32, sample_and_save_freq = 5, dataset = 'mnist'):
         super(VanillaGAN, self).__init__()
         self.n_epochs = n_epochs
         self.device = device
@@ -91,9 +97,10 @@ class VanillaGAN(nn.Module):
         self.beta1 = beta1
         self.beta2 = beta2
         self.img_size = img_size
-        self.sample_interval = sample_interval
+        self.sample_and_save_freq = sample_and_save_freq
         self.generator.apply(weights_init_normal)
         self.discriminator.apply(weights_init_normal)
+        self.dataset = dataset
     
     def train_model(self, dataloader):
         # Loss function
@@ -105,6 +112,8 @@ class VanillaGAN(nn.Module):
 
         epochs_bar = trange(self.n_epochs, desc = "Loss: ----", leave = True)
         best_loss = np.inf
+
+        create_checkpoint_dir()
 
         for epoch in epochs_bar:
 
@@ -166,9 +175,9 @@ class VanillaGAN(nn.Module):
             
             if acc_g_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_g_loss/len(dataloader.dataset)
-                torch.save(self.generator.state_dict(), os.path.join(models_dir, "VanillaGAN_Generator.pt"))
+                torch.save(self.generator.state_dict(), os.path.join(models_dir, 'VanillaGAN', f"VanGAN_{self.dataset}.pt"))
 
-            if epoch % self.sample_interval == 0:
+            if epoch % self.sample_and_save_freq == 0:
                 # create row of n_classes images
                 z = torch.randn(16, self.latent_dim, 1, 1).to(self.device)
                 gen_imgs = self.generator(z)

@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-from tqdm import trange
+from tqdm import trange, tqdm
 import torchvision
 from matplotlib import pyplot as plt
 import numpy as np
@@ -9,8 +9,14 @@ import os
 from config import figures_dir, models_dir
 import wandb
 
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'ConditionalVAE')):
+    os.makedirs(os.path.join(models_dir, 'ConditionalVAE'))
+
 class ConditionalVAE(nn.Module):
-    def __init__(self, input_shape, input_channels, latent_dim, num_classes, device, hidden_dims = None, lr = 5e-3, batch_size = 64):
+    def __init__(self, input_shape, input_channels, latent_dim, num_classes, device, hidden_dims = None, lr = 5e-3, batch_size = 64, sample_and_save_freq = 5, dataset = 'mnist'):
         '''Conditional VAE model
         Args:
         input_shape: int, input shape of the image
@@ -21,6 +27,8 @@ class ConditionalVAE(nn.Module):
         hidden_dims: list, list of integers with the number of channels of the hidden layers, if none it will be [32, 64, 128, 256, 512]
         lr: float, learning rate for the optimizer
         batch_size: int, batch size for the training
+        sample_and_save_freq: int, frequency in epochs to generate some samples
+        dataset: str, name of dataset
         '''
         super(ConditionalVAE, self).__init__()
 
@@ -32,6 +40,8 @@ class ConditionalVAE(nn.Module):
         self.lr = lr
         self.batch_size = batch_size
         self.device = device
+        self.sample_and_save_freq = sample_and_save_freq
+        self.dataset = dataset
 
         self.embed_class = nn.Linear(num_classes, self.input_shape**2)
         self.embed_data = nn.Conv2d(self.input_channels, self.input_channels, kernel_size=1)
@@ -210,9 +220,9 @@ class ConditionalVAE(nn.Module):
         if title:
             plt.title(title)
         if train:
-            wandb.log({title: fig})
+            wandb.log({'Samples': fig})
         else:
-            plt.savefig(os.path.join(figures_dir, f"CVAE_{title}.png"))
+            plt.show()
         plt.close(fig)
         return grid
     
@@ -226,9 +236,14 @@ class ConditionalVAE(nn.Module):
         optimizer = torch.optim.Adam(self.parameters(), lr = self.lr)
         self.train()
         epochs_bar = trange(epochs)
+
+        create_checkpoint_dir()
+
+        best_loss = np.inf
+
         for epoch in epochs_bar:
             acc_loss = 0
-            for x, y in train_loader:
+            for x, y in tqdm(train_loader, leave=False, desc='Batches'):
                 x = x.to(self.device)
                 y = self.one_hot_encode(y).float().to(self.device)
                 recon_x, mu, logvar = self(x, y)
@@ -240,6 +255,10 @@ class ConditionalVAE(nn.Module):
             epochs_bar.set_description(f"Loss: {acc_loss/len(train_loader.dataset):.8f}")
             epochs_bar.refresh()
             wandb.log({"loss": acc_loss/len(train_loader.dataset)})
-            if epoch % 5 == 0:
+            if epoch % self.sample_and_save_freq == 0:
                 self.create_grid(title=f"Epoch_{epoch}", train = True)
+            
+            if acc_loss<best_loss:
+                best_loss = acc_loss
+                torch.save(self.state_dict(), os.path.join(models_dir,'ConditionalVAE', f"CondVAE_{self.dataset}.pt"))
         

@@ -394,7 +394,7 @@ def plot_samples(samples):
           ax.axis('off')
      plt.show()
 
-class DDPM(nn.Module):
+class VanillaDDPM(nn.Module):
     def __init__(self, device, args, n_features, image_size, init_channels=None, out_channels=None, channel_scale_factors=(1, 2, 4, 8), in_channels=3, with_time_emb=True, resnet_block_groups=8, use_convnext=True, convnext_scale_factor=2):
         super().__init__()
         self.reverse_transform = Compose([

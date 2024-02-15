@@ -1,15 +1,13 @@
-from models.Diffusion.MONAI_DiffAE import DiffAE
+from models.DDPM.MONAI_DiffAE import DiffAE
 import torch
 from data.Dataloaders import *
 from utils.util import parse_args_DiffAE
-import subprocess
 import wandb
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 args = parse_args_DiffAE()
 
 if args.train:
-    subprocess.run(['wandb', 'login'])
     train_dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=True, size=64)
     val_dataloader, _, _ = pick_dataset(args.dataset, 'val', args.batch_size, normalize=True, size=64)
     wandb.init(project='DiffAE',

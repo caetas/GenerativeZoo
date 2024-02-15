@@ -1,3 +1,7 @@
+##############################################################################################################
+########### Code based on https://github.com/AntixK/PyTorch-VAE/blob/master/models/vanilla_vae.py ############
+##############################################################################################################
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -8,6 +12,12 @@ import numpy as np
 import os
 from config import figures_dir, models_dir
 import wandb
+
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'AdversarialVAE')):
+    os.makedirs(os.path.join(models_dir, 'AdversarialVAE'))
 
 class VanillaVAE(nn.Module):
     def __init__(self, input_shape, input_channels, latent_dim, hidden_dims = None, lr = 5e-3, batch_size = 64):
@@ -149,7 +159,7 @@ class Discriminator(nn.Module):
         return loss(x, y)
     
 class AdversarialVAE(nn.Module):
-    def __init__(self, input_shape, device, input_channels, latent_dim, n_epochs, hidden_dims = None, lr = 5e-3, batch_size = 64, gen_weight = 0.002, recon_weight = 0.002, sample_and_save_frequency = 10):
+    def __init__(self, input_shape, device, input_channels, latent_dim, n_epochs, hidden_dims = None, lr = 5e-3, batch_size = 64, gen_weight = 0.002, recon_weight = 0.002, sample_and_save_frequency = 10, dataset = 'mnist'):
         super(AdversarialVAE, self).__init__()
         self.device = device
         self.vae = VanillaVAE(input_shape, input_channels, latent_dim, hidden_dims, lr, batch_size).to(self.device)
@@ -160,6 +170,7 @@ class AdversarialVAE(nn.Module):
         self.recon_weight = recon_weight
         self.n_epochs = n_epochs
         self.sample_and_save_frequency = sample_and_save_frequency
+        self.dataset = dataset
 
     def forward(self, x):
         image,_,_ = self.vae(x)
@@ -180,35 +191,31 @@ class AdversarialVAE(nn.Module):
         if train:
             wandb.log({f"Samples": fig})
         else:
-            plt.savefig(os.path.join(figures_dir, f"AdvAE_{title}.png"))
+            plt.show()
         plt.close(fig)
 
-    def create_validation_grid(self, data_loader, figsize=(10, 10), title=None, train = False):
+    def create_validation_grid(self, data_loader, figsize=(10, 4), title=None, train = False):
         # get a batch of data
-        x, _ = next(iter(data_loader))[:10]
+        x, _ = next(iter(data_loader))
         x = x.to(self.device)
+        x = x[:10]
         # get reconstruction
         with torch.no_grad():
             recon_x,_,_ = self.vae(x)
-        # prep images
-        x = x.detach().cpu()
-        recon_x = recon_x.detach().cpu()
-        x = (x + 1) / 2
-        recon_x = (recon_x + 1) / 2
-        # plot the first ten input images and then reconstructed images
-        fig, axes = plt.subplots(nrows=2, ncols=10, sharex=True, sharey=True, figsize=(25,4))
-        # input images on top row, reconstructions on bottom
-        for images, row in zip([x, recon_x], axes):
-            for img, ax in zip(images, row):
-                ax.imshow(img.permute(1, 2, 0))
-                ax.get_xaxis().set_visible(False)
-                ax.get_yaxis().set_visible(False)
+        x = (x.detach().cpu() + 1) / 2
+        recon_x = (recon_x.detach().cpu() + 1) / 2
+        fig = plt.figure(figsize=figsize)
+        samples = torch.cat((x, recon_x), 0)
+        grid = torchvision.utils.make_grid(samples, nrow=x.shape[0]).permute(1, 2, 0)
+        # save grid image
+        plt.imshow(grid)
+        plt.axis('off')
         if title:
             plt.title(title)
         if train:
             wandb.log({f"Reconstruction": fig})
         else:
-            plt.savefig(os.path.join(figures_dir, f"AdvAE_val_{title}.png"))
+            plt.show()
         plt.close(fig)
         
 
@@ -224,6 +231,8 @@ class AdversarialVAE(nn.Module):
         best_loss = np.inf
 
         epochs_bar = trange(self.n_epochs, desc="Loss: ------", leave=True)
+
+        create_checkpoint_dir()
         # ----------
         #  Training
         # ----------
@@ -288,10 +297,10 @@ class AdversarialVAE(nn.Module):
             wandb.log({"Generator Loss": acc_g_loss/len(data_loader.dataset), "Discriminator Loss": acc_d_loss/len(data_loader.dataset)})
 
 
-            if epoch % self.sample_and_save_frequency == 0:
+            if (epoch+1) % self.sample_and_save_frequency == 0 or epoch == 0:
                 self.create_grid(title=f"Epoch {epoch}", train=True)
                 self.create_validation_grid(val_loader, title=f"Epoch {epoch}", train=True)
         
             if acc_g_loss/len(data_loader.dataset) < best_loss:
                 best_loss = acc_g_loss/len(data_loader.dataset)
-                torch.save(self.vae.state_dict(), os.path.join(models_dir, "AdvAE_vae.pt"))
+                torch.save(self.vae.state_dict(), os.path.join(models_dir, 'AdversarialVAE', f"AdvVAE_{self.dataset}.pt"))

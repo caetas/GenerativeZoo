@@ -5,16 +5,22 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-from tqdm import trange
+from tqdm import trange, tqdm
 import torchvision
 from matplotlib import pyplot as plt
 import numpy as np
 import os
-from config import figures_dir, models_dir
+from config import models_dir
 import wandb
 
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'VanillaVAE')):
+    os.makedirs(os.path.join(models_dir, 'VanillaVAE'))
+
 class VanillaVAE(nn.Module):
-    def __init__(self, input_shape, input_channels, latent_dim, device, hidden_dims = None, lr = 5e-3, batch_size = 64):
+    def __init__(self, input_shape, input_channels, latent_dim, device, hidden_dims = None, lr = 5e-3, batch_size = 64, sample_and_save_freq = 5, dataset = 'mnist'):
         '''Vanilla VAE model
         Args:
         input_shape: int, input shape of the image
@@ -24,6 +30,8 @@ class VanillaVAE(nn.Module):
         hidden_dims: list, list of integers with the number of channels of the hidden layers, if none it will be [32, 64, 128, 256, 512]
         lr: float, learning rate for the optimizer
         batch_size: int, batch size for the training
+        sample_and_save_freq: int, frequency in epochs to generate some samples
+        dataset: str, name of dataset
         '''
         super(VanillaVAE, self).__init__()
 
@@ -34,6 +42,8 @@ class VanillaVAE(nn.Module):
         self.lr = lr
         self.batch_size = batch_size
         self.device = device
+        self.sample_and_save_freq = sample_and_save_freq
+        self.dataset = dataset
 
         if hidden_dims is None:
             hidden_dims = [32, 64, 128, 256, 512]
@@ -183,9 +193,9 @@ class VanillaVAE(nn.Module):
         if title:
             plt.title(title)
         if train:
-            wandb.log({title: fig})
+            wandb.log({'Samples': fig})
         else:
-            plt.savefig(os.path.join(figures_dir, f"VAE_{title}.png"))
+            plt.show()
         plt.close(fig)
     
     def train_model(self, data_loader, epochs):
@@ -196,9 +206,14 @@ class VanillaVAE(nn.Module):
         '''
         self.optimizer = torch.optim.Adam(self.parameters(), lr = self.lr)
         epochs_bar = trange(epochs, desc = "Epochs", leave = True)
+
+        create_checkpoint_dir()
+
+        best_loss = np.inf
+
         for epoch in epochs_bar:
             acc_loss = 0.0
-            for _,(data,_) in enumerate(data_loader):
+            for data,_ in tqdm(data_loader, leave = False, desc='Batches'):
                 x = data.to(self.device)
                 recon_x, mu, logvar = self(x)
                 loss = self.loss_function(recon_x, x, mu, logvar)
@@ -210,9 +225,12 @@ class VanillaVAE(nn.Module):
             epochs_bar.set_description("Loss: {:.8f}".format(acc_loss/len(data_loader.dataset)))
             epochs_bar.refresh()
             wandb.log({"loss": acc_loss/len(data_loader.dataset)})
-            if epoch % 5 == 0:
+            if epoch % self.sample_and_save_freq == 0:
                 self.create_grid(title=f"Epoch_{epoch}", train = True)
-        torch.save(self.state_dict(), os.path.join(models_dir, f"VAE_{epoch}.pt"))
+            
+            if acc_loss<best_loss:
+                best_loss = acc_loss
+                torch.save(self.state_dict(), os.path.join(models_dir,'VanillaVAE', f"VanVAE_{self.dataset}.pt"))
     
     def eval_model(self, data_loader):
         '''Evaluate the model

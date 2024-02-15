@@ -29,6 +29,7 @@ def parse_args_VanillaVAE():
     argparser.add_argument('--hidden_dims', type=int, nargs='+', default=None, help='hidden dimensions')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--num_samples', type=int, default=16, help='number of samples')
+    argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     return argparser.parse_args()
 
 def parse_args_ConditionalVAE():
@@ -44,6 +45,7 @@ def parse_args_ConditionalVAE():
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--num_samples', type=int, default=16, help='number of samples')
     argparser.add_argument('--n_classes', type=int, default=10, help='number of classes')
+    argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     return argparser.parse_args()
 
 def parse_args_AdversarialVAE():
@@ -196,7 +198,7 @@ def parse_args_CondGAN():
     argparser.add_argument('--n_classes', type=int, default=10, help='number of classes')
     argparser.add_argument('--img_size', type=int, default=32, help='image size')
     argparser.add_argument('--channels', type=int, default=1, help='channels')
-    argparser.add_argument('--sample_interval', type=int, default=5, help='sample interval')
+    argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample interval')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--n_samples', type=int, default=9, help='number of samples')
     argparser.add_argument('--d', type=int, default=128, help='d')
@@ -215,7 +217,7 @@ def parse_args_VanillaGAN():
     argparser.add_argument('--latent_dim', type=int, default=100, help='latent dimension')
     argparser.add_argument('--img_size', type=int, default=32, help='image size')
     argparser.add_argument('--channels', type=int, default=1, help='channels')
-    argparser.add_argument('--sample_interval', type=int, default=5, help='sample interval')
+    argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample interval')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--n_samples', type=int, default=9, help='number of samples')
     argparser.add_argument('--d', type=int, default=128, help='d')

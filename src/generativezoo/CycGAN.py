@@ -1,9 +1,8 @@
-from models.GANs.CycleGAN import *
+from models.GAN.CycleGAN import *
 from data.CycleGAN_Dataloaders import *
-from config import data_raw_dir, models_dir
+from config import data_raw_dir
 import torch
 import wandb
-import subprocess
 from utils.util import parse_args_CycleGAN
 
 args = parse_args_CycleGAN()
@@ -11,8 +10,6 @@ args = parse_args_CycleGAN()
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 if args.train:
-
-    subprocess.run(['wandb', 'login'])
     wandb.init(project='CycleGAN',
                config={
                    'dataset': args.dataset,

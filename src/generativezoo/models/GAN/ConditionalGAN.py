@@ -1,3 +1,7 @@
+###################################################################################################
+### Code based onhttps://github.com/TeeyoHuang/conditional-GAN/blob/master/conditional_DCGAN.py ###
+###################################################################################################
+
 from torch import nn
 import torch
 import torch.nn.functional as F
@@ -9,9 +13,11 @@ import numpy as np
 from config import models_dir
 import os
 
-##########################################################################################
-### https://github.com/TeeyoHuang/conditional-GAN/blob/master/conditional_DCGAN.py     ###
-##########################################################################################
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'ConditionalGAN')):
+    os.makedirs(os.path.join(models_dir, 'ConditionalGAN'))
 
 def weights_init_normal(m):
     classname = m.__class__.__name__
@@ -87,7 +93,7 @@ class Discriminator(nn.Module):
         return x
 
 class ConditionalGAN(nn.Module):
-    def __init__(self, n_epochs, device, latent_dim, d, channels, lr, beta1, beta2, img_size, sample_interval, n_classes):
+    def __init__(self, n_epochs, device, latent_dim, d, channels, lr, beta1, beta2, img_size, sample_and_save_freq, n_classes, dataset = 'mnist'):
         super(ConditionalGAN, self).__init__()
         self.n_epochs = n_epochs
         self.device = device
@@ -99,11 +105,12 @@ class ConditionalGAN(nn.Module):
         self.beta1 = beta1
         self.beta2 = beta2
         self.img_size = img_size
-        self.sample_interval = sample_interval
+        self.sample_and_save_freq = sample_and_save_freq
         self.generator = Generator(n_classes=self.n_classes, d=self.d, latent_dim = latent_dim, channels=channels).to(device)
         self.discriminator = Discriminator(n_classes=self.n_classes, d = self.d, channels=channels).to(device)
         self.generator.apply(weights_init_normal)
         self.discriminator.apply(weights_init_normal)
+        self.dataset = dataset
 
     def train_model(self, dataloader):
         # Loss function
@@ -116,6 +123,8 @@ class ConditionalGAN(nn.Module):
         best_loss = np.inf
 
         epoch_bar = trange(self.n_epochs, desc = "Epochs", leave = True)
+
+        create_checkpoint_dir()
 
         for epoch in epoch_bar:
 
@@ -182,11 +191,11 @@ class ConditionalGAN(nn.Module):
             epoch_bar.set_description("Generator Loss: {:.4f}, Discriminator Loss: {:.4f}".format(acc_g_loss/len(dataloader.dataset), acc_d_loss/len(dataloader.dataset)))
 
             if acc_g_loss/len(dataloader.dataset) < best_loss:
-                torch.save(self.generator.state_dict(), os.path.join(models_dir, 'ConditionalGAN.pth'))
+                torch.save(self.generator.state_dict(), os.path.join(models_dir, 'ConditionalGAN', f"CondGAN_{self.dataset}.pt"))
                 best_loss = acc_g_loss/len(dataloader.dataset)
 
 
-            if epoch % self.sample_interval == 0:
+            if epoch % self.sample_and_save_freq == 0:
 
                 # create row of n_classes images
                 z = torch.randn(self.n_classes, self.latent_dim, 1, 1).to(self.device)

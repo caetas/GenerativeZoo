@@ -64,10 +64,6 @@ To run the code please remember to always activate both environments:
     conda activate python3.9
     source .venv-dev/bin/activate
 
-## Documentation
-
-Full documentation is available here: [`docs/`](docs).
-
 ## Models
 
 ### Implemented Models
@@ -76,63 +72,92 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 #### VAEs
 
-- Vanilla VAE [`Paper`](https://arxiv.org/abs/1312.6114)|[`Code`](src/generativezoo/models/VAE/VanillaVAE.py)|[`Documentation`](models/VanillaVAE.md)
-- Conditional VAE [`Paper`](https://openreview.net/forum?id=rJWXGDWd-H)|[`Code`](src/generativezoo/models/VAE/ConditionalVAE.py)|[`Documentation`](models/ConditionalVAE.md)
+- Vanilla VAE [`Paper`](https://arxiv.org/abs/1312.6114)|[`Code`](src/generativezoo/models/VAE/VanillaVAE.py)|[`Script`](src/generativezoo/VanVAE.py)|[`Documentation`](models/VanillaVAE.md)
+- Conditional VAE [`Paper`](https://openreview.net/forum?id=rJWXGDWd-H)|[`Code`](src/generativezoo/models/VAE/ConditionalVAE.py)|[`Script`](src/generativezoo//CondVAE.py)|[`Documentation`](models/ConditionalVAE.md)
 
 #### GANs
 
-- Adversarial VAE [`Paper`](https://arxiv.org/abs/1511.05644)|[`Code`](src/generativezoo/models/GANs/AdversarialVAE.py)|[`Documentation`](models/AdversarialVAE.md)
-- Vanilla GAN [`Paper`](https://arxiv.org/abs/1511.06434)|[`Code`](src/generativezoo/models/GANs/VanillaGAN.py)|
-- Conditional GAN [`Paper`](https://arxiv.org/abs/1411.1784)|[`Code`](src/generativezoo/models/GANs/ConditionalGAN.py)|
-- CycleGAN [`Paper`](https://arxiv.org/abs/1703.10593)|[`Code`](src/generativezoo/models/GANs/CycleGAN.py)|
+- Adversarial VAE [`Paper`](https://arxiv.org/abs/1511.05644)|[`Code`](src/generativezoo/models/GANs/AdversarialVAE.py)|[`Script`](src/generativezoo/AdvVAE.py)|[`Documentation`](models/AdversarialVAE.md)
+- Vanilla GAN [`Paper`](https://arxiv.org/abs/1511.06434)|[`Code`](src/generativezoo/models/GANs/VanillaGAN.py)|[`Script`](src/generativezoo/VanGAN.py)|[`Documentation`](models/VanillaGAN.md)
+- Conditional GAN [`Paper`](https://arxiv.org/abs/1411.1784)|[`Code`](src/generativezoo/models/GANs/ConditionalGAN.py)|[`Script`](src/generativezoo/CondGAN.py)|[`Documentation`](models/ConditionalGAN.md)
+- CycleGAN [`Paper`](https://arxiv.org/abs/1703.10593)|[`Code`](src/generativezoo/models/GANs/CycleGAN.py)|[`Script`](src/generativezoo/CycGAN.py)|[`Documentation`](models/CycleGAN.md)
 
 #### DDPMs
 
-- Unconditional DDPM [`Paper`](https://arxiv.org/abs/2006.11239)|[`Code`](src/generativezoo/models/Diffusion/Diffusion.py)|
-- Conditional DDPM [`Paper`](https://arxiv.org/abs/2207.12598)|[`Code`](src/generativezoo/models/Diffusion/ConditionalDiffusion.py)|
-- Diffusion AE [`Paper`](https://arxiv.org/abs/2111.15640)|[`Code`](src/generativezoo/models/Diffusion/MONAI_DiffAE.py)|
+- Vanilla DDPM [`Paper`](https://arxiv.org/abs/2006.11239)|[`Code`](src/generativezoo/models/DDPM/VanillaDDPM.py)|[`Script`](src/generativezoo/DDPM.py)
+- Conditional DDPM [`Paper`](https://arxiv.org/abs/2207.12598)|[`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)|[`Script`](src/generativezoo/CondDDPM.py)
+- Diffusion AE [`Paper`](https://arxiv.org/abs/2111.15640)|[`Code`](src/generativezoo/models/DDPM/MONAI_DiffAE.py)|[`Script`](src/generativezoo/DAE.py)
 
 #### SGMs
 
-- Unconditional SGM [`Paper`](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/VanillaSGM.py)|
+- Vanilla SGM [`Paper`](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/VanillaSGM.py)|[`Script`](src/generativezoo/SGM.py)
 
 ### Future Models
 
 These models are currently under development and will be added to the repository in the future.
 
 #### VAEs
+
 - [ ] Hierarchical VAE [`Paper`](https://arxiv.org/abs/2007.03898)
 - [ ] VQ-VAE [`Paper`](https://arxiv.org/abs/1711.00937)
 
 #### GANs
+
 - [ ] VQ-GAN [`Paper`](https://arxiv.org/abs/2012.09841)
 
 #### SGMs
+
 - [ ] NCSN [`Paper`](https://arxiv.org/abs/1907.05600)
 - [ ] NCSN++ [`Paper`](https://openreview.net/forum?id=PxTIG12RRHS)
 
 #### Autoregressive
+
 - [ ] VQ-VAE + Transformer [`Paper`](https://arxiv.org/abs/2012.09841)
 - [ ] VQ-VAE + Mamba
 
 #### Flow-Based Models
+
 - [ ] RealNVP [`Paper`](https://arxiv.org/abs/1605.08803)
 - [ ] Flow++ [`Paper`](https://arxiv.org/abs/1902.00275)
 
-## Dev
+## Datasets
+
+The following datasets are ready to be used to train and sample from the provided models. They are automatically downloaded when you try to use them for the first time.
+
+### Grayscale
+
+- MNIST [`Source`](https://ieeexplore.ieee.org/document/726791)
+- FashionMNIST [`Source`](https://arxiv.org/abs/1708.07747)
+- ChestMNIST++ [`Source`](https://www.nature.com/articles/s41597-022-01721-8)
+- OctMNIST++ [`Source`](https://www.nature.com/articles/s41597-022-01721-8)
+- PneumoniaMNIST++ [`Source`](https://www.nature.com/articles/s41597-022-01721-8)
+- TissueMNIST++ [`Source`](https://www.nature.com/articles/s41597-022-01721-8)
+
+### RGB
+
+- CIFAR-10 [`Source`](https://www.cs.toronto.edu/%7Ekriz/cifar.html)
+- SVHN [`Source`](https://arxiv.org/abs/1312.6082)
+
+## Repository Information
+
+### Documentation
+
+Full documentation is available here: [`docs/`](docs).
+
+### Dev
 
 See the [Developer](docs/DEVELOPER.md) guidelines for more information.
 
-## Contributing
+### Contributing
 
 Contributions of any kind are welcome. Please read [CONTRIBUTING.md](docs/CONTRIBUTING.md]) for details and
 the process for submitting pull requests to us.
 
-## Changelog
+### Changelog
 
 See the [Changelog](CHANGELOG.md) for more information.
 
-## Security
+### Security
 
 Thank you for improving the security of the project, please see the [Security Policy](docs/SECURITY.md)
 for more information.
@@ -142,14 +167,22 @@ for more information.
 This project is licensed under the terms of the `No license` license.
 See [LICENSE](LICENSE) for more details.
 
+## References
+
+All the repositories used to generate this code are mentioned in each of the corresponding files. We would like to list them in no particular order:
+
+- [PyTorch-VAE](https://github.com/AntixK/PyTorch-VAE)
+- [conditional-GAN](https://github.com/TeeyoHuang/conditional-GAN)
+- [PyTorch-GAN](https://github.com/eriklindernoren/PyTorch-GAN)
+
 ## Citation
 
 If you publish work that uses GenerativeZoo, please cite GenerativeZoo as follows:
 
 ```bibtex
 @misc{GenerativeZoo,
-  author = {Francisco Caetano},
-  title = {A model zoo for generative models.},
-  year = {2024},
+author = {Francisco Caetano},
+title = {A model zoo for generative models.},
+year = {2024},
 }
 ```
