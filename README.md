@@ -205,7 +205,10 @@ If you publish work that uses GenerativeZoo, please cite GenerativeZoo as follow
 ```bibtex
 @misc{GenerativeZoo,
 author = {Francisco Caetano},
-title = {A model zoo for generative models.},
+title = {A collection of generative algorithms and techniques implemented in Python.},
+publisher = {GitHub},
+journal = {GitHub repository},
+howpublished = {\url{https://github.com/caetas/GenerativeZoo}},
 year = {2024},
 }
 ```
