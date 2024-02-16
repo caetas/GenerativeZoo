@@ -117,13 +117,19 @@ ipython_config.py
 notebook/.ipynb_checkpoints
 
 # exclude data from source control by default
-data/processed
-data/interim
-data/external
-# models directory
-/models/
+data/processed/*
+data/interim/*
+data/external/*
+data/raw/*
+src/generativezoo/garbage/
+src/generativezoo/wandb/
+
 # test data directory
 test/data
+
+#figures
+reports/figures/*
+reports/*.png
 
 # Mac OS-specific storage files
 .DS_Store
@@ -209,4 +215,27 @@ references/
 # Instructions
 src/README.md
 
+# images in src/generativezoo
+src/generativezoo/*.png
+
+# under local dev
+src/generativezoo/stuff.py
+src/generativezoo/stuff2.py
+src/generativezoo/visualize_diff.py
+src/generativezoo/visualize_path.py
+src/generativezoo/DAE_st.py
+src/generativezoo/ncsn_train.py
+src/generativezoo/ncsnpp_train.py
+src/generativezoo/cdiff.py
+src/generativezoo/models/SGM/layers.py
+src/generativezoo/models/SGM/layerspp.py
+src/generativezoo/models/SGM/losses.py
+src/generativezoo/models/SGM/NCSN.py
+src/generativezoo/models/SGM/NCSNpp.py
+src/generativezoo/models/SGM/normalization.py
+src/generativezoo/models/SGM/sampling.py
+src/generativezoo/models/SGM/sde_lib.py
+src/generativezoo/models/SGM/up_or_down_sampling.py
+src/generativezoo/models/SGM/utils.py
+src/generativezoo/op
 # EOF
