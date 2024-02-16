@@ -12,6 +12,13 @@ from matplotlib import pyplot as plt
 import wandb
 from config import models_dir
 import torchvision
+import os
+
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'CycleGAN')):
+    os.makedirs(os.path.join(models_dir, 'CycleGAN'))
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_features):
@@ -178,6 +185,8 @@ class CycleGAN(nn.Module):
 
         best_loss = np.inf
 
+        create_checkpoint_dir()
+
         for epoch in tqdm(range(self.n_epochs), desc='Epochs'):
 
             acc_loss_G = 0
@@ -285,9 +294,8 @@ class CycleGAN(nn.Module):
             # Save models checkpoints
             if acc_loss_G/elements < best_loss:
                 best_loss = acc_loss_G/elements
-                torch.save(self.G_AB.state_dict(), models_dir + '/CycleGAN_{}_G_AB.pth'.format(self.name))
-                torch.save(self.G_BA.state_dict(), models_dir + '/CycleGAN_{}_G_BA.pth'.format(self.name))
-
+                torch.save(self.G_AB.state_dict(), os.path.join(models_dir,'CycleGAN','CycGAN_{}_AB.pt'.format(self.name)))
+                torch.save(self.G_BA.state_dict(), os.path.join(models_dir,'CycleGAN','CycGAN_{}_BA.pt'.format(self.name)))
             if epoch % self.sample_and_save_freq == 0:
 
                 # select a batch of real samples

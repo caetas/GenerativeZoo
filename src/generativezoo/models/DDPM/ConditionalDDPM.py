@@ -1,19 +1,9 @@
-''' 
-This script does conditional image generation
+##############################################################################################
+############### Code based on: https://github.com/cloneofsimo/minDiffusion ###################
+###############  https://github.com/TeaPearce/Conditional_Diffusion_MNIST  ###################
+##############             https://github.com/ermongroup/ddim              ################### 
+##############################################################################################
 
-This code is modified from,
-https://github.com/cloneofsimo/minDiffusion
-
-Diffusion model is based on DDPM,
-https://arxiv.org/abs/2006.11239
-
-The conditioning idea is taken from 'Classifier-Free Diffusion Guidance',
-https://arxiv.org/abs/2207.12598
-
-This technique also features in ImageGen 'Photorealistic Text-to-Image Diffusion Modelswith Deep Language Understanding',
-https://arxiv.org/abs/2205.11487
-
-'''
 from tqdm import tqdm
 import torch
 import torch.nn as nn

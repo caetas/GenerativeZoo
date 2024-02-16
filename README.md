@@ -84,7 +84,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 #### DDPMs
 
-- Vanilla DDPM [`Paper`](https://arxiv.org/abs/2006.11239)|[`Code`](src/generativezoo/models/DDPM/VanillaDDPM.py)|[`Script`](src/generativezoo/DDPM.py)
+- Vanilla DDPM [`Paper`](https://arxiv.org/abs/2006.11239)|[`Code`](src/generativezoo/models/DDPM/VanillaDDPM.py)|[`Script`](src/generativezoo/DDPM.py)|[`Documentation`](models/VanillaDDPM.md)
 - Conditional DDPM [`Paper`](https://arxiv.org/abs/2207.12598)|[`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)|[`Script`](src/generativezoo/CondDDPM.py)
 - Diffusion AE [`Paper`](https://arxiv.org/abs/2111.15640)|[`Code`](src/generativezoo/models/DDPM/MONAI_DiffAE.py)|[`Script`](src/generativezoo/DAE.py)
 
@@ -174,6 +174,13 @@ All the repositories used to generate this code are mentioned in each of the cor
 - [PyTorch-VAE](https://github.com/AntixK/PyTorch-VAE)
 - [conditional-GAN](https://github.com/TeeyoHuang/conditional-GAN)
 - [PyTorch-GAN](https://github.com/eriklindernoren/PyTorch-GAN)
+- [minDiffusion](https://github.com/cloneofsimo/minDiffusion)
+- [DenoisingDiffusionProbabilisticModels](https://github.com/DhruvSrikanth/DenoisingDiffusionProbabilisticModels)
+- [Conditional_Diffusion_MNIST](https://github.com/TeaPearce/Conditional_Diffusion_MNIST)
+- [ddim](https://github.com/ermongroup/ddim)
+- [Generative Models](https://github.com/Project-MONAI/GenerativeModels)
+- [score_sde_pytorch](https://github.com/yang-song/score_sde_pytorch)
+    - [SGM Tutorial](https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing)
 
 ## Citation
 
