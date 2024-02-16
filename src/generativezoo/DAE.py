@@ -8,8 +8,8 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 args = parse_args_DiffAE()
 
 if args.train:
-    train_dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=True, size=64)
-    val_dataloader, _, _ = pick_dataset(args.dataset, 'val', args.batch_size, normalize=True, size=64)
+    train_dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=True, size=32)
+    val_dataloader, _, _ = pick_dataset(args.dataset, 'val', args.batch_size, normalize=True, size=32)
     wandb.init(project='DiffAE',
                 config={
                     'dataset': args.dataset,
@@ -26,12 +26,12 @@ if args.train:
                     'channels': channels,
                 },
                 name = 'DiffAE_{}'.format(args.dataset))
-    model = DiffAE(args.embedding_dim, args.timesteps, args.sample_timesteps, args.lr, args.n_epochs, channels, args.model_channels, args.attention_levels, args.num_res_blocks)
+    model = DiffAE(args.embedding_dim, args.timesteps, args.sample_timesteps, args.lr, args.n_epochs, channels, args.model_channels, args.attention_levels, args.num_res_blocks, args.sample_and_save_freq, args.dataset)
     model.train_model(train_dataloader, val_dataloader)
     wandb.finish()
 
 elif args.manipulate:
-    train_dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=True, size = 64)
+    train_dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=True, size = 32)
     val_dataloader, _, _ = pick_dataset(args.dataset, 'val', args.batch_size, normalize=True, size=64)
     model = DiffAE(args.embedding_dim, args.timesteps, args.sample_timesteps, args.lr, args.n_epochs, channels, args.model_channels, args.attention_levels, args.num_res_blocks)
     model.unet.load_state_dict(torch.load(args.checkpoint))

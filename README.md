@@ -72,25 +72,25 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 #### VAEs
 
-- Vanilla VAE [`Paper`](https://arxiv.org/abs/1312.6114)|[`Code`](src/generativezoo/models/VAE/VanillaVAE.py)|[`Script`](src/generativezoo/VanVAE.py)|[`Documentation`](models/VanillaVAE.md)
-- Conditional VAE [`Paper`](https://openreview.net/forum?id=rJWXGDWd-H)|[`Code`](src/generativezoo/models/VAE/ConditionalVAE.py)|[`Script`](src/generativezoo//CondVAE.py)|[`Documentation`](models/ConditionalVAE.md)
+- Vanilla VAE [`Paper`](https://arxiv.org/abs/1312.6114)|[`Code`](src/generativezoo/models/VAE/VanillaVAE.py)|[`Script`](src/generativezoo/VanVAE.py)|[`Documentation`](docs/VanillaVAE.md)
+- Conditional VAE [`Paper`](https://openreview.net/forum?id=rJWXGDWd-H)|[`Code`](src/generativezoo/models/VAE/ConditionalVAE.py)|[`Script`](src/generativezoo//CondVAE.py)|[`Documentation`](docs/ConditionalVAE.md)
 
 #### GANs
 
-- Adversarial VAE [`Paper`](https://arxiv.org/abs/1511.05644)|[`Code`](src/generativezoo/models/GANs/AdversarialVAE.py)|[`Script`](src/generativezoo/AdvVAE.py)|[`Documentation`](models/AdversarialVAE.md)
-- Vanilla GAN [`Paper`](https://arxiv.org/abs/1511.06434)|[`Code`](src/generativezoo/models/GANs/VanillaGAN.py)|[`Script`](src/generativezoo/VanGAN.py)|[`Documentation`](models/VanillaGAN.md)
-- Conditional GAN [`Paper`](https://arxiv.org/abs/1411.1784)|[`Code`](src/generativezoo/models/GANs/ConditionalGAN.py)|[`Script`](src/generativezoo/CondGAN.py)|[`Documentation`](models/ConditionalGAN.md)
-- CycleGAN [`Paper`](https://arxiv.org/abs/1703.10593)|[`Code`](src/generativezoo/models/GANs/CycleGAN.py)|[`Script`](src/generativezoo/CycGAN.py)|[`Documentation`](models/CycleGAN.md)
+- Adversarial VAE [`Paper`](https://arxiv.org/abs/1511.05644)|[`Code`](src/generativezoo/models/GAN/AdversarialVAE.py)|[`Script`](src/generativezoo/AdvVAE.py)|[`Documentation`](docs/AdversarialVAE.md)
+- Vanilla GAN [`Paper`](https://arxiv.org/abs/1511.06434)|[`Code`](src/generativezoo/models/GAN/VanillaGAN.py)|[`Script`](src/generativezoo/VanGAN.py)|[`Documentation`](docs/VanillaGAN.md)
+- Conditional GAN [`Paper`](https://arxiv.org/abs/1411.1784)|[`Code`](src/generativezoo/models/GAN/ConditionalGAN.py)|[`Script`](src/generativezoo/CondGAN.py)|[`Documentation`](docs/ConditionalGAN.md)
+- CycleGAN [`Paper`](https://arxiv.org/abs/1703.10593)|[`Code`](src/generativezoo/models/GAN/CycleGAN.py)|[`Script`](src/generativezoo/CycGAN.py)|[`Documentation`](docs/CycleGAN.md)
 
 #### DDPMs
 
-- Vanilla DDPM [`Paper`](https://arxiv.org/abs/2006.11239)|[`Code`](src/generativezoo/models/DDPM/VanillaDDPM.py)|[`Script`](src/generativezoo/DDPM.py)|[`Documentation`](models/VanillaDDPM.md)
-- Conditional DDPM [`Paper`](https://arxiv.org/abs/2207.12598)|[`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)|[`Script`](src/generativezoo/CondDDPM.py)
-- Diffusion AE [`Paper`](https://arxiv.org/abs/2111.15640)|[`Code`](src/generativezoo/models/DDPM/MONAI_DiffAE.py)|[`Script`](src/generativezoo/DAE.py)
+- Vanilla DDPM [`Paper`](https://arxiv.org/abs/2006.11239)|[`Code`](src/generativezoo/models/DDPM/VanillaDDPM.py)|[`Script`](src/generativezoo/VanDDPM.py)|[`Documentation`](docs/VanillaDDPM.md)
+- Conditional DDPM [`Paper`](https://arxiv.org/abs/2207.12598)|[`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)|[`Script`](src/generativezoo/CondDDPM.py)|[`Documentation`](docs/ConditionalDDPM.md)
+- Diffusion AE [`Paper`](https://arxiv.org/abs/2111.15640)|[`Code`](src/generativezoo/models/DDPM/MONAI_DiffAE.py)|[`Script`](src/generativezoo/DAE.py)|[`Documentation`](docs/DiffusionAE.md)
 
 #### SGMs
 
-- Vanilla SGM [`Paper`](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/VanillaSGM.py)|[`Script`](src/generativezoo/SGM.py)
+- Vanilla SGM [`Paper`](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/VanillaSGM.py)|[`Script`](src/generativezoo/VanSGM.py)|[`Documentation`](docs/VanillaSGM.md)
 
 ### Future Models
 
@@ -138,6 +138,20 @@ The following datasets are ready to be used to train and sample from the provide
 - CIFAR-10 [`Source`](https://www.cs.toronto.edu/%7Ekriz/cifar.html)
 - SVHN [`Source`](https://arxiv.org/abs/1312.6082)
 
+## Tracking
+
+The code examples are setup to use [Weights & Biases](https://wandb.ai/home) as a tool to track your training runs. Please refer to the [`full documentation`](https://docs.wandb.ai/quickstart) if required or follow the following steps:
+
+1. Create an account in [Weights & Biases](https://wandb.ai/home)
+2. **If you have installed the requirements you can skip this step**. If not, activate the conda environment and run:
+    ```bash
+    pip install wandb
+    ```
+3. Run the following command and insert you [`API key`](https://wandb.ai/authorize) when prompted:
+    ```bash
+    wandb login
+    ```
+
 ## Repository Information
 
 ### Documentation
@@ -152,6 +166,8 @@ See the [Developer](docs/DEVELOPER.md) guidelines for more information.
 
 Contributions of any kind are welcome. Please read [CONTRIBUTING.md](docs/CONTRIBUTING.md]) for details and
 the process for submitting pull requests to us.
+
+**Please read [MODELRULES.md](docs/MODELRULES.md) for details on how you should build your models for this repository.**
 
 ### Changelog
 

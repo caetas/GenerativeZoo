@@ -42,4 +42,4 @@ Sampling from the Vanilla VAE model allows us to generate new data points based 
 
 You can sample from the model you trained on FashionMNIST by running:
 
-    python VanVAE.py --sample --dataset fashionmnist --checkpoint ./../../models/VanillaVAE/VanillaVAE_fashionmnist.pt
+    python VanVAE.py --sample --dataset fashionmnist --checkpoint ./../../models/VanillaVAE/VanVAE_fashionmnist.pt

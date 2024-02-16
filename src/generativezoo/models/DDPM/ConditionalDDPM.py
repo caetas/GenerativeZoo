@@ -15,6 +15,12 @@ from config import models_dir
 import os
 import wandb
 
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'ConditionalDDPM')):
+    os.makedirs(os.path.join(models_dir, 'ConditionalDDPM'))
+
 class ResidualConvBlock(nn.Module):
     def __init__(
         self, in_channels: int, out_channels: int, is_res: bool = False
@@ -451,7 +457,7 @@ class ConditionalDDPM(nn.Module):
         Args:
         dataloader: torch.utils.data.DataLoader, dataloader for the dataset
         '''
-
+        create_checkpoint_dir()
         epoch_bar = trange(self.n_epochs, desc="Epoch")
         best_loss = np.inf
         for ep in epoch_bar:
@@ -475,7 +481,7 @@ class ConditionalDDPM(nn.Module):
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
-                torch.save(self.denoising_model.state_dict(), os.path.join(models_dir, 'CDDPM_{}.pt').format(self.dataset))
+                torch.save(self.denoising_model.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f'CondDDPM_{self.dataset}.pt'))
 
             # for eval, save an image of currently generated samples (top rows)
             # followed by real images (bottom rows)
@@ -504,7 +510,7 @@ class ConditionalDDPM(nn.Module):
                     plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
                     plt.axis('off')
                     wandb.log({"CDDPM Samples": fig})
-                    plt.close()
+                    plt.close(fig)
 
     def sample(self, guide_w = 0.0):
         self.denoising_model.eval()

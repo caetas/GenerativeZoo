@@ -113,16 +113,19 @@ def chestmnist_train_loader(batch_size, normalize = False, input_shape = None):
 
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
         ])
     
     if input_shape is not None:
-        training_data = ChestMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = input_shape)
+        size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
+        training_data = ChestMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = size)
     else:
         training_data = ChestMNIST(root=data_raw_dir, split='train', download=True, transform=transform)
 
@@ -140,16 +143,19 @@ def chestmnist_val_loader(batch_size, normalize = False, input_shape = None):
     
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
         ])
 
     if input_shape is not None:
-        validation_data = ChestMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = input_shape)
+        size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
+        validation_data = ChestMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = size)
     else:
         validation_data = ChestMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
 
@@ -166,16 +172,19 @@ def octmnist_train_loader(batch_size, normalize = False, input_shape = None):
     
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
         ])
 
     if input_shape is not None:
-        training_data = OCTMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = input_shape)
+        size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
+        training_data = OCTMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = size)
     else:
         training_data = OCTMNIST(root=data_raw_dir, split='train', download=True, transform=transform)
 
@@ -193,16 +202,19 @@ def octmnist_val_loader(batch_size, normalize = False, input_shape = None):
         
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
         ])
 
     if input_shape is not None:
-        validation_data = OCTMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = input_shape)
+        size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
+        validation_data = OCTMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = size)
     else:
         validation_data = OCTMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
 
@@ -219,16 +231,19 @@ def tissuemnist_train_loader(batch_size, normalize = False, input_shape = None):
             
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
         ])
     
     if input_shape is not None:
-        training_data = TissueMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = input_shape)
+        size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
+        training_data = TissueMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = size)
     else:
         training_data = TissueMNIST(root=data_raw_dir, split='train', download=True, transform=transform)
 
@@ -246,16 +261,19 @@ def tissuemnist_val_loader(batch_size, normalize = False, input_shape = None):
                     
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
         ])
     
     if input_shape is not None:
-        validation_data = TissueMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = input_shape)
+        size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
+        validation_data = TissueMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = size)
     else:
         validation_data = TissueMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
 
@@ -273,16 +291,19 @@ def pneumoniamnist_train_loader(batch_size, normalize = False, input_shape = Non
                             
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
         ])
 
     if input_shape is not None:
-        training_data = PneumoniaMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = input_shape)
+        size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
+        training_data = PneumoniaMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = size)
     else:
         training_data = PneumoniaMNIST(root=data_raw_dir, split='train', download=True, transform=transform)
 
@@ -300,16 +321,19 @@ def pneumoniamnist_val_loader(batch_size, normalize = False, input_shape = None)
                                     
     if normalize:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
         ])
     
     if input_shape is not None:
-        validation_data = PneumoniaMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = input_shape)
+        size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
+        validation_data = PneumoniaMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = size)
     else:
         validation_data = PneumoniaMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
 

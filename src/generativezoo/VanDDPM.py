@@ -10,7 +10,6 @@ normalize = True
 
 if args.train:
      dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize)
-     print(args.channel_scale_factors)
      model = VanillaDDPM(device, args, n_features=args.n_features, init_channels=args.init_channels, channel_scale_factors=args.channel_scale_factors, in_channels=channels, image_size=input_size)
      
      wandb.init(project='DDPM',

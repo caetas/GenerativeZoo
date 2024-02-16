@@ -16,6 +16,12 @@ from torchvision.utils import make_grid
 from sklearn.metrics import roc_auc_score
 import wandb
 
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'VanillaSGM')):
+    os.makedirs(os.path.join(models_dir, 'VanillaSGM'))
+
 class GaussianFourierProjection(nn.Module):
   """Gaussian random features for encoding time steps."""  
   def __init__(self, embed_dim, scale=30.):
@@ -344,12 +350,6 @@ def ode_sampler(score_model,
 
   return x
 
-def create_checkpoint_dir():
-  if not os.path.exists(models_dir):
-    os.makedirs(models_dir)
-  if not os.path.exists(os.path.join(models_dir, 'VanillaSGM')):
-    os.makedirs(os.path.join(models_dir, 'VanillaSGM'))
-
 class VanillaSGM(nn.Module):
   def __init__(self, device, sigma = 25.0, n_epochs = 50, lr = 1e-4, model_channels=[32, 64, 128, 256], embed_dim=256, in_channels=1, input_size=28, dataset='mnist', sample_and_save_freq=10, num_steps = 1000, snr = 0.16, sampler_type = 'PC', atol = 1e-6, rtol = 1e-6, eps = 1e-3):
     '''
@@ -424,7 +424,7 @@ class VanillaSGM(nn.Module):
 
       if avg_loss < best_loss:
         best_loss = avg_loss
-        torch.save(self.model.state_dict(), os.path.join(models_dir,'VanillaSGM', 'VanillaSGM_' + self.dataset + '.pt'))
+        torch.save(self.model.state_dict(), os.path.join(models_dir,'VanillaSGM', 'VanSGM_' + self.dataset + '.pt'))
 
       if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
 

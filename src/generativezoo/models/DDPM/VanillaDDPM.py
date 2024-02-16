@@ -23,8 +23,8 @@ from torchvision.transforms import Compose, Lambda, ToPILImage
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
     os.makedirs(models_dir)
-  if not os.path.exists(os.path.join(models_dir, 'CycleGAN')):
-    os.makedirs(os.path.join(models_dir, 'CycleGAN'))
+  if not os.path.exists(os.path.join(models_dir, 'VanillaDDPM')):
+    os.makedirs(os.path.join(models_dir, 'VanillaDDPM'))
 
 def exists(x):
     return x is not None
@@ -431,6 +431,7 @@ class VanillaDDPM(nn.Module):
 
     def train_model(self, dataloader):
         best_loss = np.inf
+        create_checkpoint_dir()
         for epoch in range(self.n_epochs):
             acc_loss = 0.0
             with tqdm(dataloader, desc=f'Training DDPM') as pbar:
@@ -470,7 +471,7 @@ class VanillaDDPM(nn.Module):
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
-                torch.save(self.denoising_model.state_dict(), os.path.join(models_dir,'DDPM_' + self.dataset + '.pt'))
+                torch.save(self.denoising_model.state_dict(), os.path.join(models_dir,'VanillaDDPM',f'VanDDPM_{self.dataset}.pt'))
             wandb.log({"DDPM Loss": acc_loss/len(dataloader.dataset)})
     
     def outlier_score(self, x_start, t):
@@ -521,7 +522,7 @@ class VanillaDDPM(nn.Module):
         auc_score = roc_auc_score(y_true, y_score)
         if auc_score < 0.2:
             auc_score = 1. - auc_score
-        print('AUC score: {:.10f}'.format(auc_score))
+        print('AUC score: {:.5f}'.format(auc_score))
 
         plt.hist(val_scores, bins=100, alpha=0.5, label='In')
         plt.hist(out_scores, bins=100, alpha=0.5, label='Out')

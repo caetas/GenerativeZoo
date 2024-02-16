@@ -14,11 +14,17 @@ from sklearn.linear_model import LogisticRegression
 from generative.inferers import DiffusionInferer
 from generative.networks.nets.diffusion_model_unet import DiffusionModelUNet
 from generative.networks.schedulers.ddim import DDIMScheduler
-from config import models_dir, figures_dir
+from config import models_dir
 import wandb
 
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'DiffusionAE')):
+    os.makedirs(os.path.join(models_dir, 'DiffusionAE'))
+
 class DiffAE(nn.Module):
-    def __init__(self, embedding_dimension = 64, num_train_timesteps = 1000, inference_timesteps = 100, lr = 1e-5, n_epochs = 50, in_channels = 3, model_channels = (64,128,256), attention_levels = (False, True, True), num_res_blocks = 1, sample_and_save_freq = 50):
+    def __init__(self, embedding_dimension = 64, num_train_timesteps = 1000, inference_timesteps = 100, lr = 1e-5, n_epochs = 50, in_channels = 3, model_channels = (64,128,256), attention_levels = (False, True, True), num_res_blocks = 1, sample_and_save_freq = 50, dataset = 'mnist'):
         '''Diffusion Autoencoder model
         Args:
             embedding_dimension (int): the dimension of the latent space
@@ -53,6 +59,7 @@ class DiffAE(nn.Module):
         self.lr = lr
         self.n_epochs = n_epochs
         self.sample_and_save_freq = sample_and_save_freq
+        self.dataset = dataset
 
     def forward(self, xt, x_cond, t):
         '''Forward pass of the model
@@ -117,7 +124,7 @@ class DiffAE(nn.Module):
         val_loss /= len(val_loader)
         return val_loss
     
-    def train_model(self, train_loader, val_loader, name = 'mnist'):
+    def train_model(self, train_loader, val_loader):
         '''Train the model
         Args:
             train_loader (torch.utils.data.DataLoader): the training data loader
@@ -125,10 +132,8 @@ class DiffAE(nn.Module):
             name (str): the name of the file to save the samples
         '''
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-
-        train_losses = []
-        val_losses = []
         best_loss = np.inf
+        create_checkpoint_dir()
 
         epoch_bar = trange(self.n_epochs)
         for epoch in epoch_bar:
@@ -146,13 +151,11 @@ class DiffAE(nn.Module):
                 optimizer.step()
                 train_loss += loss.item()
             train_loss /= len(train_loader)
-            train_losses.append(train_loss)
             epoch_bar.set_description(f"Train Loss: {train_loss}")
             wandb.log({"Train Loss": train_loss}, step = epoch)
 
             if val_loader and ((epoch + 1) % self.sample_and_save_freq == 0 or epoch == 0):
                 val_loss = self.evaluate(val_loader)
-                val_losses.append(val_loss)
                 epoch_bar.set_description(f"Train Loss: {train_loss} - Val Loss: {val_loss}")
                 self.generate_samples(val_loader, name = f"epoch_{str(epoch)}", train = True)
                 wandb.log({"Val Loss": val_loss}, step = epoch)
@@ -160,15 +163,7 @@ class DiffAE(nn.Module):
             # save model if it has the best val loss
             if train_loss < best_loss:
                 best_loss = train_loss
-                torch.save(self.state_dict(), os.path.join(models_dir, f"DiffAE_{name}.pt"))
-
-        # plot losses
-        plt.figure(figsize=(15,5))
-        plt.plot(train_losses, label='Train Loss')
-        plt.plot(val_losses, label='Val Loss')
-        plt.legend()
-        plt.savefig(os.path.join(figures_dir, "DiffAE_losses.png"))
-        plt.close()
+                torch.save(self.state_dict(), os.path.join(models_dir,'DiffusionAE', f"DiffAE_{self.dataset}.pt"))
 
     def linear_regression(self, train_loader, val_loader):
         '''Evaluate the latent space of the model
@@ -269,7 +264,7 @@ class DiffAE(nn.Module):
         plt.figure(figsize=(15,5))
         plt.imshow(grid.detach().cpu().numpy().transpose(1,2,0))
         plt.axis('off')
-        plt.savefig(os.path.join(figures_dir, f"DiffAE_manipulate_{name}.png"))
+        plt.show()
     
     def manipulate_image(self, image, transformation):
         '''Manipulate an image

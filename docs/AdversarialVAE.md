@@ -39,4 +39,4 @@ This is related to the ability of the model to accurately reconstruct the input,
 
 This process is similar to the one described in [`VanillaVAE.md`](VanillaVAE.md).
 
-    python AdvVAE.py --sample --dataset octmnist
+    python AdvVAE.py --sample --dataset octmnist --checkpoint ./../../models/AdversarialVAE/AdvVAE.pt
