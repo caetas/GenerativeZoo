@@ -55,14 +55,16 @@ Feel free to edit the [`.envrc`](.envrc) file if you prefer to activate the envi
 You can setup the virtualenv by running the following commands:
 
     python -m venv .venv-dev
-    source .venv-dev/bin/activate
+    .venv-dev/Scripts/Activate.ps1
     python -m pip install --upgrade pip setuptools
-    python -m pip install -r requirements/requirements.txt
+    pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+    python -m pip install -r requirements/requirements-win.txt
+
 
 To run the code please remember to always activate both environments:
 
     conda activate python3.9
-    source .venv-dev/bin/activate
+    .venv-dev/Scripts/Activate.ps1
 
 ## Models
 
@@ -143,7 +145,7 @@ The following datasets are ready to be used to train and sample from the provide
 The code examples are setup to use [Weights & Biases](https://wandb.ai/home) as a tool to track your training runs. Please refer to the [`full documentation`](https://docs.wandb.ai/quickstart) if required or follow the following steps:
 
 1. Create an account in [Weights & Biases](https://wandb.ai/home)
-2. **If you have installed the requirements you can skip this step**. If not, activate the conda environment and run:
+2. **If you have installed the requirements you can skip this step**. If not, activate the conda environment and the virtualenv and run:
     ```bash
     pip install wandb
     ```
