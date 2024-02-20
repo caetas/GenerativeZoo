@@ -46,3 +46,9 @@ Sampling from the Vanilla VAE model allows us to generate new data points based 
 You can sample from the model you trained on FashionMNIST by running:
 
     python VanVAE.py --sample --dataset fashionmnist --checkpoint ./../../models/VanillaVAE/VanVAE_fashionmnist.pt
+
+## Outlier Detection
+
+To detect out-of-distribution samples, we use the loss function as a way to produce an anomaly score. An in-distribution sample should have a low anomaly score, i.e., should be properly reconstructed and its latent space should approximate the prior. On the other hand, an out-of-distribution sample should have a high loss because it is poorly reconstructed and the encoded features do not follow a normal distribution.
+
+    python VanVAE.py --outlier_detection --dataset fashionmnist --out_dataset mnist --checkpoint ./../../models/VanillaVAE/VanVAE_fashionmnist.pt

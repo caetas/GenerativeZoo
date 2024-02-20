@@ -26,7 +26,7 @@ if args.train:
 
                 name = 'VAE_{}'.format(args.dataset))
     # create model
-    model = VanillaVAE(input_shape=in_shape, input_channels=in_channels, latent_dim=args.latent_dim, batch_size=args.batch_size, device=device, hidden_dims=args.hidden_dims, lr=args.lr, sample_and_save_freq=args.sample_and_save_freq, dataset = args.dataset, loss_type=args.loss_type)
+    model = VanillaVAE(input_shape=in_shape, input_channels=in_channels, latent_dim=args.latent_dim, batch_size=args.batch_size, device=device, hidden_dims=args.hidden_dims, lr=args.lr, sample_and_save_freq=args.sample_and_save_freq, dataset = args.dataset, loss_type=args.loss_type, kld_weight=1e-4)
     # train model
     model.train_model(train_loader, args.n_epochs)
 

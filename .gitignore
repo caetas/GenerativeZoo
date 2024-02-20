@@ -187,6 +187,8 @@ venv
 .venv-note
 .venv-dempy
 
+*.csv
+src/generativezoo/cifar10c.py
 # Hydra
 outputs
 runs

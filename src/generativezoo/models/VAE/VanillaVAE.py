@@ -13,6 +13,7 @@ import os
 from config import models_dir
 import wandb
 from math import exp
+from sklearn.metrics import roc_auc_score
 
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
@@ -207,9 +208,14 @@ class VanillaVAE(nn.Module):
         Returns:
         loss: torch.Tensor, loss of the model
         '''
-        mse = torch.functional.F.mse_loss(recon_x, x, reduction='none').view(recon_x.size(0), -1).mean(dim=1)
-        kld = -0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1)
-        return mse + kld*self.kld_weight
+        if self.loss_type == 'mse':
+            mse = torch.functional.F.mse_loss(recon_x, x, reduction='none').view(recon_x.size(0), -1).mean(dim=1)
+            kld = -0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1)
+            return mse + kld*self.kld_weight
+        else:
+            ssim = self.mssim_loss(recon_x*0.5 + 0.5,x*0.5 + 0.5)
+            kld = -0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1)
+            return ssim + kld*self.kld_weight
     
     def create_grid(self, figsize=(10, 10), title=None, train = False):
         '''Create a grid of samples from the latent space
@@ -230,7 +236,7 @@ class VanillaVAE(nn.Module):
             plt.title(title)
         if train:
             wandb.log({'Samples': fig})
-            #plt.savefig(f'Samples_{title}.png')
+            plt.savefig(f'Samples_{title}.png')
         else:
             plt.show()
         plt.close(fig)
@@ -255,7 +261,7 @@ class VanillaVAE(nn.Module):
             plt.title(title)
         if train:
             wandb.log({f"Reconstruction": fig})
-            #plt.savefig(f'Reconstruction_{title}.png')
+            plt.savefig(f'Reconstruction_{title}.png')
         else:
             plt.show()
         plt.close(fig)
@@ -296,7 +302,7 @@ class VanillaVAE(nn.Module):
             
             if acc_loss<best_loss:
                 best_loss = acc_loss
-                torch.save(self.state_dict(), os.path.join(models_dir,'VanillaVAE', f"VanVAE_{self.dataset}_{self.latent_dim}_{self.hidden_dims_str}.pt"))
+                torch.save(self.state_dict(), os.path.join(models_dir,'VanillaVAE', f"VanVAE_{self.dataset}_{self.latent_dim}_{self.hidden_dims_str}_{self.loss_type}.pt"))
     
     def eval_model(self, data_loader):
         '''Evaluate the model
@@ -317,36 +323,60 @@ class VanillaVAE(nn.Module):
             print("Loss: {:.4f}".format(acc_loss/len(data_loader.dataset)))
     
     @torch.no_grad()
-    def outlier_detection(self, in_loader, out_loader):
+    def outlier_detection(self, in_loader, out_loader, display = True, in_array = None):
         ''' OOD detection
         Args:
         in_loader: torch.utils.data.DataLoader, data loader for the in-distribution data
         out_loader: torch.utils.data.DataLoader, data loader for the out-of-distribution data
+        display: bool, if the histograms of the scores should be displayed
+        in_array: np.array, if the in-distribution scores are already computed, saves time in consecutive runs
+        
+        Returns (if display is False):
+        auroc: float, AUROC score
+        in_scores: np.array, in-distribution scores
         '''
         self.eval()
         in_scores = []
         out_scores = []
-        for (data,_) in tqdm(in_loader, desc='In-distribution data', leave = False):
-            x = data.to(self.device)
-            recon_x, mu, logvar = self(x)
-            kld = self.ood_score(recon_x, x, mu, logvar).cpu().numpy()
-            in_scores.append(-kld)
+
+        if in_array is None:
+            for (data,_) in tqdm(in_loader, desc='In-distribution data', leave = False):
+                x = data.to(self.device)
+                recon_x, mu, logvar = self(x)
+                kld = self.ood_score(recon_x, x, mu, logvar)
+                kld = kld.cpu().numpy()
+                in_scores.append(kld)
+            
+            in_scores = np.concatenate(in_scores)
+        else:
+            in_scores = in_array
 
         for (data,_) in tqdm(out_loader, desc='Out-of-distribution data', leave = False):
             x = data.to(self.device)
             recon_x, mu, logvar = self(x)
-            kld = self.ood_score(recon_x, x, mu, logvar).cpu().numpy()
-            out_scores.append(-kld)
+            kld = self.ood_score(recon_x, x, mu, logvar)
+            kld = kld.cpu().numpy()
+            out_scores.append(kld)
         
-        in_scores = np.concatenate(in_scores)
         out_scores = np.concatenate(out_scores)
 
-        # plot histograms of the scores
-        plt.hist(in_scores, bins=50, alpha=0.5, label='In-distribution')
-        plt.hist(out_scores, bins=50, alpha=0.5, label='Out-of-distribution')
-        plt.legend(loc='upper left')
-        plt.title('OOD detection')
-        plt.show()
+        # compute AUROC
+        y_true = np.concatenate([np.zeros_like(in_scores), np.ones_like(out_scores)])
+        y_scores = np.concatenate([in_scores, out_scores])
+        auroc = roc_auc_score(y_true, y_scores)
+
+        if display:
+            # plot histograms of the scores
+            plt.hist(in_scores, bins=50, alpha=0.5, label='In-distribution')
+            plt.hist(out_scores, bins=50, alpha=0.5, label='Out-of-distribution')
+            plt.legend(loc='upper left')
+            plt.title('OOD detection')
+            plt.show()
+        
+        else:
+            return auroc, in_scores
+
+
 
 
 
