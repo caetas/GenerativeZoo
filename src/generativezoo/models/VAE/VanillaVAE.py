@@ -213,7 +213,10 @@ class VanillaVAE(nn.Module):
             kld = -0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1)
             return mse + kld*self.kld_weight
         else:
-            ssim = self.mssim_loss(recon_x*0.5 + 0.5,x*0.5 + 0.5)
+            # iterate over the batch
+            ssim = torch.zeros(recon_x.size(0), device = self.device)
+            for i in range(recon_x.size(0)):
+                ssim[i] = self.mssim_loss(recon_x[i].unsqueeze(0)*0.5 + 0.5,x[i].unsqueeze(0)*0.5 + 0.5)
             kld = -0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1)
             return ssim + kld*self.kld_weight
     
@@ -236,12 +239,19 @@ class VanillaVAE(nn.Module):
             plt.title(title)
         if train:
             wandb.log({'Samples': fig})
-            plt.savefig(f'Samples_{title}.png')
+            #plt.savefig(f'Samples_{title}.png')
         else:
             plt.show()
         plt.close(fig)
 
     def create_validation_grid(self, data_loader, figsize=(10, 4), title=None, train = False):
+        '''Create a grid of samples from the validation set
+        Args:
+        data_loader: torch.utils.data.DataLoader, data loader for the validation
+        figsize: tuple, size of the figure
+        title: str, title of the figure
+        train: bool, if the model is training or not
+        '''
         # get a batch of data
         x, _ = next(iter(data_loader))
         x = x.to(self.device)
@@ -261,7 +271,7 @@ class VanillaVAE(nn.Module):
             plt.title(title)
         if train:
             wandb.log({f"Reconstruction": fig})
-            plt.savefig(f'Reconstruction_{title}.png')
+            #plt.savefig(f'Reconstruction_{title}.png')
         else:
             plt.show()
         plt.close(fig)
@@ -377,9 +387,6 @@ class VanillaVAE(nn.Module):
             return auroc, in_scores
 
 
-
-
-
 class MSSIM(nn.Module):
 
     def __init__(self,
@@ -392,9 +399,10 @@ class MSSIM(nn.Module):
         [1] https://github.com/jorge-pessoa/pytorch-msssim/blob/dev/pytorch_msssim/__init__.py
             (MIT License)
 
-        :param in_channels: (Int)
-        :param window_size: (Int)
-        :param size_average: (Bool)
+        Args:
+        in_channels: int, number of channels of the input image
+        window_size: int, size of the window for the SSIM
+        size_average: bool, if the loss should be averaged
         """
         super(MSSIM, self).__init__()
         self.in_channels = in_channels
@@ -402,11 +410,27 @@ class MSSIM(nn.Module):
         self.size_average = size_average
 
     def gaussian_window(self, window_size:int, sigma: float):
+        """
+        Generates a gaussian window
+        Args:
+        window_size: int, size of the window
+        sigma: float, standard deviation of the gaussian
+        Returns:
+        kernel: torch.Tensor, gaussian window
+        """
         kernel = torch.tensor([exp((x - window_size // 2)**2/(2 * sigma ** 2))
                                for x in range(window_size)])
         return kernel/kernel.sum()
 
     def create_window(self, window_size, in_channels):
+        """
+        Creates a 2D window for the SSIM
+        Args:
+        window_size: int, size of the window
+        in_channels: int, number of channels of the input image
+        Returns:
+        window: torch.Tensor, 2D window
+        """
         _1D_window = self.gaussian_window(window_size, 1.5).unsqueeze(1)
         _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
         window = _2D_window.expand(in_channels, 1, window_size, window_size).contiguous()
@@ -418,6 +442,17 @@ class MSSIM(nn.Module):
              window_size: int,
              in_channel: int,
              size_average: bool):
+        """
+        Computes the SSIM
+        Args:
+        img1: torch.Tensor, input image
+        img2: torch.Tensor, input image
+        window_size: int, size of the window
+        in_channel: int, number of channels of the input image
+        size_average: bool, if the loss should be averaged
+        Returns:
+        ret: torch.Tensor, SSIM loss
+        """
 
         device = img1.device
         window = self.create_window(window_size, in_channel).to(device)
@@ -449,6 +484,14 @@ class MSSIM(nn.Module):
         return ret, cs
 
     def forward(self, img1, img2):
+        """
+        Computes the MS-SSIM
+        Args:
+        img1: torch.Tensor, input image
+        img2: torch.Tensor, input image
+        Returns:
+        output: torch.Tensor, MS-SSIM loss
+        """
         device = img1.device
         weights = torch.FloatTensor([0.0448, 0.2856, 0.3001, 0.2363, 0.1333]).to(device)
         levels = weights.size()[0]

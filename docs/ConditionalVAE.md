@@ -16,8 +16,9 @@ The Conditional Variational Autoencoder (Conditional VAE) is an extension of the
 | `--hidden_dims` | Hidden dimensions                     | `None`  |                                                    |
 | `--checkpoint`  | Checkpoint path                       | `None`  |                                                    |
 | `--num_samples` | Number of samples                     | `16`    |                                                    |
-| `--n_classes` | Number of classes on dataset                    | `10`    |                                                    |
-| `--sample_and_save_frequency`| sample and save frequency            | `5`       |                                                                 |
+| `--n_classes`   | Number of classes on dataset          | `10`    |                                                    |
+| `--sample_and_save_frequency`| sample and save frequency | `5`    |                                                    |
+| `--loss_type`   | Type of loss for training             | `'mse'` | `'mse'`, `'ssim'`                                  |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 
@@ -30,8 +31,6 @@ The training process for the Conditional VAE is similar to the one described in 
 To train a model on the MNIST dataset, you can run the provided example script:
 
     python CondVAE.py --train --dataset mnist --n_classes 10
-
-## Generation
 
 ## Sampling
 
