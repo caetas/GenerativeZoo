@@ -4,22 +4,26 @@ The Adversarial Variational Autoencoder (Adversarial VAE) is a generative model 
 
 ## Parameters
 
-| Parameter                  | Description                           | Default | Choices                                                         |
-|----------------------------|---------------------------------------|---------|-----------------------------------------------------------------|
-| `--train`                    | `train model`                           | `False`   |                                                                 |
-| `--test`                     | `test model`                            | `False`   |                                                                 |
-| `--sample`                   | `sample model`                          | `False`   |                                                                 |
-| `--dataset`                  | `dataset name`                          | `'mnist'`   | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
-| `--batch_size`               | `batch size`                            | `128`     |                                                                 |
-| `--n_epochs`                 | `number of epochs`                      | `100`     |                                                                 |
-| `--lr`                       | `learning rate`                         | `0.0002`  |                                                                 |
-| `--latent_dim`               | `latent dimension`                      | `128`     |                                                                 |
-| `--hidden_dims`              | `hidden dimensions`                     | `None`    |                                                                 |
-| `--checkpoint`               | `checkpoint path`                       | `None`    |                                                                 |
-| `--num_samples`              | `number of samples`                    | `16`      |                                                                 |
-| `--gen_weight`               | `generator weight`                      | `0.002`   |                                                                 |
-| `--recon_weight`             | `reconstruction weight`                | `0.002`   |                                                                 |
-| `--sample_and_save_frequency`| `sample and save frequency`            | `5`       |                                                                 |
+| Parameter                    | Description                         | Default   | Choices                                                         |
+|------------------------------|-------------------------------------|-----------|-----------------------------------------------------------------|
+| `--train`                    | train model                         | `False`   |                                                                 |
+| `--test`                     | test model                          | `False`   |                                                                 |
+| `--sample`                   | sample model                        | `False`   |                                                                 |
+| `--outlier_detection`        | Out-of-distribution detection       | `False`   |                                                    |
+| `--dataset`                  | Dataset name                        | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
+| `--out_dataset`              | Outlier dataset name                | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
+| `--batch_size`               | batch size                          | `128`     |                                                                 |
+| `--n_epochs`                 | number of epochs                    | `100`     |                                                                 |
+| `--lr`                       | learning rate                       | `0.0002`  |                                                                 |
+| `--latent_dim`               | latent dimension                    | `128`     |                                                                 |
+| `--hidden_dims`              | hidden dimensions                   | `None`    |                                                                 |
+| `--checkpoint`               | checkpoint path                     | `None`    |                                                                 |
+| `--discriminator_checkpoint` | discriminator checkpoint path       | `None`    |                                                                 |
+| `--num_samples`              | number of samples                   | `16`      |                                                                 |
+| `--gen_weight`               | generator weight                    | `0.002`   |                                                                 |
+| `--recon_weight`             | reconstruction weight               | `0.002`   |                                                                 |
+| `--sample_and_save_frequency`| sample and save frequency           | `5`       |                                                                 |
+| `--loss_type`                | Type of loss for training           | `'mse'`   | `'mse'`, `'ssim'`                                               |
 
 ## Training
 
@@ -40,3 +44,9 @@ This is related to the ability of the model to accurately reconstruct the input,
 This process is similar to the one described in [`VanillaVAE.md`](VanillaVAE.md).
 
     python AdvVAE.py --sample --dataset octmnist --checkpoint ./../../models/AdversarialVAE/AdvVAE.pt
+
+## Outlier Detection
+
+To detect out-of-distribution samples, we can either use the loss function as a way to produce an anomaly score, or the discriminator that was used for the adversarial training process.
+
+    python AdvVAE.py --outlier_detection --dataset octmnist --out_dataset mnist --checkpoint ./../../models/AdversarialVAE/AdvVAE_octmnist.pt --discriminator_checkpoint ./../../models/AdversarialVAE/Discriminator_octmnist.pt

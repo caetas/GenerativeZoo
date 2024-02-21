@@ -16,7 +16,7 @@ def create_checkpoint_dir():
     os.makedirs(os.path.join(models_dir, 'ConditionalVAE'))
 
 class ConditionalVAE(nn.Module):
-    def __init__(self, input_shape, input_channels, latent_dim, num_classes, device, hidden_dims = None, lr = 5e-3, batch_size = 64, sample_and_save_freq = 5, dataset = 'mnist'):
+    def __init__(self, input_shape, input_channels, latent_dim, num_classes, device, hidden_dims = None, lr = 5e-3, batch_size = 64, sample_and_save_freq = 5, dataset = 'mnist', kld_weight = 1e-3, loss_type = 'mse'):
         '''Conditional VAE model
         Args:
         input_shape: int, input shape of the image
@@ -29,6 +29,8 @@ class ConditionalVAE(nn.Module):
         batch_size: int, batch size for the training
         sample_and_save_freq: int, frequency in epochs to generate some samples
         dataset: str, name of dataset
+        kld_weight: float, weight for the KLD loss
+        loss_type: str, type of loss to use, 'mse' or 'ssim'
         '''
         super(ConditionalVAE, self).__init__()
 
@@ -42,12 +44,19 @@ class ConditionalVAE(nn.Module):
         self.device = device
         self.sample_and_save_freq = sample_and_save_freq
         self.dataset = dataset
+        self.mssim_loss = MSSIM(self.input_channels,
+                                7,
+                                True)
+        self.kld_weight = kld_weight
+        self.loss_type = loss_type
 
         self.embed_class = nn.Linear(num_classes, self.input_shape**2)
         self.embed_data = nn.Conv2d(self.input_channels, self.input_channels, kernel_size=1)
 
         if hidden_dims is None:
             hidden_dims = [32, 64, 128, 256, 512]
+        
+        self.hidden_dims_str = '_'.join(map(str, hidden_dims))
         
         # each layer decreases the h and w by 2, so we need to divide by 2**(number of layers) to know the factor for the flattened input
         self.multiplier = int(self.input_shape/(2**len(hidden_dims)))
@@ -172,7 +181,21 @@ class ConditionalVAE(nn.Module):
         loss_mse = nn.MSELoss()
         mse = loss_mse(x, recon_x)
         kld = torch.mean(-0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1), dim=0)
-        return mse + kld/(self.batch_size**2)
+        return mse + kld*self.kld_weight
+    
+    def ssim_loss_function(self, recon_x, x, mu, logvar):
+        '''Loss function of the model using SSIM
+        Args:
+        recon_x: torch.Tensor, reconstructed input tensor
+        x: torch.Tensor, input tensor
+        mu: torch.Tensor, mean of the latent space
+        logvar: torch.Tensor, logvar of the latent space
+        Returns:
+        loss: torch.Tensor, loss of the model
+        '''
+        ssim = self.mssim_loss(recon_x*0.5 + 0.5,x*0.5 + 0.5)
+        kld = torch.mean(-0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1), dim=0)
+        return ssim + kld*self.kld_weight
     
     def generate(self, z, y):
         '''Generate samples from the latent space
@@ -247,7 +270,10 @@ class ConditionalVAE(nn.Module):
                 x = x.to(self.device)
                 y = self.one_hot_encode(y).float().to(self.device)
                 recon_x, mu, logvar = self(x, y)
-                loss = self.loss_function(recon_x, x, mu, logvar)
+                if self.loss_type == 'mse':
+                    loss = self.loss_function(recon_x, x, mu, logvar)
+                else:
+                    loss = self.ssim_loss_function(recon_x, x, mu, logvar)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -260,5 +286,141 @@ class ConditionalVAE(nn.Module):
             
             if acc_loss<best_loss:
                 best_loss = acc_loss
-                torch.save(self.state_dict(), os.path.join(models_dir,'ConditionalVAE', f"CondVAE_{self.dataset}.pt"))
-        
+                torch.save(self.state_dict(), os.path.join(models_dir,'ConditionalVAE', f"CondVAE_{self.dataset}_{self.latent_dim}_{self.hidden_dims_str}_{self.loss_type}.pt"))
+
+
+class MSSIM(nn.Module):
+
+    def __init__(self,
+                 in_channels: int = 3,
+                 window_size: int=11,
+                 size_average:bool = True) -> None:
+        """
+        Computes the differentiable MS-SSIM loss
+        Reference:
+        [1] https://github.com/jorge-pessoa/pytorch-msssim/blob/dev/pytorch_msssim/__init__.py
+            (MIT License)
+
+        Args:
+        in_channels: int, number of channels of the input image
+        window_size: int, size of the window for the SSIM
+        size_average: bool, if the loss should be averaged
+        """
+        super(MSSIM, self).__init__()
+        self.in_channels = in_channels
+        self.window_size = window_size
+        self.size_average = size_average
+
+    def gaussian_window(self, window_size:int, sigma: float):
+        """
+        Generates a gaussian window
+        Args:
+        window_size: int, size of the window
+        sigma: float, standard deviation of the gaussian
+        Returns:
+        kernel: torch.Tensor, gaussian window
+        """
+        kernel = torch.tensor([exp((x - window_size // 2)**2/(2 * sigma ** 2))
+                               for x in range(window_size)])
+        return kernel/kernel.sum()
+
+    def create_window(self, window_size, in_channels):
+        """
+        Creates a 2D window for the SSIM
+        Args:
+        window_size: int, size of the window
+        in_channels: int, number of channels of the input image
+        Returns:
+        window: torch.Tensor, 2D window
+        """
+        _1D_window = self.gaussian_window(window_size, 1.5).unsqueeze(1)
+        _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
+        window = _2D_window.expand(in_channels, 1, window_size, window_size).contiguous()
+        return window
+
+    def ssim(self,
+             img1,
+             img2,
+             window_size: int,
+             in_channel: int,
+             size_average: bool):
+        """
+        Computes the SSIM
+        Args:
+        img1: torch.Tensor, input image
+        img2: torch.Tensor, input image
+        window_size: int, size of the window
+        in_channel: int, number of channels of the input image
+        size_average: bool, if the loss should be averaged
+        Returns:
+        ret: torch.Tensor, SSIM loss
+        """
+
+        device = img1.device
+        window = self.create_window(window_size, in_channel).to(device)
+        mu1 = F.conv2d(img1, window, padding= window_size//2, groups=in_channel)
+        mu2 = F.conv2d(img2, window, padding= window_size//2, groups=in_channel)
+
+        mu1_sq = mu1.pow(2)
+        mu2_sq = mu2.pow(2)
+        mu1_mu2 = mu1 * mu2
+
+        sigma1_sq = F.conv2d(img1 * img1, window, padding = window_size//2, groups=in_channel) - mu1_sq
+        sigma2_sq = F.conv2d(img2 * img2, window, padding = window_size//2, groups=in_channel) - mu2_sq
+        sigma12   = F.conv2d(img1 * img2, window, padding = window_size//2, groups=in_channel) - mu1_mu2
+
+        img_range = 1.0 #img1.max() - img1.min() # Dynamic range
+        C1 = (0.01 * img_range) ** 2
+        C2 = (0.03 * img_range) ** 2
+
+        v1 = 2.0 * sigma12 + C2
+        v2 = sigma1_sq + sigma2_sq + C2
+        cs = torch.mean(v1 / v2)  # contrast sensitivity
+
+        ssim_map = ((2 * mu1_mu2 + C1) * v1) / ((mu1_sq + mu2_sq + C1) * v2)
+
+        if size_average:
+            ret = ssim_map.mean()
+        else:
+            ret = ssim_map.mean(1).mean(1).mean(1)
+        return ret, cs
+
+    def forward(self, img1, img2):
+        """
+        Computes the MS-SSIM
+        Args:
+        img1: torch.Tensor, input image
+        img2: torch.Tensor, input image
+        Returns:
+        output: torch.Tensor, MS-SSIM loss
+        """
+        device = img1.device
+        weights = torch.FloatTensor([0.0448, 0.2856, 0.3001, 0.2363, 0.1333]).to(device)
+        levels = weights.size()[0]
+        mssim = []
+        mcs = []
+
+        for _ in range(levels):
+            sim, cs = self.ssim(img1, img2,
+                                self.window_size,
+                                self.in_channels,
+                                self.size_average)
+            mssim.append(sim)
+            mcs.append(cs)
+
+            img1 = F.avg_pool2d(img1, (2, 2))
+            img2 = F.avg_pool2d(img2, (2, 2))
+
+        mssim = torch.stack(mssim)
+        mcs = torch.stack(mcs)
+
+        # # Normalize (to avoid NaNs during training unstable models, not compliant with original definition)
+        # if normalize:
+        #     mssim = (mssim + 1) / 2
+        #     mcs = (mcs + 1) / 2
+
+        pow1 = mcs ** weights
+        pow2 = mssim ** weights
+
+        output = torch.prod(pow1[:-1] * pow2[-1])
+        return 1 - output
