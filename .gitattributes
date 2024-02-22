@@ -26,8 +26,9 @@
 *.csv      text
 *.tab      text
 *.tsv      text
-*.txt      text
+*.txt      text 
 *.sql      text
+*.txt eol=lf
 
 # Graphics
 *.png      binary
