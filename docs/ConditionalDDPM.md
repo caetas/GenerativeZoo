@@ -15,10 +15,10 @@ The Conditional Denoising Diffusion Probabilistic Model (CDDPM) is akin to the s
 | `--timesteps`          | number of timesteps                       | `500`   |                                                              |
 | `--beta_start`         | beta start                                | `0.0001`|                                                              |
 | `--beta_end`           | beta end                                  | `0.02`  |                                                              |
-| `--dataset`            | dataset name                              | `'mnist'` | `'textile'`, `'toothbrush'`, `'bottle'`, `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
+| `--dataset`            | dataset name                              | `'mnist'` | `'textile'`, `'toothbrush'`, `'bottle'`, `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`|
 | `--ddpm`               | ddpm                                      | `1.0`   |                                                              |
 | `--checkpoint`         | checkpoint path                           | `None`  |                                                              |
-| `--out_dataset`        | outlier dataset name                      | `'fashionmnist'` | `'textile'`, `'toothbrush'`, `'bottle'`, `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
+| `--out_dataset`        | outlier dataset name                      | `'fashionmnist'` | `'textile'`, `'toothbrush'`, `'bottle'`, `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`|
 | `--sample_timesteps`   | number of timesteps for sampling          | `500`   |                                                              |
 | `--n_features`         | number of features                        | `128`   |                                                              |
 | `--n_classes`          | number of classes                         | `10`    |                                                              |

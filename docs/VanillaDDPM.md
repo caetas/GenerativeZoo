@@ -22,11 +22,11 @@ Denoising Diffusion Probabilistic Models (DDPMs) rely on a diffusion process whe
 | `--beta_start`              | beta start                                      | `0.0001`|                                                              |
 | `--beta_end`                | beta end                                        | `0.02`  |                                                              |
 | `--sample_and_save_freq`    | sample and save frequency                       | `10`    |                                                              |
-| `--dataset`                 | dataset name                                    | `'mnist'` | `'textile'`, `'toothbrush'`, `'bottle'`, `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
+| `--dataset`                 | dataset name                                    | `'mnist'` | `'textile'`, `'toothbrush'`, `'bottle'`, `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
 | `--ddpm`                    | 1.0 is a ddpm, 0.0 is a ddim                                            | `1.0`   |                                                              |
 | `--checkpoint`              | checkpoint path                                 | `None`  |                                                              |
 | `--num_samples`             | number of samples                               | `16`    |                                                              |
-| `--out_dataset`             | outlier dataset name                            | `'fashionmnist'` | `'textile'`, `'toothbrush'`, `'bottle'`, `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
+| `--out_dataset`             | outlier dataset name                            | `'fashionmnist'` | `'textile'`, `'toothbrush'`, `'bottle'`, `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
 | `--loss_type`               | loss type                                       | `'huber'` | `'huber'`, `'l2'`, `'l1'`                                  |
 | `--sample_timesteps`        | number of timesteps for sampling                | `300`   |                                                              |
 
