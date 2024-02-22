@@ -709,6 +709,59 @@ def headct_val_loader(batch_size, normalize = False, input_shape = None):
         return validation_loader, input_shape, 1
     else:
         return validation_loader, 64, 1
+    
+
+def cityscapes_train_loader(batch_size, normalize = False, input_shape = None):
+
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    training_data = datasets.Cityscapes(root=data_raw_dir, split='train', transform=transform, target_transform=transforms.Compose([transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)), transforms.ToTensor()]))
+
+    training_loader = DataLoader(training_data, 
+                                batch_size=batch_size, 
+                                shuffle=True,
+                                pin_memory=True)
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 3
+    else:
+        return training_loader, 128, 3
+    
+def cityscapes_val_loader(batch_size, normalize = False, input_shape = None):
+
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    validation_data = datasets.Cityscapes(root=data_raw_dir, split='val', transform=transform, target_transform=transforms.Compose([transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)), transforms.ToTensor()]))
+
+    validation_loader = DataLoader(validation_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True)
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 3
+    else:
+        return validation_loader, 128, 3
 
 def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None):
     if dataset_name == 'mnist':
@@ -771,5 +824,10 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return headct_train_loader(batch_size, normalize, size)
         elif mode == 'val':
             return headct_val_loader(batch_size, normalize, size)
+    elif dataset_name == 'cityscapes':
+        if mode == 'train':
+            return cityscapes_train_loader(batch_size, normalize, size)
+        elif mode == 'val':
+            return cityscapes_val_loader(batch_size, normalize, size)
     else:
         raise ValueError('Dataset name not found.')

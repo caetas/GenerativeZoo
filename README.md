@@ -140,6 +140,9 @@ The following datasets are ready to be used to train and sample from the provide
 - CIFAR-10 [`Source`](https://www.cs.toronto.edu/%7Ekriz/cifar.html)
 - SVHN [`Source`](https://arxiv.org/abs/1312.6082)
 
+#### Manual Download Required
+- Cityscapes: **download [Images](https://www.cityscapes-dataset.com/file-handling/?packageID=3) and [Ground-Truth](https://www.cityscapes-dataset.com/file-handling/?packageID=1), and move the .zip files to [`data/raw`](data/raw)**.
+
 ## Tracking
 
 The code examples are setup to use [Weights & Biases](https://wandb.ai/home) as a tool to track your training runs. Please refer to the [`full documentation`](https://docs.wandb.ai/quickstart) if required or follow the following steps:

@@ -6,8 +6,8 @@ Score-based Generative Models (SGMs) model the diffusion process using a Stochas
 
 | Parameter             | Description                            | Default | Choices                                                      |
 |-----------------------|----------------------------------------|---------|--------------------------------------------------------------|
-| `--dataset`           | dataset name                           | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
-| `--out_dataset`       | outlier dataset name                   | `'fashionmnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
+| `--dataset`           | dataset name                           | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
+| `--out_dataset`       | outlier dataset name                   | `'fashionmnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
 | `--batch_size`        | batch size                             | `128`   |                                                              |
 | `--n_epochs`          | number of epochs                       | `100`   |                                                              |
 | `--train`             | train model                            | `False` |                                                              |

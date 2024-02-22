@@ -10,8 +10,8 @@ The Adversarial Variational Autoencoder (Adversarial VAE) is a generative model 
 | `--test`                     | test model                          | `False`   |                                                                 |
 | `--sample`                   | sample model                        | `False`   |                                                                 |
 | `--outlier_detection`        | Out-of-distribution detection       | `False`   |                                                    |
-| `--dataset`                  | Dataset name                        | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
-| `--out_dataset`              | Outlier dataset name                | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
+| `--dataset`                  | Dataset name                        | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
+| `--out_dataset`              | Outlier dataset name                | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
 | `--batch_size`               | batch size                          | `128`     |                                                                 |
 | `--n_epochs`                 | number of epochs                    | `100`     |                                                                 |
 | `--lr`                       | learning rate                       | `0.0002`  |                                                                 |

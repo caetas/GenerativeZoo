@@ -8,7 +8,7 @@ A Conditional Generative Adversarial Network (cGAN) is an extension of the tradi
 |-------------------|------------------------------------|---------|--------------------------------------------------------------|
 | `--train`         | train model                        | `False` |                                                              |
 | `--sample`        | sample from model                  | `False` |                                                              |
-| `--dataset`       | dataset name                       | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
+| `--dataset`       | dataset name                       | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`|
 | `--batch_size`    | batch size                         | `128`   |                                                              |
 | `--n_epochs`      | number of epochs                   | `100`   |                                                              |
 | `--lr`            | learning rate                      | `0.0002`|                                                              |

@@ -13,7 +13,7 @@ The Diffusion Autoencoder (DiffAE) is a model that learns to encode images into 
 | `--lr`                | learning rate                          | `0.001` |                                                              |
 | `--timesteps`         | number of timesteps                    | `1000`  |                                                              |
 | `--sample_timesteps`  | number of timesteps for sampling       | `100`   |                                                              |
-| `--dataset`           | dataset name                           | `'mnist'` | `'textile'`, `'toothbrush'`, `'bottle'`, `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
+| `--dataset`           | dataset name                           | `'mnist'` | `'textile'`, `'toothbrush'`, `'bottle'`, `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
 | `--checkpoint`        | checkpoint path                        | `None`  |                                                              |
 | `--embedding_dim`     | embedding dimension                    | `512`   |                                                              |
 | `--model_channels`    | model channels                         | `[64, 128, 256]` |                                                |
