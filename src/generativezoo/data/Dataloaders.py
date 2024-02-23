@@ -711,7 +711,7 @@ def headct_val_loader(batch_size, normalize = False, input_shape = None):
         return validation_loader, 64, 1
     
 
-def cityscapes_train_loader(batch_size, normalize = False, input_shape = None):
+def cityscapes_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
 
     if normalize:
         transform = transforms.Compose([
@@ -730,14 +730,15 @@ def cityscapes_train_loader(batch_size, normalize = False, input_shape = None):
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
                                 shuffle=True,
-                                pin_memory=True)
+                                pin_memory=True,
+                                num_workers = num_workers)
     
     if input_shape is not None:
         return training_loader, input_shape, 3
     else:
         return training_loader, 128, 3
     
-def cityscapes_val_loader(batch_size, normalize = False, input_shape = None):
+def cityscapes_val_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
 
     if normalize:
         transform = transforms.Compose([
@@ -756,14 +757,15 @@ def cityscapes_val_loader(batch_size, normalize = False, input_shape = None):
     validation_loader = DataLoader(validation_data,
                                 batch_size=batch_size,
                                 shuffle=True,
-                                pin_memory=True)
+                                pin_memory=True,
+                                num_workers = num_workers)
     
     if input_shape is not None:
         return validation_loader, input_shape, 3
     else:
         return validation_loader, 128, 3
 
-def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None):
+def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None, num_workers = 0):
     if dataset_name == 'mnist':
         if mode == 'train':
             return mnist_train_loader(batch_size, normalize, size)
@@ -826,8 +828,8 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return headct_val_loader(batch_size, normalize, size)
     elif dataset_name == 'cityscapes':
         if mode == 'train':
-            return cityscapes_train_loader(batch_size, normalize, size)
+            return cityscapes_train_loader(batch_size, normalize, size, num_workers = num_workers)
         elif mode == 'val':
-            return cityscapes_val_loader(batch_size, normalize, size)
+            return cityscapes_val_loader(batch_size, normalize, size, num_workers = num_workers)
     else:
         raise ValueError('Dataset name not found.')
