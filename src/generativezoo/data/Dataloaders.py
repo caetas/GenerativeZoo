@@ -764,6 +764,54 @@ def cityscapes_val_loader(batch_size, normalize = False, input_shape = None, num
         return validation_loader, input_shape, 3
     else:
         return validation_loader, 128, 3
+    
+class CityscapesDataset(Dataset):
+
+    def __init__(self, root, train = False, transform=None):
+        self.root = root
+        self.transform = transform
+        self.train = train
+        if train:
+            self.imgs = glob(os.path.join(root, 'train', '*', '*.png'))
+        else:
+            self.imgs = glob(os.path.join(root, 'val', '*', '*.png'))
+        
+    def __len__(self):
+        return len(self.imgs)
+    
+    def __getitem__(self, idx):
+        img = Image.open(self.imgs[idx])
+        if self.transform:
+            img = self.transform(img)
+        # if image name contains good, label is 0, else 1
+        return img, 0
+
+
+def cityscapes_rain_val_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    dataset = CityscapesDataset(root = os.path.join(data_raw_dir, 'leftImg8bit_trainval_rain','leftImg8bit_rain'), train=False, transform=transform)
+
+    validation_loader = DataLoader(dataset,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True,
+                                num_workers = num_workers)
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 3
+    else:
+        return validation_loader, 128, 3
 
 def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None, num_workers = 0):
     if dataset_name == 'mnist':
