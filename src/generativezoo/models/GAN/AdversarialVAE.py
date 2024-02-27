@@ -447,6 +447,7 @@ class AdversarialVAE(nn.Module):
                 best_loss = acc_g_loss/len(data_loader.dataset)
                 torch.save(self.vae.state_dict(), os.path.join(models_dir, 'AdversarialVAE', f"AdvVAE_{self.dataset}.pt"))
                 torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'AdversarialVAE', f"Discriminator_{self.dataset}.pt"))
+        '''
         # create an artifact for the state dict
         artifact = wandb.Artifact(f"AdvVAE_{self.dataset}", type="model")
         artifact.add_file(os.path.join(models_dir, 'AdversarialVAE', f"AdvVAE_{self.dataset}.pt"))
@@ -457,6 +458,7 @@ class AdversarialVAE(nn.Module):
         artifact.add_file(os.path.join(models_dir, 'AdversarialVAE', f"Discriminator_{self.dataset}.pt"))
         # save the artifact to wandb
         wandb.log_artifact(artifact)
+        '''
 
     def ood_score(self, recon_x, x, mu, logvar):
         '''
