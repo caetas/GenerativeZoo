@@ -6,6 +6,8 @@ from medmnist import ChestMNIST, TissueMNIST, OCTMNIST, PneumoniaMNIST
 import os
 from glob import glob
 from PIL import Image
+import numpy as np
+import torch
 
 def cifar_train_loader(batch_size, normalize = False, input_shape = None):
 
@@ -711,7 +713,7 @@ def headct_val_loader(batch_size, normalize = False, input_shape = None):
         return validation_loader, 64, 1
     
 
-def cityscapes_train_loader(batch_size, normalize = False, input_shape = None):
+def cityscapes_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
 
     if normalize:
         transform = transforms.Compose([
@@ -730,14 +732,15 @@ def cityscapes_train_loader(batch_size, normalize = False, input_shape = None):
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
                                 shuffle=True,
-                                pin_memory=True)
+                                pin_memory=True,
+                                num_workers = num_workers)
     
     if input_shape is not None:
         return training_loader, input_shape, 3
     else:
         return training_loader, 128, 3
     
-def cityscapes_val_loader(batch_size, normalize = False, input_shape = None):
+def cityscapes_val_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
 
     if normalize:
         transform = transforms.Compose([
@@ -756,14 +759,157 @@ def cityscapes_val_loader(batch_size, normalize = False, input_shape = None):
     validation_loader = DataLoader(validation_data,
                                 batch_size=batch_size,
                                 shuffle=True,
-                                pin_memory=True)
+                                pin_memory=True,
+                                num_workers = num_workers)
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 3
+    else:
+        return validation_loader, 128, 3
+    
+class CityscapesDataset(Dataset):
+
+    def __init__(self, root, train = False, transform=None):
+        self.root = root
+        self.transform = transform
+        self.train = train
+        if train:
+            self.imgs = glob(os.path.join(root, 'train', '*', '*.png'))
+        else:
+            self.imgs = glob(os.path.join(root, 'val', '*', '*.png'))
+        
+    def __len__(self):
+        return len(self.imgs)
+    
+    def __getitem__(self, idx):
+        img = Image.open(self.imgs[idx])
+        if self.transform:
+            img = self.transform(img)
+        # if image name contains good, label is 0, else 1
+        return img, 0
+
+
+def cityscapes_rain_val_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    dataset = CityscapesDataset(root = os.path.join(data_raw_dir, 'leftImg8bit_trainval_rain','leftImg8bit_rain'), train=False, transform=transform)
+
+    validation_loader = DataLoader(dataset,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True,
+                                num_workers = num_workers)
     
     if input_shape is not None:
         return validation_loader, input_shape, 3
     else:
         return validation_loader, 128, 3
 
-def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None):
+class XraysDataset(Dataset):
+    
+        def __init__(self, root, flavour = 17, mode = 'test', transform=None):
+            self.root = root
+            self.transform = transform
+            self.mode = mode
+            self.flavour = flavour
+            if mode == 'train':
+                self.imgs = np.load(os.path.join(root, 'train', str(flavour)+'.npy'))
+            elif mode == 'val':
+                self.imgs = np.load(os.path.join(root, 'val', str(flavour)+'.npy'))
+            else:
+                self.imgs = np.load(os.path.join(root, 'test', str(flavour)+'.npy'))
+            
+        def __len__(self):
+            return self.imgs.shape[0]
+        
+        def __getitem__(self, idx):
+            img = self.imgs[idx]
+            img = img.transpose(2,0,1)
+            img = torch.tensor(img).float()
+            if self.transform:
+                img = self.transform(img)
+            return img, self.flavour
+    
+def xrays_train_loader(batch_size, normalize = False, input_shape = None):
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.Normalize((0.5,), (0.5,))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+        ])
+    
+    training_data = XraysDataset(root = os.path.join(data_raw_dir, 'xrays'), flavour = 17, mode = 'train', transform=transform)
+
+    training_loader = DataLoader(training_data, 
+                                batch_size=batch_size, 
+                                shuffle=True,
+                                pin_memory=True)
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 1
+    else:
+        return training_loader, 128, 1
+
+def xrays_val_loader(batch_size, normalize = False, input_shape = None):
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.Normalize((0.5,), (0.5,))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+        ])
+    
+    validation_data = XraysDataset(root = os.path.join(data_raw_dir, 'xrays'), flavour = 17, mode = 'val', transform=transform)
+
+    validation_loader = DataLoader(validation_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True)
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 1
+    else:
+        return validation_loader, 128, 1
+
+def xrays_test_loader(batch_size, normalize = False, input_shape = None, flavour = 17):
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.Normalize((0.5,), (0.5,))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+        ])
+    
+    test_data = XraysDataset(root = os.path.join(data_raw_dir, 'xrays'), flavour = flavour, mode = 'test', transform=transform)
+
+    test_loader = DataLoader(test_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True)
+    
+    if input_shape is not None:
+        return test_loader, input_shape, 1
+    else:
+        return test_loader, 128, 1
+
+def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None, num_workers = 0):
     if dataset_name == 'mnist':
         if mode == 'train':
             return mnist_train_loader(batch_size, normalize, size)
@@ -826,8 +972,13 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return headct_val_loader(batch_size, normalize, size)
     elif dataset_name == 'cityscapes':
         if mode == 'train':
-            return cityscapes_train_loader(batch_size, normalize, size)
+            return cityscapes_train_loader(batch_size, normalize, size, num_workers = num_workers)
         elif mode == 'val':
-            return cityscapes_val_loader(batch_size, normalize, size)
+            return cityscapes_val_loader(batch_size, normalize, size, num_workers = num_workers)
+    elif dataset_name == 'xray':
+        if mode == 'train':
+            return xrays_train_loader(batch_size, normalize, size)
+        elif mode == 'val':
+            return xrays_val_loader(batch_size, normalize, size)
     else:
         raise ValueError('Dataset name not found.')

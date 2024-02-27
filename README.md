@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="imgs/logo_tasti_light.png" width="70%" alt='Tasti Project'>
+</p>
+
 # GenerativeZoo
 
 [![Python](https://img.shields.io/badge/python-3.9+-informational.svg)](https://www.python.org/downloads/release/python-3918/)
@@ -10,6 +14,8 @@
 [![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 
 A collection of generative algorithms and techniques implemented in Python.
+
+**This work is part of the Xecs TASTI project, nr. 2022005.**
 
 ## Prerequisites
 

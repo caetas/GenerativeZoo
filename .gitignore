@@ -190,7 +190,7 @@ venv
 *.csv
 src/generativezoo/cifar10c.py
 src/generativezoo/cifar10c_adv.py
-src/generativezoo/models/Flow
+src/generativezoo/xrays.py
 *.ipynb
 # Hydra
 outputs

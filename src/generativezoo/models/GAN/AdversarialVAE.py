@@ -447,6 +447,18 @@ class AdversarialVAE(nn.Module):
                 best_loss = acc_g_loss/len(data_loader.dataset)
                 torch.save(self.vae.state_dict(), os.path.join(models_dir, 'AdversarialVAE', f"AdvVAE_{self.dataset}.pt"))
                 torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'AdversarialVAE', f"Discriminator_{self.dataset}.pt"))
+        '''
+        # create an artifact for the state dict
+        artifact = wandb.Artifact(f"AdvVAE_{self.dataset}", type="model")
+        artifact.add_file(os.path.join(models_dir, 'AdversarialVAE', f"AdvVAE_{self.dataset}.pt"))
+        # save the artifact to wandb
+        wandb.log_artifact(artifact)
+        # create an artifact for the state dict
+        artifact = wandb.Artifact(f"Discriminator_{self.dataset}", type="model")
+        artifact.add_file(os.path.join(models_dir, 'AdversarialVAE', f"Discriminator_{self.dataset}.pt"))
+        # save the artifact to wandb
+        wandb.log_artifact(artifact)
+        '''
 
     def ood_score(self, recon_x, x, mu, logvar):
         '''
@@ -528,11 +540,11 @@ class AdversarialVAE(nn.Module):
             fig, ax = plt.subplots(1, 2, figsize=(10, 5))
             ax[0].hist(in_scores, bins=100, alpha=0.5, label='In-distribution')
             ax[0].hist(out_scores, bins=100, alpha=0.5, label='Out-of-distribution')
-            ax[0].set_title('VAE Scores')
+            ax[0].set_title('VAE Scores (ROC AUC: {:.4f})'.format(rocauc))
             ax[0].legend()
             ax[1].hist(in_scores_discriminator, bins=50, alpha=0.5, label='In-distribution')
             ax[1].hist(out_scores_discriminator, bins=50, alpha=0.5, label='Out-of-distribution')
-            ax[1].set_title('Discriminator Scores')
+            ax[1].set_title('Discriminator Scores (ROC AUC: {:.4f})'.format(rocauc_discriminator))
             ax[1].legend()
             plt.show()
         
