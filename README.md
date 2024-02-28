@@ -125,7 +125,7 @@ These models are currently under development and will be added to the repository
 
 #### Flow-Based Models
 
-- [ ] RealNVP [`Paper`](https://arxiv.org/abs/1605.08803)
+- [ ] Glow [`Paper`](https://arxiv.org/abs/1807.03039)
 - [ ] Flow++ [`Paper`](https://arxiv.org/abs/1902.00275)
 
 ## Datasets
