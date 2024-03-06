@@ -2,7 +2,14 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision.utils import make_grid
 from tqdm import trange, tqdm
+import matplotlib.pyplot as plt
+import wandb
+import numpy as np
+import os
+from config import models_dir
+from sklearn.metrics import roc_auc_score
 
 
 def compute_same_pad(kernel_size, stride):
@@ -65,6 +72,8 @@ def gaussian_likelihood(mean, logs, x):
 
 def gaussian_sample(mean, logs, temperature=1):
     # Sample from Gaussian with temperature
+    if temperature == None:
+        temperature = 1
     z = torch.normal(mean, torch.exp(logs) * temperature)
 
     return z
@@ -361,7 +370,7 @@ class InvertibleConv1x1(nn.Module):
         if not LU_decomposed:
             self.weight = nn.Parameter(torch.Tensor(w_init))
         else:
-            p, lower, upper = torch.lu_unpack(*torch.lu(w_init))
+            p, lower, upper = torch.lu_unpack(*torch.linalg.lu_factor(w_init))
             s = torch.diag(upper)
             sign_s = torch.sign(s)
             log_s = torch.log(torch.abs(s))
@@ -580,18 +589,29 @@ class FlowNet(nn.Module):
             else:
                 z, logdet = layer(z, logdet=0, reverse=True)
         return z
+    
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'Glow')):
+    os.makedirs(os.path.join(models_dir, 'Glow'))
 
 
 class Glow(nn.Module):
-    def __init__(self,image_shape,hidden_channels,K,L,actnorm_scale,flow_permutation,flow_coupling,LU_decomposed,y_classes,learn_top,y_condition, device, n_epochs = 100, lr = 1e-4):
+    def __init__(self,image_shape,hidden_channels,K,L,actnorm_scale,flow_permutation,flow_coupling,LU_decomposed,learn_top,y_condition, device, n_epochs = 100, lr = 1e-4, num_classes = 10, n_bits = 8, sample_and_save_freq = 5, dataset = 'mnist'):
         super().__init__()
         self.flow = FlowNet(image_shape=image_shape,hidden_channels=hidden_channels,K=K,L=L,actnorm_scale=actnorm_scale,flow_permutation=flow_permutation,flow_coupling=flow_coupling,LU_decomposed=LU_decomposed).to(device)
-        self.y_classes = y_classes
         self.y_condition = y_condition
         self.n_epochs = n_epochs
         self.lr = lr
         self.device = device
-
+        self.y_classes = num_classes
+        self.n_bits = n_bits
+        self.sample_and_save_freq = sample_and_save_freq
+        self.K = K
+        self.L = L
+        self.hidden_channels = hidden_channels
+        self.dataset = dataset
         self.learn_top = learn_top
 
         # learned prior
@@ -601,8 +621,8 @@ class Glow(nn.Module):
 
         if y_condition:
             C = self.flow.output_shapes[-1][1]
-            self.project_ycond = LinearZeros(y_classes, 2 * C)
-            self.project_class = LinearZeros(C, y_classes)
+            self.project_ycond = LinearZeros(num_classes, 2 * C)
+            self.project_class = LinearZeros(C, num_classes)
 
         self.register_buffer(
             "prior_h",
@@ -616,12 +636,14 @@ class Glow(nn.Module):
             ),
         )
 
-    def prior(self, data, y_onehot=None):
+        self=self.to(device)
+
+    def prior(self, data, y_onehot=None, n=16):
         if data is not None:
             h = self.prior_h.repeat(data.shape[0], 1, 1, 1)
         else:
             # Hardcoded a batch size of 32 here
-            h = self.prior_h.repeat(32, 1, 1, 1)
+            h = self.prior_h.repeat(n, 1, 1, 1)
 
         channels = h.size(1)
 
@@ -662,41 +684,120 @@ class Glow(nn.Module):
         bpd = (-objective) / (math.log(2.0) * c * h * w)
 
         return z, bpd, y_logits
-
-    def reverse_flow(self, z, y_onehot, temperature):
-        with torch.no_grad():
-            if z is None:
-                mean, logs = self.prior(z, y_onehot)
-                z = gaussian_sample(mean, logs, temperature)
-            x = self.flow(z, temperature=temperature, reverse=True)
+    
+    @torch.no_grad()
+    def reverse_flow(self, z, y_onehot, temperature, n=16):
+        if z is None:
+            mean, logs = self.prior(z, y_onehot, n=n)
+            z = gaussian_sample(mean, logs, temperature)
+        x = self.flow(z, temperature=temperature, reverse=True)
         return x
 
     def set_actnorm_init(self):
         for name, m in self.named_modules():
             if isinstance(m, ActNorm2d):
                 m.inited = True
+    
+    def preprocess(self, x):
+        x = x * 255  # undo ToTensor scaling to [0,1]
+
+        n_bins = 2 ** self.n_bits
+        if self.n_bits < 8:
+            x = torch.floor(x / 2 ** (8 - self.n_bits))
+        x = x / n_bins - 0.5
+
+        return x
 
     def train_model(self,dataloader):
         optimizer = torch.optim.Adam(self.flow.parameters(), lr=self.lr)
         epoch_bar = trange(self.n_epochs, desc="Epochs")
         self.flow.train()
+        create_checkpoint_dir()
+        best_loss = np.inf
+
         for epoch in epoch_bar:
             total_loss = 0
-            for x, _ in tqdm(dataloader, desc = "Batches", leave = False):
+            for x, label in tqdm(dataloader, desc = "Batches", leave = False):
+                x = self.preprocess(x)
                 x = x.to(self.device)
                 optimizer.zero_grad()
-                z, nll, y_logits = self.forward(x, None)
-                losses = compute_loss(nll)
+                if self.y_condition:
+                    label_one_hot = F.one_hot(label, self.y_classes).to(self.device)
+                    z, nll, y_logits = self.forward(x, label_one_hot)
+                    losses = compute_loss_y(nll, y_logits, 0.01, label_one_hot, True)
+                else:
+                    z, nll, y_logits = self.forward(x, None)
+                    losses = compute_loss(nll)
                 losses["total_loss"].backward()
                 optimizer.step()
                 total_loss += losses["total_loss"].item()
-            epoch_bar.set_postfix(loss=total_loss/len(dataloader))
-    
-    def sample(self, n, y_onehot=None, temperature=None):
-        z = torch.randn(n, *self.flow.output_shapes[-1]).to(self.device)
-        x = self.reverse_flow(z, y_onehot, temperature)
-        return x
 
+            epoch_bar.set_postfix(loss=total_loss/len(dataloader))
+            wandb.log({'Loss': total_loss/len(dataloader)})
+
+            if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
+                self.sample()
+            
+            if total_loss < best_loss:
+                best_loss = total_loss
+                torch.save(self.state_dict(), os.path.join(models_dir,'Glow', f"Glow_{self.dataset}_{self.K}_{self.L}_{self.hidden_channels}.pt"))
+
+    
+    def sample(self, n=16, y_onehot=None, temperature=None, train=True):
+        #z = torch.randn(n, *self.flow.output_shapes[-1]).to(self.device)
+        x = self.reverse_flow(None, y_onehot, temperature, n=n)
+        x = torch.clamp(x, -0.5, 0.5)
+        x += 0.5
+        # plot torch grid
+        grid = make_grid(x, nrow=int(n ** 0.5), padding=0)
+        fig = plt.figure(figsize=(10, 10))
+        plt.imshow(grid.permute(1, 2, 0).cpu().detach().numpy())
+        plt.axis("off")
+        if train:
+            wandb.log({'Samples': fig})
+        else:
+            plt.show()
+        plt.close(fig)
+
+    @torch.no_grad()
+    def outlier_detection(self, in_loader, out_loader):
+
+        in_scores = []
+        out_scores = []
+
+        for x, _ in tqdm(in_loader, desc="In-distribution"):
+            x = self.preprocess(x)
+            x = x.to(self.device)
+            z, nll, y_logits = self.forward(x, None)
+            losses = compute_loss(nll, reduction="none")
+            in_scores.extend(losses["nll"].detach().cpu().numpy())
+
+        for x, _ in tqdm(out_loader, desc="Out-of-distribution"):
+            x = self.preprocess(x)
+            x = x.to(self.device)
+            z, nll, y_logits = self.forward(x, None)
+            losses = compute_loss(nll, reduction="none")
+            out_scores.extend(losses["nll"].detach().cpu().numpy())
+        
+        # get auc
+        in_scores = np.array(in_scores)
+        out_scores = np.array(out_scores)
+        in_labels = np.zeros_like(in_scores)
+        out_labels = np.ones_like(out_scores)
+        scores = np.concatenate([in_scores, out_scores])
+        labels = np.concatenate([in_labels, out_labels])
+        auc = roc_auc_score(labels, scores)
+        # print with 4 decimal places
+        print(f"AUC: {auc:.4f}")
+        
+        # plot histograms of scores in same plot
+        plt.hist(in_scores, bins=100, alpha=0.5, label='In-distribution')
+        plt.hist(out_scores, bins=100, alpha=0.5, label='Out-of-distribution')
+        plt.legend(loc='upper right')
+        plt.xlabel('NLL')
+        plt.ylabel('Frequency')
+        plt.show()
+        return in_scores, out_scores
 
 def compute_loss(nll, reduction="mean"):
     if reduction == "mean":

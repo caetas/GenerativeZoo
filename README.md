@@ -100,6 +100,10 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 - Vanilla SGM [`Paper`](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/VanillaSGM.py)|[`Script`](src/generativezoo/VanSGM.py)|[`Documentation`](docs/VanillaSGM.md)
 
+#### Flow
+
+- Glow [`Paper`](https://arxiv.org/abs/1807.03039)|[`Code`](src\generativezoo\models\Flow\Glow.py)|[`Script`](src/generativezoo/GLOW.py)|[`Documentation`](docs/Glow.md)
+
 ### Future Models
 
 These models are currently under development and will be added to the repository in the future.
@@ -125,7 +129,6 @@ These models are currently under development and will be added to the repository
 
 #### Flow-Based Models
 
-- [ ] Glow [`Paper`](https://arxiv.org/abs/1807.03039)
 - [ ] Flow++ [`Paper`](https://arxiv.org/abs/1902.00275)
 
 ## Datasets
@@ -206,6 +209,7 @@ All the repositories used to generate this code are mentioned in each of the cor
 - [Conditional_Diffusion_MNIST](https://github.com/TeaPearce/Conditional_Diffusion_MNIST)
 - [ddim](https://github.com/ermongroup/ddim)
 - [Generative Models](https://github.com/Project-MONAI/GenerativeModels)
+- [Glow-PyTorch](https://github.com/y0ast/Glow-PyTorch)
 - [score_sde_pytorch](https://github.com/yang-song/score_sde_pytorch)
     - [SGM Tutorial](https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing)
 

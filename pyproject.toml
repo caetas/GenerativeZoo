@@ -2,7 +2,7 @@
 # https://github.com/microsoft/vscode-python/blob/master/CHANGELOG.md#enhancements-1
 [tool.poetry]
 name = "GenerativeZoo"
-version = "0.0.0"
+version = "0.11.0"
 description = "A short description of the project. No quotes."
 authors = ["None <none@none.pt>"]
 readme = "README.md"

@@ -1,8 +1,91 @@
 from models.Flow.Glow import *
 from data.Dataloaders import *
+from utils.util import parse_args_Glow
 import torch
+import wandb
 
-train_loader,_,_ = pick_dataset(dataset_name='mnist', batch_size=128, normalize=False, size=32, num_workers=0)
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = Glow(image_shape=(32,32,1), hidden_channels=128, K=8, L=3, actnorm_scale=1.0, flow_permutation = 'invconv', flow_coupling = 'affine', LU_decomposed = False, y_classes=10, learn_top=True, y_condition=False, device=device).to(device)
-model.train_model(train_loader)
+device = "cuda" if torch.cuda.is_available() else "cpu"
+args = parse_args_Glow()
+normalize = True
+
+if args.train:
+    wandb.init(project='GLOW',
+               
+               config={
+                    "batch_size": args.batch_size,
+                    "lr": args.lr,
+                    "n_epochs": args.n_epochs,
+                    "dataset": args.dataset,
+                    "hidden_channels": args.hidden_channels,
+                    "K": args.K,
+                    "L": args.L,
+                    "actnorm_scale": args.actnorm_scale,
+                    "flow_permutation": args.flow_permutation,
+                    "flow_coupling": args.flow_coupling,
+                    "LU_decomposed": args.LU_decomposed,
+                    "learn_top": args.learn_top,
+                    "y_condition": args.y_condition,
+                    "num_classes": args.num_classes,
+                    "n_bits": args.n_bits,  
+               },
+
+                name = 'GLOW_{}'.format(args.dataset))
+    
+    train_loader, input_shape, channels = pick_dataset(args.dataset, batch_size=args.batch_size, normalize=normalize, size=32, num_workers=0)
+    model = Glow(image_shape        =   (input_shape,input_shape,channels), 
+                 hidden_channels    =   args.hidden_channels, 
+                 K                  =   args.K,
+                 L                  =   args.L,
+                 n_epochs           =   args.n_epochs,
+                 actnorm_scale      =   args.actnorm_scale,
+                 flow_permutation   =   args.flow_permutation,
+                 flow_coupling      =   args.flow_coupling,
+                 LU_decomposed      =   args.LU_decomposed,
+                 num_classes        =   args.num_classes,
+                 learn_top          =   args.learn_top,
+                 y_condition        =   args.y_condition,
+                 device             =   device,
+                 lr                 =   args.lr,
+                 n_bits             =   args.n_bits,
+                 dataset            =   args.dataset)
+    model.train_model(train_loader)
+
+elif args.sample:
+    _, input_shape, channels = pick_dataset(args.dataset, batch_size=args.batch_size, normalize=normalize, size=32, num_workers=0)
+    model = Glow(image_shape        =   (input_shape,input_shape,channels), 
+                 hidden_channels    =   args.hidden_channels, 
+                 K                  =   args.K,
+                 L                  =   args.L,
+                 actnorm_scale      =   args.actnorm_scale,
+                 flow_permutation   =   args.flow_permutation,
+                 flow_coupling      =   args.flow_coupling,
+                 LU_decomposed      =   args.LU_decomposed,
+                 num_classes        =   args.num_classes,
+                 learn_top          =   args.learn_top,
+                 y_condition        =   args.y_condition,
+                 device             =   device,
+                 n_bits             =   args.n_bits)
+    model.load_state_dict(torch.load(args.checkpoint))
+    model.sample(train=False)
+
+elif args.outlier_detection:
+    in_loader, input_shape, channels = pick_dataset(args.dataset, batch_size=args.batch_size, normalize=normalize, size=32, num_workers=0, mode='val')
+    out_loader, _, _ = pick_dataset(args.out_dataset, batch_size=args.batch_size, normalize=normalize, size=32, num_workers=0, mode='val')
+    model = Glow(image_shape        =   (input_shape,input_shape,channels), 
+                 hidden_channels    =   args.hidden_channels, 
+                 K                  =   args.K,
+                 L                  =   args.L,
+                 actnorm_scale      =   args.actnorm_scale,
+                 flow_permutation   =   args.flow_permutation,
+                 flow_coupling      =   args.flow_coupling,
+                 LU_decomposed      =   args.LU_decomposed,
+                 num_classes        =   args.num_classes,
+                 learn_top          =   args.learn_top,
+                 y_condition        =   args.y_condition,
+                 device             =   device,
+                 n_bits             =   args.n_bits)
+    model.load_state_dict(torch.load(args.checkpoint))
+    model.outlier_detection(in_loader, out_loader)
+
+else:
+    raise ValueError("Invalid mode. Please specify train or sample")
