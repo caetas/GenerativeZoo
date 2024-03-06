@@ -191,6 +191,8 @@ venv
 src/generativezoo/cifar10c.py
 src/generativezoo/cifar10c_adv.py
 src/generativezoo/xrays.py
+src/generativezoo/RNVP.py
+src/generativezoo/Flow/RealNVP.py
 *.ipynb
 # Hydra
 outputs

@@ -9,8 +9,8 @@ The Vanilla VAE (Variational Autoencoder) is a generative model that learns to e
 | `--train`       | Train model                           | `False` |                                                    |
 | `--sample`      | Sample model                          | `False` |                                                    |
 | `--outlier_detection` | Out-of-distribution detection   | `False` |                                                    |
-| `--dataset`     | Dataset name                          | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
-| `--out_dataset`     | Outlier dataset name              | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
+| `--dataset`     | Dataset name                          |`'mnist'`| `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
+| `--out_dataset` | Outlier dataset name                  |`'mnist'`| `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
 | `--batch_size`  | Batch size                            | `128`   |                                                    |
 | `--n_epochs`    | Number of epochs                      | `100`   |                                                    |
 | `--lr`          | Learning rate                         | `0.0002`|                                                    |
@@ -18,7 +18,7 @@ The Vanilla VAE (Variational Autoencoder) is a generative model that learns to e
 | `--hidden_dims` | Hidden dimensions                     | `None`  |                                                    |
 | `--checkpoint`  | Checkpoint path                       | `None`  |                                                    |
 | `--num_samples` | Number of samples                     | `16`    |                                                    |
-| `--sample_and_save_frequency`| sample and save frequency | `5`    |                                                    |
+| `--sample_and_save_frequency`| sample and save frequency| `5`     |                                                    |
 | `--loss_type`   | Type of loss for training             | `'mse'` | `'mse'`, `'ssim'`                                  |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
