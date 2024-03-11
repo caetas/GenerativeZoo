@@ -31,5 +31,13 @@ elif args.sample:
     model.load_state_dict(torch.load(args.checkpoint))
     model.eval()
     model.sample(n_samples = args.n_samples, device = device)
+
+elif args.outlier_detection:
+    in_loader, input_size, channels = pick_dataset(dataset_name = args.dataset, batch_size=args.batch_size, normalize = True, size = 32, mode='val')
+    out_loader, _, _ = pick_dataset(dataset_name = args.out_dataset, batch_size=args.batch_size, normalize = True, size = 32, mode='val')
+    model = Discriminator(channels=channels, d=args.d).to(device)
+    model.load_state_dict(torch.load(args.discriminator_checkpoint))
+    model.outlier_detection(in_loader, out_loader, display=True, device=device)
+
 else:
-    raise Exception('Please specify either --train or --sample')
+    raise Exception('Please specify either --train, --sample or --outlier_detection. For more information use --help.')

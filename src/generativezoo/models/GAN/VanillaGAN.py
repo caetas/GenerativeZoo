@@ -12,6 +12,7 @@ import torchvision
 import numpy as np
 from config import models_dir
 import os
+from sklearn.metrics import roc_auc_score
 
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
@@ -82,6 +83,46 @@ class Discriminator(nn.Module):
         x = F.leaky_relu(self.conv3_bn(self.conv3(x)), 0.2)
         x = F.sigmoid(self.conv4(x))
         return x
+    
+    @torch.no_grad()
+    def outlier_detection(self, in_loader, out_loader, device, in_array=None, display=True):
+        self.eval()
+
+        in_preds = []
+        out_preds = []
+
+        if in_array is None:
+            for (imgs, _) in tqdm(in_loader, desc='In-distribution', leave=False):
+                imgs = imgs.to(device)
+                preds = self.forward(imgs)
+                in_preds.append(preds.cpu().numpy()[:,0,0,0])
+            in_array = np.concatenate(in_preds)
+            in_array = -in_array + 1
+        else:
+            in_preds = in_array
+
+        for (imgs, _) in tqdm(out_loader, desc='Out-of-distribution', leave=False):
+            imgs = imgs.to(device)
+            preds = self.forward(imgs)
+            out_preds.append(preds.cpu().numpy()[:,0,0,0])
+
+        out_array = np.concatenate(out_preds)
+
+        out_array = -out_array + 1
+        labels = np.concatenate([np.zeros(in_array.shape[0]), np.ones(out_array.shape[0])])
+
+        # calculate auroc
+        preds = np.concatenate([in_array, out_array])
+        auroc = roc_auc_score(labels, preds)
+
+        if display:
+            print(f"AUROC: {auroc:.4f}")
+            plt.hist(in_array, bins=100, alpha=0.5, label='In-distribution')
+            plt.hist(out_array, bins=100, alpha=0.5, label='Out-of-distribution')
+            plt.legend()
+            plt.show()
+
+        return auroc, in_array
     
 class VanillaGAN(nn.Module):
     def __init__(self, n_epochs, device, latent_dim, d=128, channels=3, lr = 0.0002, beta1 = 0.5, beta2 = 0.999, img_size = 32, sample_and_save_freq = 5, dataset = 'mnist'):
@@ -176,6 +217,7 @@ class VanillaGAN(nn.Module):
             if acc_g_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_g_loss/len(dataloader.dataset)
                 torch.save(self.generator.state_dict(), os.path.join(models_dir, 'VanillaGAN', f"VanGAN_{self.dataset}.pt"))
+                torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'VanillaGAN', f"VanDisc_{self.dataset}.pt"))
 
             if epoch % self.sample_and_save_freq == 0:
                 # create row of n_classes images

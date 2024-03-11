@@ -6,21 +6,21 @@ A Generative Adversarial Network (GAN) comprises two neural networks: a **Genera
 
 | Parameter                   | Description                           | Default | Choices                                                         |
 |-----------------------------|---------------------------------------|---------|-----------------------------------------------------------------|
-| `--train`                 | train model                       | `False`|                                                                 |
-| `--sample`                | sample from model                 | `False`|                                                                 |
-| `--batch_size`            | batch size                        | `128` |                                                                 |
-| `--dataset`               | dataset name                      | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
-| `--n_epochs`              | number of epochs                  | `100` |                                                                 |
-| `--lr`                    | learning rate                     | `0.0002` |                                                                 |
-| `--beta1`                 | beta1                             | `0.5` |                                                                 |
-| `--beta2`                 | beta2                             | `0.999` |                                                                |
-| `--latent_dim`            | latent dimension                  | `100` |                                                                 |
-| `--img_size`              | image size                        | `32`  |                                                                 |
-| `--channels`              | channels                          | `1`   |                                                                 |
-| `--sample_and_save_freq`       | sample interval                   | `5`   |                                                                 |
-| `--checkpoint`            | checkpoint path                   | `None`|                                                                 |
-| `--n_samples`             | number of samples                 | `9`   |                                                                 |
-| `--d`                     | number of initial filters         | `128` |                                                                 |
+| `--train`                   | train model                           | `False` |                                                                 |
+| `--sample`                  | sample from model                     | `False` |                                                                 |
+| `--batch_size`              | batch size                            | `128`   |                                                                 |
+| `--dataset`                 | dataset name                          |`'mnist'`| `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
+| `--n_epochs`                | number of epochs                      | `100`   |                                                                 |
+| `--lr`                      | learning rate                         | `0.0002`|                                                                 |
+| `--beta1`                   | beta1                                 | `0.5`   |                                                                 |
+| `--beta2`                   | beta2                                 | `0.999` |                                                                 |
+| `--latent_dim`              | latent dimension                      | `100`   |                                                                 |
+| `--img_size`                | image size                            | `32`    |                                                                 |
+| `--channels`                | channels                              | `1`     |                                                                 |
+| `--sample_and_save_freq`    | sample interval                       | `5`     |                                                                 |
+| `--checkpoint`              | checkpoint path                       | `None`  |                                                                 |
+| `--n_samples`               | number of samples                     | `9`     |                                                                 |
+| `--d`                       | number of initial filters             | `128`   |                                                                 |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

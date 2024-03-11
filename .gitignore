@@ -193,7 +193,7 @@ src/generativezoo/cifar10c_adv.py
 src/generativezoo/xrays.py
 src/generativezoo/RNVP.py
 src/generativezoo/Flow/RealNVP.py
-src/generativezoo/Flow/xrays_adv.py
+src/generativezoo/xrays_adv.py
 *.ipynb
 # Hydra
 outputs
