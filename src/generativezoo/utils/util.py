@@ -251,9 +251,9 @@ def parse_args_PresGAN():
     argparser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam')
 
     ###### Checkpointing and Logging arguments
-    argparser.add_argument('--ckeckpoint', type=str, default=None, help='a given checkpoint file for generator')
-    argparser.add_argument('--discriminator_checkpoint', type=str, default='', help='a given checkpoint file for discriminator')
-    argparser.add_argument('--logsigma_file', type=str, default='', help='a given file for logsigma for the generator')
+    argparser.add_argument('--checkpoint', type=str, default=None, help='a given checkpoint file for generator')
+    argparser.add_argument('--discriminator_checkpoint', type=str, default=None, help='a given checkpoint file for discriminator')
+    argparser.add_argument('--sigma_checkpoint', type=str, default=None, help='a given file for logsigma for the generator')
     argparser.add_argument('--num_gen_images', type=int, default=150, help='number of images to generate for inspection')
 
     ###### PresGAN-specific arguments
@@ -271,6 +271,9 @@ def parse_args_PresGAN():
     argparser.add_argument('--hmc_opt_accept', type=float, default=0.67, help='hmc optimal acceptance rate')
     argparser.add_argument('--stepsize_num', type=float, default=1.0, help='initial value for hmc stepsize')
     argparser.add_argument('--restrict_sigma', type=int, default=0, help='whether to restrict sigma or not')
+    argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
+    argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
+    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn'])
 
     return argparser.parse_args()
 

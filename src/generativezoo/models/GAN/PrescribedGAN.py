@@ -12,6 +12,7 @@ from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
 import os
 from config import models_dir
+import wandb
  
 class Generator(nn.Module):
     def __init__(self, imgSize, nz, ngf, nc):
@@ -189,7 +190,7 @@ def create_checkpoint_dir():
     os.makedirs(os.path.join(models_dir, 'PrescribedGAN'))
 
 class PresGAN(nn.Module):
-    def __init__(self, imgSize, nz, ngf, ndf, nc, device, beta1, lrD, lrG, sigma_lr, n_epochs, num_gen_images, restrict_sigma, sigma_min, sigma_max, stepsize_num, lambda_, burn_in, num_samples_posterior, leapfrog_steps, flag_adapt, hmc_learning_rate, hmc_opt_accept, dataset='cifar10'):
+    def __init__(self, imgSize, nz, ngf, ndf, nc, device, beta1, lrD, lrG, sigma_lr, n_epochs, num_gen_images, restrict_sigma, sigma_min, sigma_max, stepsize_num, lambda_, burn_in, num_samples_posterior, leapfrog_steps, flag_adapt, hmc_learning_rate, hmc_opt_accept, dataset='cifar10', sample_and_save_freq=5):
         super(PresGAN, self).__init__()
         self.netG = Generator(imgSize, nz, ngf, nc).to(device)
         self.netD = Discriminator(imgSize, ndf, nc).to(device)
@@ -218,6 +219,7 @@ class PresGAN(nn.Module):
         self.hmc_learning_rate = hmc_learning_rate
         self.hmc_opt_accept = hmc_opt_accept
         self.dataset = dataset
+        self.sample_and_save_freq = sample_and_save_freq
     
     def forward(self, input):
         return self.netG(input)
@@ -316,22 +318,45 @@ class PresGAN(nn.Module):
             
             epoch_bar.set_description("Loss_D: {:.4f}, Loss_G: {:.4f}".format(errD.item(), g_error.item()))
             epoch_bar.refresh()
-            print(g_error.item())
+            # Log the losses
+            wandb.log({"Loss_D": errD.item(), "Loss_G": g_error.item()})
 
             if g_error.item() < best_loss:
                 best_loss = g_error.item()
-                #torch.save(self.netG.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresGAN_{self.dataset}.pt"))
-                #torch.save(self.netD.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresDisc_{self.dataset}.pt"))
-                #torch.save(self.log_sigma, os.path.join(models_dir, 'PrescribedGAN', f"PresSigma_{self.dataset}.pt"))
+                torch.save(self.netG.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresGAN_{self.dataset}.pt"))
+                torch.save(self.netD.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresDisc_{self.dataset}.pt"))
+                torch.save(self.log_sigma, os.path.join(models_dir, 'PrescribedGAN', f"PresSigma_{self.dataset}.pt"))
 
-            if (epoch+1) % 5 == 0 or epoch == 0:
+            if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
                 with torch.no_grad():
                     fake = self.netG(fixed_noise).detach().cpu()
                     fake = fake*0.5 + 0.5
                     nrow = int(np.sqrt(self.num_gen_images))
                     img_grid = make_grid(fake, nrow=nrow, padding=2)
+                    fig = plt.figure(figsize=(10,10))
                     plt.imshow(np.transpose(img_grid, (1,2,0)))
-                    #plt.show()
-                    plt.savefig(f"PresGAN_{self.dataset}_epoch_{epoch}.png")
-                    plt.close()
-                    
+                    plt.axis('off')
+                    #plt.savefig(f"PresGAN_{self.dataset}_epoch_{epoch}.png")
+                    wandb.log({"Samples": fig})
+                    plt.close(fig)
+
+    def load_checkpoints(self,generator_checkpoint=None, discriminator_checkpoint=None, sigma_checkpoint=None):
+        if generator_checkpoint is not None:
+            self.netG.load_state_dict(torch.load(generator_checkpoint))
+        if discriminator_checkpoint is not None:
+            self.netD.load_state_dict(torch.load(discriminator_checkpoint))
+        if sigma_checkpoint is not None:
+            self.log_sigma = torch.load(sigma_checkpoint)
+    
+    @torch.no_grad()
+    def sample(self, num_samples=16):
+        fixed_noise = torch.randn(num_samples, self.nz, 1, 1, device=self.device)
+        fake = self.netG(fixed_noise).detach().cpu()
+        fake = fake*0.5 + 0.5
+        nrow = int(np.sqrt(num_samples))
+        img_grid = make_grid(fake, nrow=nrow, padding=2)
+        fig = plt.figure(figsize=(10,10))
+        plt.imshow(np.transpose(img_grid, (1,2,0)))
+        plt.axis('off')
+        plt.show()
+        plt.close(fig)

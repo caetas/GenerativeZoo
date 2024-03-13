@@ -89,6 +89,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 - Vanilla GAN [`Paper`](https://arxiv.org/abs/1511.06434)|[`Code`](src/generativezoo/models/GAN/VanillaGAN.py)|[`Script`](src/generativezoo/VanGAN.py)|[`Documentation`](docs/VanillaGAN.md)
 - Conditional GAN [`Paper`](https://arxiv.org/abs/1411.1784)|[`Code`](src/generativezoo/models/GAN/ConditionalGAN.py)|[`Script`](src/generativezoo/CondGAN.py)|[`Documentation`](docs/ConditionalGAN.md)
 - CycleGAN [`Paper`](https://arxiv.org/abs/1703.10593)|[`Code`](src/generativezoo/models/GAN/CycleGAN.py)|[`Script`](src/generativezoo/CycGAN.py)|[`Documentation`](docs/CycleGAN.md)
+- Prescribed GAN [`Paper`](https://arxiv.org/abs/1910.04302)|[`Code`](src/generativezoo/models/GAN/PrescribedGAN.py)|[`Script`](src/generativezoo/PresGAN.py)|[`Documentation`](docs/PrescribedGAN.md)
 
 #### DDPMs
 
