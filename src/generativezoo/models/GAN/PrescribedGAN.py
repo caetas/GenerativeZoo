@@ -16,29 +16,48 @@ from config import models_dir
 class Generator(nn.Module):
     def __init__(self, imgSize, nz, ngf, nc):
         super(Generator, self).__init__()
-        
-        self.main = nn.Sequential(
-            # input is Z, going into a convolution
-            nn.ConvTranspose2d(     nz, ngf * 8, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(ngf * 8),
-            nn.ReLU(True),
-            # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf * 4),
-            nn.ReLU(True),
-            # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf * 2),
-            nn.ReLU(True),
-            # state size. (ngf*2) x 16 x 16
-            nn.ConvTranspose2d(ngf * 2,    ngf, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ngf),
-            nn.ReLU(True),
-            # state size. (ngf) x 32 x 32
-            nn.ConvTranspose2d(    ngf,      nc, 4, 2, 1, bias=False),
-            nn.Tanh()
-            # state size. (nc) x 64 x 64
-        )
+        if imgSize == 32:
+            self.main = nn.Sequential(
+                # input is Z, going into a convolution
+                nn.ConvTranspose2d(     nz, ngf * 4, 4, 1, 0, bias=False),
+                nn.BatchNorm2d(ngf * 4),
+                nn.ReLU(True),
+                # state size. (ngf*4) x 4 x 4
+                nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ngf * 2),
+                nn.ReLU(True),
+                # state size. (ngf*2) x 8 x 8
+                nn.ConvTranspose2d(ngf * 2, ngf, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ngf),
+                nn.ReLU(True),
+                # state size. (ngf) x 16 x 16
+                nn.ConvTranspose2d(    ngf,      nc, 4, 2, 1, bias=False),
+                nn.Tanh()
+                # state size. (nc) x 32 x 32
+            )
+        else:
+            self.main = nn.Sequential(
+                # input is Z, going into a convolution
+                nn.ConvTranspose2d(     nz, ngf * 8, 4, 1, 0, bias=False),
+                nn.BatchNorm2d(ngf * 8),
+                nn.ReLU(True),
+                # state size. (ngf*8) x 4 x 4
+                nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ngf * 4),
+                nn.ReLU(True),
+                # state size. (ngf*4) x 8 x 8
+                nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ngf * 2),
+                nn.ReLU(True),
+                # state size. (ngf*2) x 16 x 16
+                nn.ConvTranspose2d(ngf * 2,    ngf, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ngf),
+                nn.ReLU(True),
+                # state size. (ngf) x 32 x 32
+                nn.ConvTranspose2d(    ngf,      nc, 4, 2, 1, bias=False),
+                nn.Tanh()
+                # state size. (nc) x 64 x 64
+            )
 
     def forward(self, input):
         output = self.main(input)
@@ -48,26 +67,45 @@ class Discriminator(nn.Module):
     def __init__(self, imgSize, ndf, nc):
         super(Discriminator, self).__init__()
         
-        self.main = nn.Sequential(
-            # input is (nc) x 64 x 64
-            nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf) x 32 x 32
-            nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf * 2),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*2) x 16 x 16
-            nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf * 4),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*4) x 8 x 8
-            nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(ndf * 8),
-            nn.LeakyReLU(0.2, inplace=True),
-            # state size. (ndf*8) x 4 x 4
-            nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
-            nn.Sigmoid()
-        )
+        if imgSize == 32:
+            self.main = nn.Sequential(
+                # input is (nc) x 32 x 32
+                nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf) x 16 x 16
+                nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 2),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*2) x 8 x 8
+                nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 4),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*4) x 4 x 4
+                nn.Conv2d(ndf * 4, 1, 4, 1, 0, bias=False),
+                nn.Sigmoid()
+            )
+
+        else:
+            self.main = nn.Sequential(
+                # input is (nc) x 64 x 64
+                nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf) x 32 x 32
+                nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 2),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*2) x 16 x 16
+                nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 4),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*4) x 8 x 8
+                nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 8),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*8) x 4 x 4
+                nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
+                nn.Sigmoid()
+            )
         
     def forward(self, input):
         output = self.main(input)
@@ -278,18 +316,22 @@ class PresGAN(nn.Module):
             
             epoch_bar.set_description("Loss_D: {:.4f}, Loss_G: {:.4f}".format(errD.item(), g_error.item()))
             epoch_bar.refresh()
+            print(g_error.item())
 
             if g_error.item() < best_loss:
                 best_loss = g_error.item()
-                torch.save(self.netG.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresGAN_{self.dataset}.pt"))
-                torch.save(self.netD.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresDisc_{self.dataset}.pt"))
-                torch.save(self.log_sigma, os.path.join(models_dir, 'PrescribedGAN', f"PresSigma_{self.dataset}.pt"))
+                #torch.save(self.netG.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresGAN_{self.dataset}.pt"))
+                #torch.save(self.netD.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresDisc_{self.dataset}.pt"))
+                #torch.save(self.log_sigma, os.path.join(models_dir, 'PrescribedGAN', f"PresSigma_{self.dataset}.pt"))
 
             if (epoch+1) % 5 == 0 or epoch == 0:
                 with torch.no_grad():
                     fake = self.netG(fixed_noise).detach().cpu()
                     fake = fake*0.5 + 0.5
-                    img_grid = make_grid(fake, padding=2, normalize=True)
+                    nrow = int(np.sqrt(self.num_gen_images))
+                    img_grid = make_grid(fake, nrow=nrow, padding=2)
                     plt.imshow(np.transpose(img_grid, (1,2,0)))
-                    plt.show()
+                    #plt.show()
+                    plt.savefig(f"PresGAN_{self.dataset}_epoch_{epoch}.png")
+                    plt.close()
                     
