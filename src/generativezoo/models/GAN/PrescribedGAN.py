@@ -17,7 +17,7 @@ import wandb
 class Generator(nn.Module):
     def __init__(self, imgSize, nz, ngf, nc):
         super(Generator, self).__init__()
-        if imgSize == 32:
+        if imgSize < 64:
             self.main = nn.Sequential(
                 # input is Z, going into a convolution
                 nn.ConvTranspose2d(     nz, ngf * 4, 4, 1, 0, bias=False),
@@ -68,7 +68,7 @@ class Discriminator(nn.Module):
     def __init__(self, imgSize, ndf, nc):
         super(Discriminator, self).__init__()
         
-        if imgSize == 32:
+        if imgSize < 64:
             self.main = nn.Sequential(
                 # input is (nc) x 32 x 32
                 nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
@@ -360,3 +360,21 @@ class PresGAN(nn.Module):
         plt.axis('off')
         plt.show()
         plt.close(fig)
+
+    @torch.no_grad()
+    def outlier_detection(self, dataloader):
+        #just get the discriminator scores
+        scores = []
+        for x,_ in tqdm(dataloader, desc='Batches', leave=False):
+            x = x.to(self.device)
+            sigma_x = F.softplus(self.log_sigma).view(1, 1, self.imgSize, self.imgSize)
+            noise_eta = torch.randn_like(x)
+            noised_data = x #+ sigma_x.detach() * noise_eta
+            out_real = self.netD(noised_data)
+            scores.append(out_real.cpu().numpy())
+        scores = np.concatenate(scores)
+        # plot histogram
+        plt.hist(scores, bins=100)
+        plt.show()
+        return scores
+    
