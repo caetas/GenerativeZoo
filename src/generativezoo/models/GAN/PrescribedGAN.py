@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import os
 from config import models_dir
 import wandb
+from sklearn.metrics import roc_auc_score, roc_curve
  
 class Generator(nn.Module):
     def __init__(self, imgSize, nz, ngf, nc):
@@ -36,7 +37,7 @@ class Generator(nn.Module):
                 nn.Tanh()
                 # state size. (nc) x 32 x 32
             )
-        else:
+        elif imgSize == 64:
             self.main = nn.Sequential(
                 # input is Z, going into a convolution
                 nn.ConvTranspose2d(     nz, ngf * 8, 4, 1, 0, bias=False),
@@ -58,6 +59,34 @@ class Generator(nn.Module):
                 nn.ConvTranspose2d(    ngf,      nc, 4, 2, 1, bias=False),
                 nn.Tanh()
                 # state size. (nc) x 64 x 64
+            )
+        
+        elif imgSize == 128:
+            self.main = nn.Sequential(
+                # input is Z, going into a convolution
+                nn.ConvTranspose2d(     nz, ngf * 16, 4, 1, 0, bias=False),
+                nn.BatchNorm2d(ngf * 16),
+                nn.ReLU(True),
+                # state size. (ngf*16) x 4 x 4
+                nn.ConvTranspose2d(ngf * 16, ngf * 8, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ngf * 8),
+                nn.ReLU(True),
+                # state size. (ngf*8) x 8 x 8
+                nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ngf * 4),
+                nn.ReLU(True),
+                # state size. (ngf*4) x 16 x 16
+                nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ngf * 2),
+                nn.ReLU(True),
+                # state size. (ngf*2) x 32 x 32
+                nn.ConvTranspose2d(ngf * 2,    ngf, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ngf),
+                nn.ReLU(True),
+                # state size. (ngf) x 64 x 64
+                nn.ConvTranspose2d(    ngf,      nc, 4, 2, 1, bias=False),
+                nn.Tanh()
+                # state size. (nc) x 128 x 128
             )
 
     def forward(self, input):
@@ -86,7 +115,7 @@ class Discriminator(nn.Module):
                 nn.Sigmoid()
             )
 
-        else:
+        elif imgSize == 64:
             self.main = nn.Sequential(
                 # input is (nc) x 64 x 64
                 nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
@@ -105,6 +134,32 @@ class Discriminator(nn.Module):
                 nn.LeakyReLU(0.2, inplace=True),
                 # state size. (ndf*8) x 4 x 4
                 nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
+                nn.Sigmoid()
+            )
+        
+        elif imgSize == 128:
+            self.main = nn.Sequential(
+                # input is (nc) x 128 x 128
+                nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf) x 64 x 64
+                nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 2),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*2) x 32 x 32
+                nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 4),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*4) x 16 x 16
+                nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 8),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*8) x 8 x 8
+                nn.Conv2d(ndf * 8, ndf * 16, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(ndf * 16),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (ndf*16) x 4 x 4
+                nn.Conv2d(ndf * 16, 1, 4, 1, 0, bias=False),
                 nn.Sigmoid()
             )
         
@@ -316,20 +371,24 @@ class PresGAN(nn.Module):
                 if self.restrict_sigma:
                     self.log_sigma.data.clamp_(min=logsigma_min, max=logsigma_max)
             
-            epoch_bar.set_description("Loss_D: {:.4f}, Loss_G: {:.4f}".format(errD.item(), g_error.item()))
+            epoch_bar.set_description("Loss_D: {:.4f}, Loss_G: {:.4f}".format(errD.item(), g_error_gan.item()))
             epoch_bar.refresh()
             # Log the losses
-            wandb.log({"Loss_D": errD.item(), "Loss_G": g_error.item()})
+            wandb.log({"Loss_D": errD.item(), "Loss_G": g_error.item(), "Loss_G_GAN": g_error_gan.item(), "Loss_G_Entropy": g_error_entropy.item()})
 
-            if g_error.item() < best_loss:
-                best_loss = g_error.item()
-                torch.save(self.netG.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresGAN_{self.dataset}.pt"))
-                torch.save(self.netD.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresDisc_{self.dataset}.pt"))
-                torch.save(self.log_sigma, os.path.join(models_dir, 'PrescribedGAN', f"PresSigma_{self.dataset}.pt"))
+            if g_error_gan.item() < best_loss:
+                best_loss = g_error_gan.item()
+                torch.save(self.netG.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresGAN_{self.dataset}_{self.nz}.pt"))
+                torch.save(self.netD.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresDisc_{self.dataset}_{self.nz}.pt"))
+                torch.save(self.log_sigma, os.path.join(models_dir, 'PrescribedGAN', f"PresSigma_{self.dataset}_{self.nz}.pt"))
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
                 with torch.no_grad():
-                    fake = self.netG(fixed_noise).detach().cpu()
+                    fake = self.netG(fixed_noise).detach()
+                    noise_eta = torch.randn_like(fake)
+                    #fake = fake + noise_eta * sigma_x
+                    fake = fake.cpu()
+                    fake = fake.clamp(-1, 1)
                     fake = fake*0.5 + 0.5
                     nrow = int(np.sqrt(self.num_gen_images))
                     img_grid = make_grid(fake, nrow=nrow, padding=2)
@@ -362,19 +421,52 @@ class PresGAN(nn.Module):
         plt.close(fig)
 
     @torch.no_grad()
-    def outlier_detection(self, dataloader):
+    def outlier_detection(self, in_loader, out_loader, in_array=None, display=True):
         #just get the discriminator scores
-        scores = []
-        for x,_ in tqdm(dataloader, desc='Batches', leave=False):
+        if in_array is not None:
+            in_scores = in_array
+        else:
+            in_scores = []
+            for x,_ in tqdm(in_loader, desc='In-distribution', leave=False):
+                x = x.to(self.device)
+                sigma_x = F.softplus(self.log_sigma).view(1, 1, self.imgSize, self.imgSize)
+                noise_eta = torch.randn_like(x)
+                noised_data = x + sigma_x.detach() * noise_eta
+                out_real = self.netD(noised_data)
+                in_scores.append(out_real.cpu().numpy())
+            in_scores = np.concatenate(in_scores)
+            in_scores = -in_scores + 1
+
+        out_scores = []
+        for x,_ in tqdm(out_loader, desc='Out-of-distribution', leave=False):
             x = x.to(self.device)
             sigma_x = F.softplus(self.log_sigma).view(1, 1, self.imgSize, self.imgSize)
             noise_eta = torch.randn_like(x)
-            noised_data = x #+ sigma_x.detach() * noise_eta
+            noised_data = x + sigma_x.detach() * noise_eta
             out_real = self.netD(noised_data)
-            scores.append(out_real.cpu().numpy())
-        scores = np.concatenate(scores)
-        # plot histogram
-        plt.hist(scores, bins=100)
-        plt.show()
-        return scores
+            out_scores.append(out_real.cpu().numpy())
+        out_scores = np.concatenate(out_scores)
+        out_scores = -out_scores + 1
+
+        # calculate AUROC
+        in_labels = np.zeros_like(in_scores)
+        out_labels = np.ones_like(out_scores)
+        labels = np.concatenate([in_labels, out_labels])
+        scores = np.concatenate([in_scores, out_scores])
+        auroc = roc_auc_score(labels, scores)
+
+        # get the ROC curve
+        fpr, tpr, _ = roc_curve(labels, scores)
+        # get fpr at tpr=0.95
+        fpr95 = fpr[np.argmax(tpr >= 0.95)]
+
+        if display:
+            # plot histograms
+            plt.hist(in_scores, bins=50, alpha=0.5, label='In-distribution')
+            plt.hist(out_scores, bins=50, alpha=0.5, label='Out-of-distribution')
+            plt.title(f'AUROC: {auroc:.4f}')
+            plt.legend(loc='upper left')
+            plt.show()
+
+        return auroc, fpr95, in_scores, np.mean(out_scores)
     

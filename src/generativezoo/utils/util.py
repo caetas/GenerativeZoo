@@ -216,10 +216,11 @@ def parse_args_VanillaGAN():
     argparser.add_argument('--sample', action='store_true', default=False, help='sample from model')
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--batch_size', type=int, default=128, help='batch size')
-    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes'])
-    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes'])
+    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray'])
+    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray'])
     argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
-    argparser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
+    argparser.add_argument('--lrg', type=float, default=0.0002, help='learning rate generator')
+    argparser.add_argument('--lrd', type=float, default=0.0002, help='learning rate discriminator')
     argparser.add_argument('--beta1', type=float, default=0.5, help='beta1')
     argparser.add_argument('--beta2', type=float, default=0.999, help='beta2')
     argparser.add_argument('--latent_dim', type=int, default=100, help='latent dimension')
@@ -236,7 +237,7 @@ def parse_args_PresGAN():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--train', action='store_true', default=False, help='train model')
     argparser.add_argument('--sample', action='store_true', default=False, help='sample from model')
-    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn'])
+    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'xray'])
     ###### Model arguments
     argparser.add_argument('--nz', type=int, default=100, help='size of the latent z vector')
     argparser.add_argument('--ngf', type=int, default=64)
@@ -254,7 +255,7 @@ def parse_args_PresGAN():
     argparser.add_argument('--checkpoint', type=str, default=None, help='a given checkpoint file for generator')
     argparser.add_argument('--discriminator_checkpoint', type=str, default=None, help='a given checkpoint file for discriminator')
     argparser.add_argument('--sigma_checkpoint', type=str, default=None, help='a given file for logsigma for the generator')
-    argparser.add_argument('--num_gen_images', type=int, default=150, help='number of images to generate for inspection')
+    argparser.add_argument('--num_gen_images', type=int, default=16, help='number of images to generate for inspection')
 
     ###### PresGAN-specific arguments
     argparser.add_argument('--sigma_lr', type=float, default=0.0002, help='generator variance')
@@ -273,7 +274,7 @@ def parse_args_PresGAN():
     argparser.add_argument('--restrict_sigma', type=int, default=0, help='whether to restrict sigma or not')
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
-    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn'])
+    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'xray'])
 
     return argparser.parse_args()
 

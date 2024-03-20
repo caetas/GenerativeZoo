@@ -15,14 +15,15 @@ if args.train:
                    'n_epochs': args.n_epochs,
                    'latent_dim': args.latent_dim,
                    'd': args.d,
-                   'lr': args.lr,
+                   'lrg': args.lrg,
+                   'lrd': args.lrd,
                    'beta1': args.beta1,
                    'beta2': args.beta2,
                    'sample_and_save_freq': args.sample_and_save_freq
                },
                name = 'VanillaGAN_{}'.format(args.dataset))
-    train_dataloader, input_size, channels = pick_dataset(dataset_name = args.dataset, batch_size=args.batch_size, normalize = True, size = 32)
-    model = VanillaGAN(n_epochs = args.n_epochs, device = device, latent_dim = args.latent_dim, d = args.d, channels = channels, lr = args.lr, beta1 = args.beta1, beta2 = args.beta2, img_size = input_size, sample_and_save_freq = args.sample_and_save_freq, dataset=args.dataset)
+    train_dataloader, input_size, channels = pick_dataset(dataset_name = args.dataset, batch_size=args.batch_size, normalize = True, size = 128)
+    model = VanillaGAN(n_epochs = args.n_epochs, device = device, latent_dim = args.latent_dim, d = args.d, channels = channels, lrg = args.lrg, lrd=args.lrd, beta1 = args.beta1, beta2 = args.beta2, img_size = input_size, sample_and_save_freq = args.sample_and_save_freq, dataset=args.dataset)
     model.train_model(train_dataloader)
 
 elif args.sample:
