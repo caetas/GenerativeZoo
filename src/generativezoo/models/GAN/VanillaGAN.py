@@ -207,34 +207,55 @@ class Discriminator(nn.Module):
 
         in_preds = []
         out_preds = []
+        cl_list = []
+        gt_list = []
 
         if in_array is None:
-            for (imgs, _) in tqdm(in_loader, desc='In-distribution', leave=False):
+            for (imgs, cl) in tqdm(in_loader, desc='In-distribution', leave=False):
                 imgs = imgs.to(device)
                 preds = self.forward(imgs)
                 preds = preds.cpu().numpy()
+                cl = cl.cpu().numpy()
+                gt_list.append(cl)
                 if len(preds.shape) > 2:
                     in_preds.append(preds[:,0,0,0])
                 else:
                     in_preds.append(preds[:,0])
             in_array = np.concatenate(in_preds)
             in_array = -in_array + 1
+            cl_array = np.concatenate(gt_list)
+            # get mean in_array per class in cl_array
+            mean_in_array = []
+            for cl in np.unique(cl_array):
+                mean_in_array.append(np.mean(in_array[cl_array == cl]))
+            mean_in_array = np.array(mean_in_array)
+
         else:
             in_preds = in_array
+            mean_in_array = None
 
-        for (imgs, _) in tqdm(out_loader, desc='Out-of-distribution', leave=False):
+        for (imgs, cl) in tqdm(out_loader, desc='Out-of-distribution', leave=False):
             imgs = imgs.to(device)
             preds = self.forward(imgs)
             preds = preds.cpu().numpy()
+            cl = cl.cpu().numpy()
+            cl_list.append(cl)
             if len(preds.shape) > 2:
                 out_preds.append(preds[:,0,0,0])
             else:
                 out_preds.append(preds[:,0])
 
         out_array = np.concatenate(out_preds)
+        cl_array = np.concatenate(cl_list)
 
         out_array = -out_array + 1
         labels = np.concatenate([np.zeros(in_array.shape[0]), np.ones(out_array.shape[0])])
+
+        # get mean out_array per class in cl_array
+        mean_out_array = []
+        for cl in np.unique(cl_array):
+            mean_out_array.append(np.mean(out_array[cl_array == cl]))
+        mean_out_array = np.array(mean_out_array)
 
         # calculate auroc
         preds = np.concatenate([in_array, out_array])
@@ -250,7 +271,7 @@ class Discriminator(nn.Module):
             plt.legend()
             plt.show()
 
-        return auroc, fpr95, in_array, np.mean(out_array)
+        return auroc, fpr95, in_array, np.mean(out_array), mean_out_array, mean_in_array
     
 class VanillaGAN(nn.Module):
     def __init__(self, n_epochs, device, latent_dim, d=128, channels=3, lrg = 0.0002, lrd = 0.0002, beta1 = 0.5, beta2 = 0.999, img_size = 32, sample_and_save_freq = 5, dataset = 'mnist'):

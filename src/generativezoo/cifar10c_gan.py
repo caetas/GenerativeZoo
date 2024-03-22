@@ -8,6 +8,7 @@ from PIL import Image
 from config import data_raw_dir
 from tqdm import tqdm
 import pandas as pd
+from matplotlib import pyplot as plt
 
 class CIFAR10C(Dataset):
     def __init__(self, root, transform=None, corruption='gaussian_noise', severity=5):
@@ -16,16 +17,18 @@ class CIFAR10C(Dataset):
         self.corruption = corruption
         self.severity = severity
         self.array = np.load(os.path.join(data_raw_dir, 'cifar10c', f'{corruption}.npy'))[10000*(severity-1):10000*(severity)]
+        self.labels = np.load(os.path.join(data_raw_dir, 'cifar10c', 'labels.npy'))[10000*(severity-1):10000*(severity)]
 
     def __len__(self):
         return len(self.array)
     
     def __getitem__(self, idx):
         img = self.array[idx]
+        label = self.labels[idx]
         img = Image.fromarray(img)
         if self.transform:
             img = self.transform(img)
-        return img, 0
+        return img, label
     
 def create_corrupted_loader(corruption, severity, batch_size):
     transform = transforms.Compose([
@@ -88,6 +91,7 @@ for discriminator_checkpoint in discriminator_list:
         cifar_loader = cifar_test_loader(batch_size)
         auroc_list = []
         fpr95_list = []
+        class_list = []
         pbar = tqdm(corruption_types)
         in_array = None
         for c in pbar:
@@ -95,11 +99,14 @@ for discriminator_checkpoint in discriminator_list:
                 
                 # add postfix to corruption type
                 corrupted_loader = create_corrupted_loader(c, i, batch_size)
-                auroc, fpr95, in_array, scores = model.outlier_detection(cifar_loader, corrupted_loader, in_array=in_array, display=False, device=device)
+                auroc, fpr95, in_array, scores, class_scores, mean_in_array = model.outlier_detection(cifar_loader, corrupted_loader, in_array=in_array, display=False, device=device)
                 # add to dataframe
+                if mean_in_array is not None:
+                    class_in_scores = np.mean(mean_in_array)
 
                 auroc_list.append(auroc)
                 fpr95_list.append(fpr95)
+                class_list.append(class_scores)
                 results.loc[results['corruption_type'] == f'{c}_{i}', 'AUROC'] = auroc
                 results.loc[results['corruption_type'] == f'{c}_{i}', 'FPR95'] = fpr95
                 results.loc[results['corruption_type'] == f'{c}_{i}', 'Mean Scores'] = scores
@@ -110,7 +117,19 @@ for discriminator_checkpoint in discriminator_list:
         results.loc[results['corruption_type'] == 'mean', 'AUROC'] = np.mean(auroc_list)
         results.loc[results['corruption_type'] == 'mean', 'FPR95'] = np.mean(fpr95_list)
         results.loc[results['corruption_type'] == 'mean', 'Mean Scores'] = np.mean(in_array)
+        class_list = np.array(class_list)
+        class_list = np.mean(class_list, axis=0)
+
+        # plot the class scores as bars
+        plt.bar(range(10), class_list-class_in_scores)
+        plt.xticks(range(10))
+        plt.xlabel('Class')
+        plt.ylabel('Score Difference to ID')
+        plt.title('Mean Class Difference to ID Scores')
+        # add a dotted line with np.mean(in_array)
+        #plt.axhline(y=np.mean(in_array), color='r', linestyle='--')
+        plt.show()
 
 print(f'Mean AUROC: {np.mean(auroc_list):.4f}')        
 # save results as csv
-results.to_csv('cifar10c_results_gan.csv', index=False)
+#results.to_csv('cifar10c_results_gan.csv', index=False)
