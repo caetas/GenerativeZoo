@@ -52,8 +52,31 @@ class Generator(nn.Module):
                 nn.Tanh()
                 # state size. (channels) x 32 x 32
             )
+        elif imgSize == 64:
+            self.main = nn.Sequential(
+                # input is Z, going into a convolution
+                nn.ConvTranspose2d(     latent_dim, d * 8, 4, 1, 0, bias=False),
+                nn.BatchNorm2d(d * 8),
+                nn.ReLU(True),
+                # state size. (d*8) x 4 x 4
+                nn.ConvTranspose2d(d * 8, d * 4, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(d * 4),
+                nn.ReLU(True),
+                # state size. (d*4) x 8 x 8
+                nn.ConvTranspose2d(d * 4, d * 2, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(d * 2),
+                nn.ReLU(True),
+                # state size. (d*2) x 16 x 16
+                nn.ConvTranspose2d(d * 2,    d, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(d),
+                nn.ReLU(True),
+                # state size. (d) x 32 x 32
+                nn.ConvTranspose2d(    d,      channels, 4, 2, 1, bias=False),
+                nn.Tanh()
+                # state size. (channels) x 64 x 64
+            )
         
-        elif imgSize >= 64:
+        elif imgSize > 64:
             # take input of size batch_size x latent_dim, 1, 1 and reshape it to batch_size x d*8*imgSize//64*imgSize//64 x 1 x 1
             self.reshape = nn.Linear(latent_dim, d*16*imgSize//32*imgSize//32)
             self.main = nn.Sequential(
@@ -123,6 +146,28 @@ class Discriminator(nn.Module):
                 nn.LeakyReLU(0.2, inplace=True),
                 # state size. (d*4) x 4 x 4
                 nn.Conv2d(d * 4, 1, 4, 1, 0, bias=False),
+                nn.Sigmoid()
+            )
+
+        elif imgSize == 64:
+            self.main = nn.Sequential(
+                # input is (nc) x 64 x 64
+                nn.Conv2d(channels, d, 4, 2, 1, bias=False),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (d) x 32 x 32
+                nn.Conv2d(d, d * 2, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(d * 2),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (d*2) x 16 x 16
+                nn.Conv2d(d * 2, d * 4, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(d * 4),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (d*4) x 8 x 8
+                nn.Conv2d(d * 4, d * 8, 4, 2, 1, bias=False),
+                nn.BatchNorm2d(d * 8),
+                nn.LeakyReLU(0.2, inplace=True),
+                # state size. (d*8) x 4 x 4
+                nn.Conv2d(d * 8, 1, 4, 1, 0, bias=False),
                 nn.Sigmoid()
             )
         
@@ -319,7 +364,7 @@ class VanillaGAN(nn.Module):
             wandb.log({"Generator Loss": acc_g_loss/len(dataloader.dataset), "Discriminator Loss": acc_d_loss/len(dataloader.dataset)})
             epochs_bar.set_description("Generator Loss: {:.4f}, Discriminator Loss: {:.4f}".format(acc_g_loss/len(dataloader.dataset), acc_d_loss/len(dataloader.dataset)))
             
-            if acc_g_loss/len(dataloader.dataset) < best_loss and epoch > 20:
+            if acc_g_loss/len(dataloader.dataset) < best_loss and epoch >= 20:
                 best_loss = acc_g_loss/len(dataloader.dataset)
                 torch.save(self.generator.state_dict(), os.path.join(models_dir, 'VanillaGAN', f"VanGAN_{self.dataset}.pt"))
                 torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'VanillaGAN', f"VanDisc_{self.dataset}.pt"))
