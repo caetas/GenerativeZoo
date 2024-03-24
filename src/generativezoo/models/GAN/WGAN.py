@@ -11,12 +11,13 @@ import os
 from sklearn.metrics import roc_auc_score, roc_curve
 from torch.autograd import Variable
 from torch.autograd import grad as torch_grad
+import wandb
 
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
     os.makedirs(models_dir)
-  if not os.path.exists(os.path.join(models_dir, 'VanillaGAN')):
-    os.makedirs(os.path.join(models_dir, 'VanillaGAN'))
+  if not os.path.exists(os.path.join(models_dir, 'WassersteinGAN')):
+    os.makedirs(os.path.join(models_dir, 'WassersteinGAN'))
 
 def weights_init_normal(m):
     classname = m.__class__.__name__
@@ -99,11 +100,14 @@ class Generator(nn.Module):
         imgs = imgs.detach().cpu()
         # create a grid of sqrt(n_samples) x sqrt(n_samples) images
         grid = torchvision.utils.make_grid(imgs, nrow=int(np.sqrt(n_samples)), normalize=True)
+        fig = plt.figure(figsize=(10, 10))
         # make an image from the grid
         plt.imshow(grid.permute(1, 2, 0))
         plt.axis('off')
         #plt.show()
-        plt.savefig(os.path.join(models_dir, 'VanillaGAN', 'samples.png'))
+        #plt.savefig(os.path.join(models_dir, 'VanillaGAN', 'samples.png'))
+        wandb.log({"Generated Images": fig})
+        plt.close(fig)
 
 class Discriminator(nn.Module):
     # initializers
@@ -226,7 +230,9 @@ class WGAN(nn.Module):
 
         for epoch in epoch_bar:
             acc_loss = 0
+            acc_loss_d = 0
             cnt = 0
+            cnt_d = 0
             for img,_ in tqdm(dataloader, desc='Batches', leave=False):
                 self.num_steps += 1
                 real_imgs = img.to(self.device)
@@ -256,6 +262,8 @@ class WGAN(nn.Module):
 
                 #self.losses['D'].append(d_loss.data[0])
                 #self.losses['GP'].append(gradient_penalty.data[0])
+                acc_loss_d += d_loss.item()*batch_size
+                cnt_d += batch_size
 
                 # Train the generator every n_critic iterations
                 if self.num_steps % self.critic_iterations == 0:
@@ -276,9 +284,11 @@ class WGAN(nn.Module):
                     cnt =+ batch_size
 
             epoch_bar.set_postfix({'Generator Loss': acc_loss/cnt})
+            wandb.log({"Generator Loss": acc_loss/cnt, "Discriminator Loss": acc_loss_d/cnt_d})
             if acc_loss/cnt < best_loss:
-                #torch.save(self.G.state_dict(), os.path.join(models_dir, 'WassersteinGAN', f'WGAN_{self.dataset}.pt'))
-                pass
+                torch.save(self.G.state_dict(), os.path.join(models_dir, 'WassersteinGAN', f'WGAN_{self.dataset}.pt'))
+                torch.save(self.D.state_dict(), os.path.join(models_dir, 'WassersteinGAN', f'WGAN_{self.dataset}_D.pt'))
+                best_loss = acc_loss/cnt
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
                 self.G.sample(16, self.device)

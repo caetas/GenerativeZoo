@@ -23,7 +23,7 @@ if args.train:
                 },
                 name = 'AdversarialVAE_{}'.format(args.dataset))
     
-    train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=True, num_workers=0)
+    train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=True, num_workers=0, mode='train', size=64)
     val_loader, _, _ = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=True, mode='train', num_workers=0)
     model = AdversarialVAE(input_shape = input_size, device = device, input_channels = channels, latent_dim = args.latent_dim, n_epochs = args.n_epochs, hidden_dims = args.hidden_dims, lr = args.lr, batch_size = args.batch_size, gen_weight = args.gen_weight, recon_weight=args.recon_weight, sample_and_save_frequency = args.sample_and_save_frequency, dataset=args.dataset)
     model.train_model(train_loader, val_loader)

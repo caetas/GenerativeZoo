@@ -814,6 +814,91 @@ def cityscapes_rain_val_loader(batch_size, normalize = False, input_shape = None
         return validation_loader, input_shape, 3
     else:
         return validation_loader, 128, 3
+    
+class TinyImageNetDataset(Dataset):
+    
+        def __init__(self, root, train = False, transform=None):
+            self.root = root
+            self.transform = transform
+            self.train = train
+            self.imgs = []
+            self.label = []
+            if train:
+                # to get self.imgs iterate over all class folders and all images in each class
+                for i in range(200):
+                    class_folder = os.path.join(root, 'tiny-imagenet-200', 'train', str(i), 'images')
+                    for img in os.listdir(class_folder):
+                        self.imgs.append(os.path.join(class_folder, img))
+                        self.label.append(i)
+            else:
+                for i in range(200):
+                    class_folder = os.path.join(root,'tiny-imagenet-200', 'val', str(i), 'images')
+                    for img in os.listdir(class_folder):
+                        self.imgs.append(os.path.join(class_folder, img))
+                        self.label.append(i)
+            
+        def __len__(self):
+            return len(self.imgs)
+        
+        def __getitem__(self, idx):
+            img = Image.open(self.imgs[idx]).convert('RGB')
+            if self.transform:
+                img = self.transform(img)
+            # if image name contains good, label is 0, else 1
+            return img, self.label[idx]
+
+
+def tinyimagenet_train_loader(batch_size, normalize = False, input_shape = None):
+        
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
+            transforms.ToTensor(),
+        ])
+    
+    training_data = TinyImageNetDataset(root=data_raw_dir, train = True, transform=transform)
+
+    training_loader = DataLoader(training_data, 
+                                batch_size=batch_size, 
+                                shuffle=True,
+                                pin_memory=True)
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 3
+    else:
+        return training_loader, 64, 3
+
+def tinyimagenet_test_loader(batch_size, normalize = False, input_shape = None):
+                
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
+            transforms.ToTensor(),
+        ])
+    
+    test_data = TinyImageNetDataset(root=data_raw_dir, train = False, transform=transform)
+
+    test_loader = DataLoader(test_data, 
+                            batch_size=batch_size, 
+                            shuffle=True,
+                            pin_memory=True)
+    
+    if input_shape is not None:
+        return test_loader, input_shape, 3
+    else:
+        return test_loader, 64, 3
 
 class XraysDataset(Dataset):
     
@@ -980,5 +1065,10 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return xrays_train_loader(batch_size, normalize, size)
         elif mode == 'val':
             return xrays_val_loader(batch_size, normalize, size)
+    elif dataset_name == 'tinyimagenet':
+        if mode == 'train':
+            return tinyimagenet_train_loader(batch_size, normalize, size)
+        elif mode == 'val':
+            return tinyimagenet_test_loader(batch_size, normalize, size)
     else:
         raise ValueError('Dataset name not found.')
