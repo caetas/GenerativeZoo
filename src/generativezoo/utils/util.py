@@ -237,7 +237,7 @@ def parse_args_PresGAN():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--train', action='store_true', default=False, help='train model')
     argparser.add_argument('--sample', action='store_true', default=False, help='sample from model')
-    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'xray'])
+    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'xray', 'tinyimagenet'])
     ###### Model arguments
     argparser.add_argument('--nz', type=int, default=100, help='size of the latent z vector')
     argparser.add_argument('--ngf', type=int, default=64)
