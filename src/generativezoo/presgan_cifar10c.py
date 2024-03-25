@@ -80,6 +80,8 @@ args.sigma_checkpoint = "./../../models/PrescribedGAN/PresSigma_cifar10_1024.pt"
 args.nz = 1024
 input_size = 32
 channels = 3
+args.ngf = 64
+args.ndf = 64
 
 in_loader = cifar_test_loader(batch_size=args.batch_size)
 

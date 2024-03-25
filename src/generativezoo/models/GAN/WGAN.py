@@ -12,6 +12,7 @@ from sklearn.metrics import roc_auc_score, roc_curve
 from torch.autograd import Variable
 from torch.autograd import grad as torch_grad
 import wandb
+from sklearn.metrics import roc_auc_score, roc_curve
 
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
@@ -93,7 +94,7 @@ class Generator(nn.Module):
         return x
     
     @torch.no_grad()
-    def sample(self, n_samples, device):
+    def sample(self, n_samples, device, train = True):
         z = torch.randn(n_samples, self.latent_dim, 1, 1).to(device)
         imgs = self.forward(z)
         #imgs = (imgs + 1) / 2
@@ -104,9 +105,10 @@ class Generator(nn.Module):
         # make an image from the grid
         plt.imshow(grid.permute(1, 2, 0))
         plt.axis('off')
-        #plt.show()
-        #plt.savefig(os.path.join(models_dir, 'VanillaGAN', 'samples.png'))
-        wandb.log({"Generated Images": fig})
+        if not train:
+            plt.show()
+        else:
+            wandb.log({"Generated Images": fig})
         plt.close(fig)
 
 class Discriminator(nn.Module):
@@ -128,7 +130,9 @@ class Discriminator(nn.Module):
                 nn.LeakyReLU(0.2, inplace=True),
                 # state size. (d*4) x 4 x 4
                 nn.Conv2d(d * 4, 1, 4, 1, 0, bias=False),
-                nn.Sigmoid()
+                nn.Flatten(),
+                nn.Linear((imgSize//8 - 3)**2, 1),
+                #nn.Sigmoid()
             )
         
         elif imgSize >= 64:
@@ -152,7 +156,7 @@ class Discriminator(nn.Module):
                 nn.Conv2d(d * 8, 1, 4, 1, 0, bias=False),
                 nn.Flatten(),
                 nn.Linear((imgSize//16 - 3)**2, 1),
-                nn.Sigmoid()
+                #nn.Sigmoid()
             )
 
     # def forward(self, input):
@@ -168,15 +172,15 @@ def create_checkpoint_dir():
         os.makedirs(os.path.join(models_dir, 'WassersteinGAN'))
 
 class WGAN(nn.Module):
-    def __init__(self, latent_dim, d=64, channels=3, imgSize=32, batch_size=64, n_epochs = 100, gp_weight=10, critic_iterations=5, dataset='cifar10', sample_and_save_freq = 5):
+    def __init__(self, latent_dim, d=64, channels=3, imgSize=32, batch_size=64, n_epochs = 100, gp_weight=10, n_critic=5, dataset='cifar10', sample_and_save_freq = 5, lrd=0.0002, lrg=0.0002, beta1=0.5, beta2=0.999):
         super(WGAN, self).__init__()
         self.latent_dim = latent_dim
         self.G = Generator(latent_dim, d, channels, imgSize)
         self.D = Discriminator(d, channels, imgSize)
         self.G.apply(weights_init_normal)
         self.D.apply(weights_init_normal)
-        self.optimizer_G = torch.optim.Adam(self.G.parameters(), lr=0.0002, betas=(0.5, 0.999))
-        self.optimizer_D = torch.optim.Adam(self.D.parameters(), lr=0.0002, betas=(0.5, 0.999))
+        self.optimizer_G = torch.optim.Adam(self.G.parameters(), lr=lrg, betas=(beta1, beta2))
+        self.optimizer_D = torch.optim.Adam(self.D.parameters(), lr=lrd, betas=(beta1, beta2))
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.G.to(self.device)
         self.D.to(self.device)
@@ -184,13 +188,16 @@ class WGAN(nn.Module):
         self.imgSize = imgSize
         self.channels = channels
         self.d = d
-        self.losses = {'G': [], 'D': [], 'GP': [], 'gradient_norm': []}
         self.num_steps = 0
         self.gp_weight = gp_weight
-        self.critic_iterations = critic_iterations
+        self.critic_iterations = n_critic
         self.dataset = dataset
         self.sample_and_save_freq = sample_and_save_freq
         self.n_epochs = n_epochs
+        self.lrd = lrd
+        self.lrg = lrg
+        self.beta1 = beta1
+        self.beta2 = beta2
 
     def _gradient_penalty(self, real, fake):
         batch_size = real.size()[0]
@@ -291,6 +298,49 @@ class WGAN(nn.Module):
                 best_loss = acc_loss/cnt
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
-                self.G.sample(16, self.device)
+                self.G.sample(16, self.device, train = True)
 
-        
+    @torch.no_grad()
+    def outlier_detection(self, in_loader, out_loader, in_array = None, display=True):
+        self.D.eval()
+        out_preds = []
+        if in_array is None:
+            in_preds = []
+            for img,_ in tqdm(in_loader, desc='Inlier Detection', leave=True):
+                img = img.to(self.device)
+                pred = self.D(img)
+                if len(pred.size()) > 2:
+                    in_preds.append(pred.cpu().numpy()[:,0,0,0])
+                else:
+                    in_preds.append(pred.cpu().numpy()[:,0])
+            in_preds = np.concatenate(in_preds)
+            in_preds = -in_preds + 1
+        else:
+            in_preds = in_array
+
+        for img, _ in tqdm(out_loader, desc='Outlier Detection', leave=True):
+            img = img.to(self.device)
+            pred = self.D(img)
+            if len(pred.size()) > 2:
+                out_preds.append(pred.cpu().numpy()[:,0,0,0])
+            else:
+                out_preds.append(pred.cpu().numpy()[:,0])
+
+        out_preds = np.concatenate(out_preds)
+        out_preds = -out_preds + 1
+
+        labels = np.concatenate([np.zeros_like(in_preds), np.ones_like(out_preds)])
+        preds = np.concatenate([in_preds, out_preds])
+
+        fpr, tpr, _ = roc_curve(labels, preds)
+        auc = roc_auc_score(labels, preds)
+        fpr95 = fpr[np.argmax(tpr >= 0.95)]
+
+        if display:
+            plt.figure(figsize=(10, 10))
+            plt.hist(in_preds, bins=50, alpha=0.5, label='Inlier')
+            plt.hist(out_preds, bins=50, alpha=0.5, label='Outlier')
+            plt.legend()
+            plt.show()
+
+        return auc, fpr95, in_preds, out_preds

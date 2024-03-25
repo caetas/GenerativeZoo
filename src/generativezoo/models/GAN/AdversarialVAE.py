@@ -12,7 +12,7 @@ import numpy as np
 import os
 from config import figures_dir, models_dir
 import wandb
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
 
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
@@ -535,7 +535,15 @@ class AdversarialVAE(nn.Module):
         rocauc = roc_auc_score(np.concatenate([np.zeros_like(in_scores), np.ones_like(out_scores)]), np.concatenate([in_scores, out_scores]))
         rocauc_discriminator = roc_auc_score(np.concatenate([np.zeros_like(in_scores_discriminator), np.ones_like(out_scores_discriminator)]), np.concatenate([in_scores_discriminator, out_scores_discriminator]))
 
+        fpr, tpr , _ = roc_curve(np.concatenate([np.zeros_like(in_scores), np.ones_like(out_scores)]), np.concatenate([in_scores, out_scores]))
+        fpr_discriminator, tpr_discriminator , _ = roc_curve(np.concatenate([np.zeros_like(in_scores_discriminator), np.ones_like(out_scores_discriminator)]), np.concatenate([in_scores_discriminator, out_scores_discriminator]))
+
+        fpr95 = fpr[np.argmax(tpr >= 0.95)]
+        fpr95_discriminator = fpr_discriminator[np.argmax(tpr_discriminator >= 0.95)]
+
         if display:
+            # print discriminator metrics
+            print(f"ROC AUC Discriminator: {rocauc_discriminator:.6f}, FPR95 Discriminator: {fpr95_discriminator:.6f}, Mean Scores Discriminator: {np.mean(out_scores_discriminator):.6f}")
             # plot the scores
             fig, ax = plt.subplots(1, 2, figsize=(10, 5))
             ax[0].hist(in_scores, bins=100, alpha=0.5, label='In-distribution')

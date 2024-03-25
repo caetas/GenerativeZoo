@@ -2,23 +2,51 @@ from models.GAN.WGAN import *
 import torch
 from data.Dataloaders import *
 import wandb
+import os
+from torchvision import transforms
+from torch.utils.data import DataLoader, Dataset
+from utils.util import parse_args_WassersteinGAN
 
-dataloader, _, _ = tinyimagenet_train_loader(batch_size=512, input_shape=64, normalize=False)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+args = parse_args_WassersteinGAN()
 
-wandb.init(project="WGAN",
-           config={
-               "latent_dim": 1024,
-               "d": 64,
-               "channels": 3,
-               "epochs": 100,
-               "batch_size": 256,
-               "lr": 0.0002,
-               "beta1": 0.5,
-               "beta2": 0.999,
-               "n_critic": 5,
-               "dataset": "tinyimagenet"
-           },
-           name="WGAN_tinyimagenet")
+if args.train:
+    wandb.init(project="WGAN",
+            config={
+                "dataset": args.dataset,
+                "batch_size": args.batch_size,
+                "n_epochs": args.n_epochs,
+                "latent_dim": args.latent_dim,
+                "d": args.d,
+                "lrg": args.lrg,
+                "lrd": args.lrd,
+                "beta1": args.beta1,
+                "beta2": args.beta2,
+                "n_critic": args.n_critic,
+                "gp_weight": args.gp_weight
+            },
+            name=f"WGAN_{args.dataset}")
+    if args.dataset == 'mnist' or args.dataset == 'fashionmnist':
+        train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=32)
+    else:
+        train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False)
+    model = WGAN(batch_size = args.batch_size, latent_dim=args.latent_dim, d=args.d, lrg=args.lrg, lrd=args.lrd, beta1=args.beta1, beta2=args.beta2, gp_weight=args.gp_weight, dataset=args.dataset, n_epochs=args.n_epochs, n_critic=args.n_critic, sample_and_save_freq=args.sample_and_save_freq, imgSize=input_size, channels=channels)
+    model.train_model(train_loader)
+    wandb.finish()
 
-model = WGAN(latent_dim=1024, d=64, channels = 3, imgSize=64, n_epochs=400, batch_size=512, dataset="tinyimagenet")
-model.train_model(dataloader)
+elif args.sample:
+    _, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=1, normalize=False)
+    model = Generator(latent_dim=args.latent_dim, channels=channels, d=args.d, imgSize=input_size).to(device)
+    model.load_state_dict(torch.load(args.checkpoint))
+    model.sample(n_samples=args.n_samples, device=device)
+
+elif args.outlier_detection:
+    if args.dataset == 'mnist' or args.dataset == 'fashionmnist':
+        in_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=32, mode='val')
+        out_loader, _, _ = pick_dataset(dataset_name=args.out_dataset, batch_size=args.batch_size, normalize=False, size=32, mode='val')
+    else:
+        in_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, mode='val')
+        out_loader, _, _ = pick_dataset(dataset_name=args.out_dataset, batch_size=args.batch_size, normalize=False, mode='val')
+    model = WGAN(batch_size = args.batch_size, latent_dim=args.latent_dim, d=args.d, lrg=args.lrg, lrd=args.lrd, beta1=args.beta1, beta2=args.beta2, gp_weight=args.gp_weight, dataset=args.dataset, n_epochs=args.n_epochs, n_critic=args.n_critic, sample_and_save_freq=args.sample_and_save_freq, imgSize=input_size, channels=channels)
+    model.D.load_state_dict(torch.load(args.discriminator_checkpoint))
+    model.outlier_detection(in_loader, out_loader, display=True)

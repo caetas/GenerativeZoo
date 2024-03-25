@@ -92,7 +92,8 @@ def mnist_val_loader(batch_size, normalize = False, input_shape = None):
         transform = transforms.Compose([
             transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
             transforms.ToTensor(),
-            transforms.Normalize((0.5,), (0.5,))
+            transforms.Normalize((0.5,), (0.5,)),
+            #transforms.Lambda(lambda x: x.repeat(3, 1, 1) )
         ])
     else:
         transform = transforms.Compose([
@@ -832,7 +833,7 @@ class TinyImageNetDataset(Dataset):
                         self.label.append(i)
             else:
                 for i in range(200):
-                    class_folder = os.path.join(root,'tiny-imagenet-200', 'val', str(i), 'images')
+                    class_folder = os.path.join(root,'tiny-imagenet-200', 'test', str(i), 'images')
                     for img in os.listdir(class_folder):
                         self.imgs.append(os.path.join(class_folder, img))
                         self.label.append(i)
@@ -854,7 +855,7 @@ def tinyimagenet_train_loader(batch_size, normalize = False, input_shape = None)
         transform = transforms.Compose([
             transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
             transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
         ])
     else:
         transform = transforms.Compose([
@@ -880,7 +881,7 @@ def tinyimagenet_test_loader(batch_size, normalize = False, input_shape = None):
         transform = transforms.Compose([
             transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
             transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
         ])
     else:
         transform = transforms.Compose([
@@ -899,6 +900,166 @@ def tinyimagenet_test_loader(batch_size, normalize = False, input_shape = None):
         return test_loader, input_shape, 3
     else:
         return test_loader, 64, 3
+    
+def cifar100_train_loader(batch_size, normalize = False, input_shape = None):
+            
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((32,32)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((32,32)),
+            transforms.ToTensor(),
+        ])
+    
+    training_data = datasets.CIFAR100(root=data_raw_dir, train=True, download=True, transform=transform)
+
+    training_loader = DataLoader(training_data, 
+                                batch_size=batch_size, 
+                                shuffle=True,
+                                pin_memory=True)
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 3
+    else:
+        return training_loader, 32, 3
+
+def cifar100_val_loader(batch_size, normalize = False, input_shape = None):
+                    
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((32,32)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((32,32)),
+            transforms.ToTensor(),
+        ])
+    
+    validation_data = datasets.CIFAR100(root=data_raw_dir, train=False, download=True, transform=transform)
+
+    validation_loader = DataLoader(validation_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True)
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 3
+    else:
+        return validation_loader, 32, 3 
+    
+def places365_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
+    
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    training_data = datasets.Places365(root=data_raw_dir, split='train-standard', transform=transform, download=True, small=True)
+
+    training_loader = DataLoader(training_data, 
+                                batch_size=batch_size, 
+                                shuffle=True,
+                                pin_memory=True,
+                                num_workers = num_workers)
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 3
+    else:
+        return training_loader, 128, 3
+    
+def places365_test_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
+    
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    validation_data = datasets.Places365(root=data_raw_dir, split='val', transform=transform, small=True)
+
+    validation_loader = DataLoader(validation_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True,
+                                num_workers = num_workers)
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 3
+    else:
+        return validation_loader, 128, 3
+    
+def dtd_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
+        
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    training_data = datasets.DTD(root=data_raw_dir, split='train', transform=transform, download=True)
+
+    training_loader = DataLoader(training_data, 
+                                batch_size=batch_size, 
+                                shuffle=True,
+                                pin_memory=True,
+                                num_workers = num_workers)
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 3
+    else:
+        return training_loader, 128, 3
+    
+def dtd_test_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
+                
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    test_data = datasets.DTD(root=data_raw_dir, split='test', transform=transform, download=True)
+
+    test_loader = DataLoader(test_data, 
+                            batch_size=batch_size, 
+                            shuffle=True,
+                            pin_memory=True,
+                            num_workers = num_workers)
+    
+    if input_shape is not None:
+        return test_loader, input_shape, 3
+    else:
+        return test_loader, 128, 3
 
 class XraysDataset(Dataset):
     
@@ -1035,6 +1196,11 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return cifar_train_loader(batch_size, normalize, size)
         elif mode == 'val':
             return cifar_val_loader(batch_size, normalize, size)
+    elif dataset_name == 'cifar100':
+        if mode == 'train':
+            return cifar100_train_loader(batch_size, normalize, size)
+        elif mode == 'val':
+            return cifar100_val_loader(batch_size, normalize, size)
     elif dataset_name == 'bottle':
         if mode == 'train':
             return mvtec_bottle_train_loader(batch_size, normalize, size)
@@ -1070,5 +1236,15 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return tinyimagenet_train_loader(batch_size, normalize, size)
         elif mode == 'val':
             return tinyimagenet_test_loader(batch_size, normalize, size)
+    elif dataset_name == 'places365':
+        if mode == 'train':
+            return places365_train_loader(batch_size, normalize, size, num_workers = num_workers)
+        elif mode == 'val':
+            return places365_test_loader(batch_size, normalize, size, num_workers = num_workers)
+    elif dataset_name == 'dtd':
+        if mode == 'train':
+            return dtd_train_loader(batch_size, normalize, size, num_workers = num_workers)
+        elif mode == 'val':
+            return dtd_test_loader(batch_size, normalize, size, num_workers = num_workers)
     else:
         raise ValueError('Dataset name not found.')

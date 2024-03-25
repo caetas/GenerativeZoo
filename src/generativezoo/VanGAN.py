@@ -22,13 +22,13 @@ if args.train:
                    'sample_and_save_freq': args.sample_and_save_freq
                },
                name = 'VanillaGAN_{}'.format(args.dataset))
-    train_dataloader, input_size, channels = pick_dataset(dataset_name = args.dataset, batch_size=args.batch_size, normalize = True, size = 64)
+    train_dataloader, input_size, channels = pick_dataset(dataset_name = args.dataset, batch_size=args.batch_size, normalize = True, size = 32)
     model = VanillaGAN(n_epochs = args.n_epochs, device = device, latent_dim = args.latent_dim, d = args.d, channels = channels, lrg = args.lrg, lrd=args.lrd, beta1 = args.beta1, beta2 = args.beta2, img_size = input_size, sample_and_save_freq = args.sample_and_save_freq, dataset=args.dataset)
     model.train_model(train_dataloader)
 
 elif args.sample:
     _, input_size, channels = pick_dataset(dataset_name = args.dataset, batch_size=1, normalize = True, size = 32)
-    model = Generator(latent_dim = args.latent_dim, channels = channels).to(device)
+    model = Generator(latent_dim = args.latent_dim, channels = channels, d=args.d, imgSize=input_size).to(device)
     model.load_state_dict(torch.load(args.checkpoint))
     model.eval()
     model.sample(n_samples = args.n_samples, device = device)

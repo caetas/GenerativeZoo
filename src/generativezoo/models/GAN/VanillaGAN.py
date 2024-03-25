@@ -103,7 +103,7 @@ class Generator(nn.Module):
             )
 
         self.imgSize = imgSize
-
+        self.latent_dim = latent_dim
 
     # forward method
     def forward(self, input):
@@ -278,7 +278,7 @@ class VanillaGAN(nn.Module):
         super(VanillaGAN, self).__init__()
         self.n_epochs = n_epochs
         self.device = device
-        self.generator = Generator(latent_dim = latent_dim, channels=channels, imgSize=img_size).to(self.device)
+        self.generator = Generator(latent_dim = latent_dim, channels=channels, imgSize=img_size, d=d).to(self.device)
         self.discriminator = Discriminator(channels=channels, d=d, imgSize=img_size).to(self.device)
         self.latent_dim = latent_dim
         self.d = d

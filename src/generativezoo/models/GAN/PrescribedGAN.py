@@ -461,6 +461,7 @@ class PresGAN(nn.Module):
         fpr95 = fpr[np.argmax(tpr >= 0.95)]
 
         if display:
+            print(f'AUROC: {auroc:.6f}, FPR95: {fpr95:.6f}, Mean Scores: {np.mean(out_scores):.6f}')
             # plot histograms
             plt.hist(in_scores, bins=50, alpha=0.5, label='In-distribution')
             plt.hist(out_scores, bins=50, alpha=0.5, label='Out-of-distribution')

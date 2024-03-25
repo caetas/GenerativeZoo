@@ -7,6 +7,7 @@ from PIL import Image
 from models.GAN.PrescribedGAN import *
 from utils.util import parse_args_PresGAN
 from data.Dataloaders import *
+import pandas as pd
 
 class MNISTC(Dataset):
     def __init__(self, root, transform=None, corruption='impulse_noise'):
@@ -44,6 +45,17 @@ corruption_types = os.listdir(os.path.join(data_raw_dir, 'mnist_c'))
 corruption_types.sort() 
 print(corruption_types)
 
+# dataframe to store results
+results = pd.DataFrame(columns=['corruption_type', 'AUROC', 'FPR95', 'Mean Scores'], index=range(len(corruption_types) + 1))
+
+# pre fill the dataframe
+counter = 0
+for corruption in corruption_types:
+    results.loc[counter] = ({'corruption_type': f'{corruption}', 'AUROC': 0.0, 'FPR95': 0.0, 'Mean Scores': 0.0})
+    counter += 1
+# append mean
+results.loc[counter] = ({'corruption_type': 'Mean', 'AUROC': 0.0, 'FPR95': 0.0, 'Mean Scores': 0.0})
+
 args.discriminator_checkpoint = "./../../models/PrescribedGAN/PresDisc_mnist_100.pt"
 args.sigma_checkpoint = "./../../models/PrescribedGAN/PresSigma_mnist_100.pt"
 args.nz = 100
@@ -55,13 +67,28 @@ model = PresGAN(imgSize=input_size, nz=args.nz, ngf = args.ngf, ndf = args.ndf, 
 model.load_checkpoints(generator_checkpoint=args.checkpoint, discriminator_checkpoint=args.discriminator_checkpoint, sigma_checkpoint=args.sigma_checkpoint)
 
 auroc_list = []
+fpr95_list = []
+scores_list = []
+in_array = None
 for corruption in corruption_types:
     out_loader = create_corrupted_loader(corruption, args.batch_size)
-    auroc = model.outlier_detection(in_loader, out_loader)
+    auroc, fpr95, in_array, scores = model.outlier_detection(in_loader, out_loader, in_array=in_array, display=False)
     auroc_list.append(auroc)
+    fpr95_list.append(fpr95)
+    scores_list.append(scores)
+    results.loc[results['corruption_type'] == corruption, 'AUROC'] = auroc
+    results.loc[results['corruption_type'] == corruption, 'FPR95'] = fpr95
+    results.loc[results['corruption_type'] == corruption, 'Mean Scores'] = scores
     print(f"Corruption: {corruption}, AUROC: {auroc:.4f}")
 
 # print mean
 auroc_list = np.array(auroc_list)
 print(np.mean(auroc_list))
+print(np.mean(in_array))
+results.loc[results['corruption_type'] == 'Mean', 'AUROC'] = np.mean(auroc_list)
+results.loc[results['corruption_type'] == 'Mean', 'FPR95'] = np.mean(fpr95_list)
+results.loc[results['corruption_type'] == 'Mean', 'Mean Scores'] = np.mean(scores_list)
+
+# save results
+results.to_csv(f'mnist_c_presgan.csv', index=False)
 
