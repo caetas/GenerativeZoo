@@ -832,11 +832,8 @@ class TinyImageNetDataset(Dataset):
                         self.imgs.append(os.path.join(class_folder, img))
                         self.label.append(i)
             else:
-                for i in range(200):
-                    class_folder = os.path.join(root,'tiny-imagenet-200', 'test', str(i), 'images')
-                    for img in os.listdir(class_folder):
-                        self.imgs.append(os.path.join(class_folder, img))
-                        self.label.append(i)
+                self.imgs = glob(os.path.join(root, 'tiny-imagenet-200', 'test', 'images', '*.JPEG'))
+                self.label = [0]*len(self.imgs)
             
         def __len__(self):
             return len(self.imgs)

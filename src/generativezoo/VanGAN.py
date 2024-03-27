@@ -34,9 +34,9 @@ elif args.sample:
     model.sample(n_samples = args.n_samples, device = device)
 
 elif args.outlier_detection:
-    in_loader, input_size, channels = pick_dataset(dataset_name = args.dataset, batch_size=args.batch_size, normalize = True, size = 32, mode='val')
-    out_loader, _, _ = pick_dataset(dataset_name = args.out_dataset, batch_size=args.batch_size, normalize = True, size = 32, mode='val')
-    model = Discriminator(channels=channels, d=args.d).to(device)
+    in_loader, input_size, channels = pick_dataset(dataset_name = args.dataset, batch_size=args.batch_size, normalize = True, size = 64, mode='val')
+    out_loader, _, _ = pick_dataset(dataset_name = args.out_dataset, batch_size=args.batch_size, normalize = True, size = 64, mode='val')
+    model = Discriminator(channels=channels, d=args.d, imgSize=input_size).to(device)
     model.load_state_dict(torch.load(args.discriminator_checkpoint))
     model.outlier_detection(in_loader, out_loader, display=True, device=device)
 
