@@ -56,7 +56,7 @@ def parse_args_AdversarialVAE():
     argparser.add_argument('--train', action='store_true', default=False, help='train model')
     argparser.add_argument('--test', action='store_true', default=False, help='test model')
     argparser.add_argument('--sample', action='store_true', default=False, help='sample model')
-    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray', 'tinyimagenet'])
+    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray', 'tinyimagenet', 'bottle'])
     argparser.add_argument('--batch_size', type=int, default=128, help='batch size')
     argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
     argparser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
@@ -69,7 +69,7 @@ def parse_args_AdversarialVAE():
     argparser.add_argument('--sample_and_save_frequency', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--discriminator_checkpoint', type=str, default=None, help='discriminator checkpoint path')
-    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray', 'tinyimagenet', 'places365', 'cifar100', 'dtd'])
+    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray', 'tinyimagenet', 'places365', 'cifar100', 'dtd', 'bottle'])
     return argparser.parse_args()
 
 def parse_args_VanillaSGM():
