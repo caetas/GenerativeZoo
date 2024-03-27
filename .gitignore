@@ -199,6 +199,7 @@ src/generativezoo/tiny_adv.py
 src/generativezoo/tiny_gan.py
 src/generativezoo/presgan_xrays.py
 src/generativezoo/presgan_tiny.py
+src/generativezoo/presgan_mnistc.py
 src/generativezoo/presgan_cifar10c.py
 src/generativezoo/mnist_gan.py
 src/generativezoo/mnist_adv.py
