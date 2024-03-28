@@ -17,6 +17,13 @@ from sklearn.metrics import roc_auc_score, roc_curve
  
 class Generator(nn.Module):
     def __init__(self, imgSize, nz, ngf, nc):
+        '''
+        Generator for the GAN
+        imgSize: size of the image
+        nz: size of the latent vector
+        ngf: number of filters in the generator
+        nc: number of channels in the image
+        '''
         super(Generator, self).__init__()
         if imgSize < 64:
             self.main = nn.Sequential(
@@ -95,6 +102,12 @@ class Generator(nn.Module):
 
 class Discriminator(nn.Module):
     def __init__(self, imgSize, ndf, nc):
+        '''
+        Discriminator for the GAN
+        imgSize: size of the image
+        ndf: number of filters in the discriminator
+        nc: number of channels in the image
+        '''
         super(Discriminator, self).__init__()
         
         if imgSize < 64:
@@ -164,10 +177,21 @@ class Discriminator(nn.Module):
             )
         
     def forward(self, input):
+        '''
+        Forward pass for the discriminator
+        input: input image
+        '''
         output = self.main(input)
         return output.view(-1, 1).squeeze(1)
     
 def _helper(netG, x_tilde, eps, sigma):
+    '''
+    Helper function for the PresGAN
+    netG: Generator network
+    x_tilde: Noised data
+    eps: Latent vector
+    sigma: Standard deviation
+    '''
     eps = eps.clone().detach().requires_grad_(True)
     with torch.no_grad():
         G_eps = netG(eps)
@@ -185,6 +209,20 @@ def _helper(netG, x_tilde, eps, sigma):
 
 def get_samples(netG, x_tilde, eps_init, sigma, burn_in, num_samples_posterior, 
             leapfrog_steps, stepsize, flag_adapt, hmc_learning_rate, hmc_opt_accept):
+    '''
+    Get samples using HMC
+    netG: Generator network
+    x_tilde: Noised data
+    eps_init: Initial latent vector
+    sigma: Standard deviation
+    burn_in: Number of burn-in steps
+    num_samples_posterior: Number of samples to generate
+    leapfrog_steps: Number of leapfrog steps
+    stepsize: Step size for HMC
+    flag_adapt: Flag to adapt step size
+    hmc_learning_rate: Learning rate for step size adaptation
+    hmc_opt_accept: Optimal acceptance rate
+    '''
     device = eps_init.device
     bsz, eps_dim = eps_init.size(0), eps_init.size(1)
     n_steps = burn_in + num_samples_posterior
@@ -246,6 +284,34 @@ def create_checkpoint_dir():
 
 class PresGAN(nn.Module):
     def __init__(self, imgSize, nz, ngf, ndf, nc, device, beta1, lrD, lrG, sigma_lr, n_epochs, num_gen_images, restrict_sigma, sigma_min, sigma_max, stepsize_num, lambda_, burn_in, num_samples_posterior, leapfrog_steps, flag_adapt, hmc_learning_rate, hmc_opt_accept, dataset='cifar10', sample_and_save_freq=5):
+        '''
+        Prescribed GAN
+        imgSize: size of the image
+        nz: size of the latent vector
+        ngf: number of filters in the generator
+        ndf: number of filters in the discriminator
+        nc: number of channels in the image
+        device: device to run the model
+        beta1: beta1 for Adam optimizer
+        lrD: learning rate for the discriminator
+        lrG: learning rate for the generator
+        sigma_lr: learning rate for the standard deviation
+        n_epochs: number of epochs to train the model
+        num_gen_images: number of images to generate
+        restrict_sigma: restrict sigma to a range
+        sigma_min: minimum value of sigma
+        sigma_max: maximum value of sigma
+        stepsize_num: step size for HMC
+        lambda_: lambda for the entropy term
+        burn_in: number of burn-in steps
+        num_samples_posterior: number of samples to generate
+        leapfrog_steps: number of leapfrog steps
+        flag_adapt: flag to adapt step size
+        hmc_learning_rate: learning rate for step size adaptation
+        hmc_opt_accept: optimal acceptance rate
+        dataset: dataset to train the model
+        sample_and_save_freq: frequency to sample and save the model
+        '''
         super(PresGAN, self).__init__()
         self.netG = Generator(imgSize, nz, ngf, nc).to(device)
         self.netD = Discriminator(imgSize, ndf, nc).to(device)
@@ -277,9 +343,17 @@ class PresGAN(nn.Module):
         self.sample_and_save_freq = sample_and_save_freq
     
     def forward(self, input):
+        '''
+        Forward pass for the generator
+        input: input noise
+        '''
         return self.netG(input)
     
     def train_model(self, dataloader):
+        '''
+        Train the model
+        dataloader: dataloader for the dataset
+        '''
         real_label = 1
         fake_label = 0
         criterion = nn.BCELoss()
@@ -378,9 +452,9 @@ class PresGAN(nn.Module):
 
             if g_error_gan.item() < best_loss:
                 best_loss = g_error_gan.item()
-                torch.save(self.netG.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresGAN_{self.dataset}_{self.nz}.pt"))
-                torch.save(self.netD.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresDisc_{self.dataset}_{self.nz}.pt"))
-                torch.save(self.log_sigma, os.path.join(models_dir, 'PrescribedGAN', f"PresSigma_{self.dataset}_{self.nz}.pt"))
+                torch.save(self.netG.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresGAN_{self.dataset}.pt"))
+                torch.save(self.netD.state_dict(), os.path.join(models_dir, 'PrescribedGAN', f"PresDisc_{self.dataset}.pt"))
+                torch.save(self.log_sigma, os.path.join(models_dir, 'PrescribedGAN', f"PresSigma_{self.dataset}.pt"))
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
                 with torch.no_grad():
@@ -400,6 +474,12 @@ class PresGAN(nn.Module):
                     plt.close(fig)
 
     def load_checkpoints(self,generator_checkpoint=None, discriminator_checkpoint=None, sigma_checkpoint=None):
+        '''
+        Load the checkpoints
+        generator_checkpoint: checkpoint for the generator
+        discriminator_checkpoint: checkpoint for the discriminator
+        sigma_checkpoint: checkpoint for the standard deviation
+        '''
         if generator_checkpoint is not None:
             self.netG.load_state_dict(torch.load(generator_checkpoint))
         if discriminator_checkpoint is not None:
@@ -409,6 +489,10 @@ class PresGAN(nn.Module):
     
     @torch.no_grad()
     def sample(self, num_samples=16):
+        '''
+        Sample from the generator
+        num_samples: number of samples to generate
+        '''
         fixed_noise = torch.randn(num_samples, self.nz, 1, 1, device=self.device)
         fake = self.netG(fixed_noise).detach().cpu()
         fake = fake*0.5 + 0.5
@@ -422,6 +506,13 @@ class PresGAN(nn.Module):
 
     @torch.no_grad()
     def outlier_detection(self, in_loader, out_loader, in_array=None, display=True):
+        '''
+        Outlier detection using the discriminator
+        in_loader: dataloader for the in-distribution dataset
+        out_loader: dataloader for the out-of-distribution dataset
+        in_array: in-distribution data
+        display: display the results
+        '''
         #just get the discriminator scores
         if in_array is not None:
             in_scores = in_array

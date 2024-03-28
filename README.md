@@ -26,6 +26,7 @@ You will need:
 - `Make`
 - a `.secrets` file with the required secrets and credentials
 - load environment variables from `.env`
+- `CUDA >= 12.1`
 
 ## Installation
 
@@ -90,6 +91,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 - Conditional GAN [`Paper`](https://arxiv.org/abs/1411.1784)|[`Code`](src/generativezoo/models/GAN/ConditionalGAN.py)|[`Script`](src/generativezoo/CondGAN.py)|[`Documentation`](docs/ConditionalGAN.md)
 - CycleGAN [`Paper`](https://arxiv.org/abs/1703.10593)|[`Code`](src/generativezoo/models/GAN/CycleGAN.py)|[`Script`](src/generativezoo/CycGAN.py)|[`Documentation`](docs/CycleGAN.md)
 - Prescribed GAN [`Paper`](https://arxiv.org/abs/1910.04302)|[`Code`](src/generativezoo/models/GAN/PrescribedGAN.py)|[`Script`](src/generativezoo/PresGAN.py)|[`Documentation`](docs/PrescribedGAN.md)
+- Wasserstein GAN with Gradient Penalty [`Paper`](https://arxiv.org/abs/1704.00028)|[`Code`](src/generativezoo/models/GAN/WGAN.py)|[`Script`](src/generativezoo/WGAN.py)|[`Documentation`](docs/WassersteinGAN.md)
 
 #### DDPMs
 
@@ -151,6 +153,7 @@ The following datasets are ready to be used to train and sample from the provide
 - SVHN [`Source`](https://arxiv.org/abs/1312.6082)
 
 #### Manual Download Required
+
 - Cityscapes: **download [Images](https://www.cityscapes-dataset.com/file-handling/?packageID=3) and [Ground-Truth](https://www.cityscapes-dataset.com/file-handling/?packageID=1), and move the .zip files to [`data/raw`](data/raw)**.
 
 ## Tracking
@@ -159,10 +162,12 @@ The code examples are setup to use [Weights & Biases](https://wandb.ai/home) as 
 
 1. Create an account in [Weights & Biases](https://wandb.ai/home)
 2. **If you have installed the requirements you can skip this step**. If not, activate the conda environment and the virtualenv and run:
+
     ```bash
     pip install wandb
     ```
 3. Run the following command and insert you [`API key`](https://wandb.ai/authorize) when prompted:
+
     ```bash
     wandb login
     ```
@@ -205,6 +210,8 @@ All the repositories used to generate this code are mentioned in each of the cor
 - [PyTorch-VAE](https://github.com/AntixK/PyTorch-VAE)
 - [conditional-GAN](https://github.com/TeeyoHuang/conditional-GAN)
 - [PyTorch-GAN](https://github.com/eriklindernoren/PyTorch-GAN)
+- [wgan-gp](https://github.com/EmilienDupont/wgan-gp)
+- [PresGANs](https://github.com/adjidieng/PresGANs/)
 - [minDiffusion](https://github.com/cloneofsimo/minDiffusion)
 - [DenoisingDiffusionProbabilisticModels](https://github.com/DhruvSrikanth/DenoisingDiffusionProbabilisticModels)
 - [Conditional_Diffusion_MNIST](https://github.com/TeaPearce/Conditional_Diffusion_MNIST)

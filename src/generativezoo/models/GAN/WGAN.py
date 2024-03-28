@@ -1,3 +1,7 @@
+#############################################################################################################
+########################## Code based on: https://github.com/EmilienDupont/wgan-gp ##########################
+#############################################################################################################
+
 from torch import nn
 import torch
 import torch.nn.functional as F
@@ -14,12 +18,6 @@ from torch.autograd import grad as torch_grad
 import wandb
 from sklearn.metrics import roc_auc_score, roc_curve
 
-def create_checkpoint_dir():
-  if not os.path.exists(models_dir):
-    os.makedirs(models_dir)
-  if not os.path.exists(os.path.join(models_dir, 'WassersteinGAN')):
-    os.makedirs(os.path.join(models_dir, 'WassersteinGAN'))
-
 def weights_init_normal(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
@@ -32,6 +30,14 @@ def weights_init_normal(m):
 class Generator(nn.Module):
     # initializers
     def __init__(self, latent_dim, d=128, channels=3, imgSize=32):
+        '''
+        Generator for WGAN
+        Args:
+            latent_dim: int, size of the latent dimension
+            d: int, number of filters in the final layer
+            channels: int, number of channels in the image
+            imgSize: int, size of the image
+        '''
         super(Generator, self).__init__()
         if imgSize < 64:
             self.main = nn.Sequential(
@@ -86,6 +92,11 @@ class Generator(nn.Module):
 
     # forward method
     def forward(self, input):
+        '''
+        Forward pass of the generator
+        Args:
+            input: tensor, input to the generator
+        '''
         if self.imgSize >= 64:
             input = input.view(input.size(0), -1)
             input = self.reshape(input)
@@ -95,6 +106,13 @@ class Generator(nn.Module):
     
     @torch.no_grad()
     def sample(self, n_samples, device, train = True):
+        '''
+        Sample from the generator
+        Args:
+            n_samples: int, number of samples to generate
+            device: torch.device, device to use
+            train: bool, if True, the function is called during training
+        '''
         z = torch.randn(n_samples, self.latent_dim, 1, 1).to(device)
         imgs = self.forward(z)
         #imgs = (imgs + 1) / 2
@@ -130,9 +148,7 @@ class Discriminator(nn.Module):
                 nn.LeakyReLU(0.2, inplace=True),
                 # state size. (d*4) x 4 x 4
                 nn.Conv2d(d * 4, 1, 4, 1, 0, bias=False),
-                nn.Flatten(),
-                nn.Linear((imgSize//8 - 3)**2, 1),
-                #nn.Sigmoid()
+                nn.Sigmoid()
             )
         
         elif imgSize >= 64:
@@ -156,11 +172,16 @@ class Discriminator(nn.Module):
                 nn.Conv2d(d * 8, 1, 4, 1, 0, bias=False),
                 nn.Flatten(),
                 nn.Linear((imgSize//16 - 3)**2, 1),
-                #nn.Sigmoid()
+                nn.Sigmoid()
             )
 
     # def forward(self, input):
     def forward(self, input):
+        '''
+        Forward pass of the discriminator
+        Args:
+            input: tensor, input to the discriminator
+        '''
         x = self.main(input)
         return x
     
@@ -173,6 +194,24 @@ def create_checkpoint_dir():
 
 class WGAN(nn.Module):
     def __init__(self, latent_dim, d=64, channels=3, imgSize=32, batch_size=64, n_epochs = 100, gp_weight=10, n_critic=5, dataset='cifar10', sample_and_save_freq = 5, lrd=0.0002, lrg=0.0002, beta1=0.5, beta2=0.999):
+        '''
+        Wasserstein GAN with Gradient Penalty
+        Args:
+            latent_dim: int, size of the latent dimension
+            d: int, number of filters in the final layer
+            channels: int, number of channels in the image
+            imgSize: int, size of the image
+            batch_size: int, batch size
+            n_epochs: int, number of epochs
+            gp_weight: int, weight of the gradient penalty
+            n_critic: int, number of critic iterations
+            dataset: str, dataset name
+            sample_and_save_freq: int, frequency of sampling and saving the model
+            lrd: float, learning rate for the discriminator
+            lrg: float, learning rate for the generator
+            beta1: float, beta1 for Adam optimizer
+            beta2: float, beta2 for Adam optimizer
+        '''
         super(WGAN, self).__init__()
         self.latent_dim = latent_dim
         self.G = Generator(latent_dim, d, channels, imgSize)
@@ -200,6 +239,12 @@ class WGAN(nn.Module):
         self.beta2 = beta2
 
     def _gradient_penalty(self, real, fake):
+        '''
+        Gradient penalty for the Wasserstein GAN
+        Args:
+            real: tensor, real images scores
+            fake: tensor, fake images scores
+        '''
         batch_size = real.size()[0]
 
         # Calculate interpolation
@@ -230,6 +275,11 @@ class WGAN(nn.Module):
         return self.gp_weight * ((gradients_norm - 1) ** 2).mean()
     
     def train_model(self, dataloader):
+        '''
+        Train the Wasserstein GAN
+        Args:
+            dataloader: torch DataLoader, dataloader for the dataset
+        '''
         epoch_bar = trange(self.n_epochs, desc='Epochs', leave=True)
         best_loss = np.inf
 
@@ -302,6 +352,14 @@ class WGAN(nn.Module):
 
     @torch.no_grad()
     def outlier_detection(self, in_loader, out_loader, in_array = None, display=True):
+        '''
+        Outlier detection using the discriminator
+        Args:
+            in_loader: torch DataLoader, dataloader for the inlier dataset
+            out_loader: torch DataLoader, dataloader for the outlier dataset
+            in_array: numpy array, inlier scores
+            display: bool, if True, display the histograms of the scores
+        '''
         self.D.eval()
         out_preds = []
         if in_array is None:
