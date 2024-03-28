@@ -4,23 +4,27 @@ A Generative Adversarial Network (GAN) comprises two neural networks: a **Genera
 
 ## Parameters
 
-| Parameter                   | Description                           | Default | Choices                                                         |
-|-----------------------------|---------------------------------------|---------|-----------------------------------------------------------------|
-| `--train`                 | train model                       | `False`|                                                                 |
-| `--sample`                | sample from model                 | `False`|                                                                 |
-| `--batch_size`            | batch size                        | `128` |                                                                 |
-| `--dataset`               | dataset name                      | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
-| `--n_epochs`              | number of epochs                  | `100` |                                                                 |
-| `--lr`                    | learning rate                     | `0.0002` |                                                                 |
-| `--beta1`                 | beta1                             | `0.5` |                                                                 |
-| `--beta2`                 | beta2                             | `0.999` |                                                                |
-| `--latent_dim`            | latent dimension                  | `100` |                                                                 |
-| `--img_size`              | image size                        | `32`  |                                                                 |
-| `--channels`              | channels                          | `1`   |                                                                 |
-| `--sample_and_save_freq`       | sample interval                   | `5`   |                                                                 |
-| `--checkpoint`            | checkpoint path                   | `None`|                                                                 |
-| `--n_samples`             | number of samples                 | `9`   |                                                                 |
-| `--d`                     | number of initial filters         | `128` |                                                                 |
+| Argument                  | Description                                        | Default  | Choices                                                                                                                                                                      |
+|---------------------------|----------------------------------------------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--train`                 | Train model                                        | `False`  |                                                                                                                                                                              |
+| `--sample`                | Sample from model                                  | `False`  |                                                                                                                                                                              |
+| `--outlier_detection`     | Outlier detection                                  | `False`  |                                                                                                                                                                              |
+| `--batch_size`            | Batch size                                         | `128`    |                                                                                                                                                                              |
+| `--dataset`               | Dataset name                                       | `mnist`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `cityscapes`, `xray`, `tinyimagenet`                                                                                         |
+| `--out_dataset`           | Outlier dataset name                               | `fashionmnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `cityscapes`, `xray`, `tinyimagenet`, `places365`, `dtd`, `cifar100` |
+| `--n_epochs`              | Number of epochs                                   | `100`    |                                                                                                                                                                              |
+| `--lrg`                   | Learning rate generator                           | `0.0002` |                                                                                                                                                                              |
+| `--lrd`                   | Learning rate discriminator                       | `0.0002` |                                                                                                                                                                              |
+| `--beta1`                 | Beta1                                              | `0.5`    |                                                                                                                                                                              |
+| `--beta2`                 | Beta2                                              | `0.999`  |                                                                                                                                                                              |
+| `--latent_dim`            | Latent dimension                                   | `100`    |                                                                                                                                                                              |
+| `--img_size`              | Image size                                         | `32`     |                                                                                                                                                                              |
+| `--channels`              | Channels                                           | `1`      |                                                                                                                                                                              |
+| `--sample_and_save_freq`  | Sample interval                                    | `5`      |                                                                                                                                                                              |
+| `--checkpoint`            | Checkpoint path                                    | `None`   |                                                                                                                                                                              |
+| `--discriminator_checkpoint` | Discriminator checkpoint path                   | `None`   |                                                                                                                                                                              |
+| `--n_samples`             | Number of samples                                  | `9`      |                                                                                                                                                                              |
+| `--d`                     | d                                                  | `128`    |                                                                                                                                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 
@@ -37,3 +41,9 @@ Adversarial losses are used during training. The generator is encouraged to gene
 To sample from a GAN, you input a noisy latent vector of a predefined size into the generator network. This latent vector serves as a random seed that the generator uses to generate synthetic data samples.
 
     python VanGan.py --sample --dataset svhn --checkpoint ./../../models/VanillaGAN/VanGAN_svhn.pt
+
+## Outlier Detection
+
+To perform outlier detection, only the Discriminator will be used:
+
+    python VanGan.py --outlier_detection --dataset svhn --out_dataset cifar10 --discriminator_checkpoint ./../../models/VanillaGAN/VanDisc_svhn.pt

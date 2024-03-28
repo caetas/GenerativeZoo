@@ -4,26 +4,25 @@ The Adversarial Variational Autoencoder (Adversarial VAE) is a generative model 
 
 ## Parameters
 
-| Parameter                    | Description                         | Default   | Choices                                                         |
-|------------------------------|-------------------------------------|-----------|-----------------------------------------------------------------|
-| `--train`                    | train model                         | `False`   |                                                                 |
-| `--test`                     | test model                          | `False`   |                                                                 |
-| `--sample`                   | sample model                        | `False`   |                                                                 |
-| `--outlier_detection`        | Out-of-distribution detection       | `False`   |                                                    |
-| `--dataset`                  | Dataset name                        | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
-| `--out_dataset`              | Outlier dataset name                | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'cityscapes'` |
-| `--batch_size`               | batch size                          | `128`     |                                                                 |
-| `--n_epochs`                 | number of epochs                    | `100`     |                                                                 |
-| `--lr`                       | learning rate                       | `0.0002`  |                                                                 |
-| `--latent_dim`               | latent dimension                    | `128`     |                                                                 |
-| `--hidden_dims`              | hidden dimensions                   | `None`    |                                                                 |
-| `--checkpoint`               | checkpoint path                     | `None`    |                                                                 |
-| `--discriminator_checkpoint` | discriminator checkpoint path       | `None`    |                                                                 |
-| `--num_samples`              | number of samples                   | `16`      |                                                                 |
-| `--gen_weight`               | generator weight                    | `0.002`   |                                                                 |
-| `--recon_weight`             | reconstruction weight               | `0.002`   |                                                                 |
-| `--sample_and_save_frequency`| sample and save frequency           | `5`       |                                                                 |
-| `--loss_type`                | Type of loss for training           | `'mse'`   | `'mse'`, `'ssim'`                                               |
+| Argument                  | Description                                        | Default  | Choices                                                                                                                                                                      |
+|---------------------------|----------------------------------------------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--train`                 | Train model                                        | `False`  |                                                                                                                                                                              |
+| `--test`                  | Test model                                         | `False`  |                                                                                                                                                                              |
+| `--sample`                | Sample model                                       | `False`  |                                                                                                                                                                              |
+| `--dataset`               | Dataset name                                       | `mnist`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `cityscapes`, `xray`, `tinyimagenet`, `bottle`                                                                                         |
+| `--batch_size`            | Batch size                                         | `128`    |                                                                                                                                                                              |
+| `--n_epochs`              | Number of epochs                                   | `100`    |                                                                                                                                                                              |
+| `--lr`                    | Learning rate                                      | `0.0002` |                                                                                                                                                                              |
+| `--latent_dim`            | Latent dimension                                   | `128`    |                                                                                                                                                                              |
+| `--hidden_dims`           | Hidden dimensions                                  | `None`   |                                                                                                                                                                              |
+| `--checkpoint`            | Checkpoint path                                    | `None`   |                                                                                                                                                                              |
+| `--num_samples`           | Number of samples                                  | `16`     |                                                                                                                                                                              |
+| `--gen_weight`            | Generator weight                                   | `0.002`  |                                                                                                                                                                              |
+| `--recon_weight`          | Reconstruction weight                              | `0.002`  |                                                                                                                                                                              |
+| `--sample_and_save_frequency` | Sample and save frequency                      | `5`      |                                                                                                                                                                              |
+| `--outlier_detection`     | Outlier detection                                  | `False`  |                                                                                                                                                                              |
+| `--discriminator_checkpoint` | Discriminator checkpoint path                  | `None`   |                                                                                                                                                                              |
+| `--out_dataset`           | Outlier dataset name                               | `fashionmnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `cityscapes`, `xray`, `tinyimagenet`, `places365`, `cifar100`, `dtd`, `bottle` |
 
 ## Training
 

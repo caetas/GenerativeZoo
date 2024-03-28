@@ -193,6 +193,18 @@ src/generativezoo/cifar10c_adv.py
 src/generativezoo/xrays.py
 src/generativezoo/RNVP.py
 src/generativezoo/Flow/RealNVP.py
+src/generativezoo/xrays_gan.py
+src/generativezoo/xrays_adv.py
+src/generativezoo/tiny_adv.py
+src/generativezoo/tiny_gan.py
+src/generativezoo/presgan_xrays.py
+src/generativezoo/presgan_tiny.py
+src/generativezoo/presgan_mnistc.py
+src/generativezoo/presgan_cifar10c.py
+src/generativezoo/mnist_gan.py
+src/generativezoo/mnist_adv.py
+src/generativezoo/cifar10c_gan.py
+
 *.ipynb
 # Hydra
 outputs
