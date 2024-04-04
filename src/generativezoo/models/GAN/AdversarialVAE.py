@@ -545,6 +545,7 @@ class AdversarialVAE(nn.Module):
         if display:
             # print discriminator metrics
             print(f"ROC AUC Discriminator: {rocauc_discriminator:.6f}, FPR95 Discriminator: {fpr95_discriminator:.6f}, Mean Scores Discriminator: {np.mean(out_scores_discriminator):.6f}, ROC AUC VAE: {rocauc:.6f}, FPR95 VAE: {fpr95:.6f}")
+            print(f"Mean Scores ID: {np.mean(in_scores_discriminator):.6f}")
             # plot the scores
             fig, ax = plt.subplots(1, 2, figsize=(10, 5))
             ax[0].hist(in_scores, bins=100, alpha=0.5, label='In-distribution')
