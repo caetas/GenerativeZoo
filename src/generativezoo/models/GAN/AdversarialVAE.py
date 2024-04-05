@@ -266,7 +266,7 @@ class AdversarialVAE(nn.Module):
         '''
         super(AdversarialVAE, self).__init__()
         self.device = device
-        self.vae = VanillaVAE(input_shape, input_channels, latent_dim, hidden_dims, lr, batch_size, kld_weight, loss_type).to(self.device)
+        self.vae = VanillaVAE(input_shape, input_channels, latent_dim, hidden_dims.copy(), lr, batch_size, kld_weight, loss_type).to(self.device)
         self.discriminator = Discriminator(input_shape, input_channels, hidden_dims, lr, batch_size).to(self.device)
         self.lr = lr
         self.batch_size = batch_size
