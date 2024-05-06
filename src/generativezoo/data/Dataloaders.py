@@ -1152,6 +1152,194 @@ def xrays_test_loader(batch_size, normalize = False, input_shape = None, flavour
     else:
         return test_loader, 128, 1
 
+class SSBDataset(Dataset):
+    
+    def __init__(self, root, mode = 'test', transform=None):
+        self.root = root
+        self.transform = transform
+        # img list is in a .txt file
+        with open(os.path.join(root, 'test_ssb_hard.txt'), 'r') as f:
+            self.imgs = f.readlines()
+        # remove ' -1' from the end of each line
+        self.imgs = [img[:-3] for img in self.imgs]
+        # remove ssb_hard/
+        self.imgs = [img[9:] for img in self.imgs]
+        
+    def __len__(self):
+        return len(self.imgs)
+    
+    def __getitem__(self, idx):
+        img = Image.open(os.path.join(self.root, self.imgs[idx])).convert('RGB')
+        if self.transform:
+            img = self.transform(img)
+        return img, 1
+
+def ssb_test_loader(batch_size, normalize = False, input_shape = None):
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    test_data = SSBDataset(root = os.path.join(data_raw_dir, 'ssb_hard'), mode = 'test', transform=transform)
+
+    test_loader = DataLoader(test_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True)
+    
+    if input_shape is not None:
+        return test_loader, input_shape, 3
+    else:
+        return test_loader, 128, 3
+
+class NINCODataset(Dataset):
+        
+    def __init__(self, root, mode = 'test', transform=None):
+        self.root = root
+        self.transform = transform
+        # img list is in a .txt file
+        with open(os.path.join(root, 'test_ninco.txt'), 'r') as f:
+            self.imgs = f.readlines()
+        # remove ' -1' from the end of each line
+        self.imgs = [img[:-3] for img in self.imgs]
+        # remove ninco/
+        self.imgs = [img[6:] for img in self.imgs]
+        
+    def __len__(self):
+        return len(self.imgs)
+    
+    def __getitem__(self, idx):
+        img = Image.open(os.path.join(self.root, self.imgs[idx])).convert('RGB')
+        if self.transform:
+            img = self.transform(img)
+        return img, 1
+
+def ninco_test_loader(batch_size, normalize = False, input_shape = None):
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    test_data = NINCODataset(root = os.path.join(data_raw_dir, 'ninco'), mode = 'test', transform=transform)
+
+    test_loader = DataLoader(test_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True)
+    
+    if input_shape is not None:
+        return test_loader, input_shape, 3
+    else:
+        return test_loader, 128, 3
+    
+class iNaturalistDataset(Dataset):
+        
+    def __init__(self, root, mode = 'test', transform=None):
+        self.root = root
+        self.transform = transform
+        # img list is in a .txt file
+        with open(os.path.join(root, 'test_inaturalist.txt'), 'r') as f:
+            self.imgs = f.readlines()
+        # remove ' -1' from the end of each line
+        self.imgs = [img[:-3] for img in self.imgs]
+        # remove inaturalist/
+        self.imgs = [img[12:] for img in self.imgs]
+        
+    def __len__(self):
+        return len(self.imgs)
+    
+    def __getitem__(self, idx):
+        img = Image.open(os.path.join(self.root, self.imgs[idx])).convert('RGB')
+        if self.transform:
+            img = self.transform(img)
+        return img, 1
+
+def inaturalist_test_loader(batch_size, normalize = False, input_shape = None):
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    test_data = iNaturalistDataset(root = os.path.join(data_raw_dir, 'inaturalist'), mode = 'test', transform=transform)
+
+    test_loader = DataLoader(test_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True)
+    
+    if input_shape is not None:
+        return test_loader, input_shape, 3
+    else:
+        return test_loader, 128, 3
+
+class OpenImageODataset(Dataset):
+            
+    def __init__(self, root, mode = 'test', transform=None):
+        self.root = root
+        self.transform = transform
+        # img list is in a .txt file
+        with open(os.path.join(root, 'test_openimage_o.txt'), 'r') as f:
+            self.imgs = f.readlines()
+        # remove ' -1' from the end of each line
+        self.imgs = [img[:-3] for img in self.imgs]
+        # remove openimage_o/
+        self.imgs = [img[12:] for img in self.imgs]
+        
+    def __len__(self):
+        return len(self.imgs)
+    
+    def __getitem__(self, idx):
+        img = Image.open(os.path.join(self.root, self.imgs[idx])).convert('RGB')
+        if self.transform:
+            img = self.transform(img)
+        return img, 1
+
+def openimageo_test_loader(batch_size, normalize = False, input_shape = None):
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+            transforms.ToTensor(),
+        ])
+    
+    test_data = OpenImageODataset(root = os.path.join(data_raw_dir, 'openimage_o'), mode = 'test', transform=transform)
+
+    test_loader = DataLoader(test_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True)
+    
+    if input_shape is not None:
+        return test_loader, input_shape, 3
+    else:
+        return test_loader, 128, 3
+    
 def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None, num_workers = 0):
     if dataset_name == 'mnist':
         if mode == 'train':
@@ -1243,5 +1431,17 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return dtd_train_loader(batch_size, normalize, size, num_workers = num_workers)
         elif mode == 'val':
             return dtd_test_loader(batch_size, normalize, size, num_workers = num_workers)
+    elif dataset_name == 'ssb':
+        if mode == 'val':
+            return ssb_test_loader(batch_size, normalize, size)
+    elif dataset_name == 'ninco':
+        if mode == 'val':
+            return ninco_test_loader(batch_size, normalize, size)
+    elif dataset_name == 'inaturalist':
+        if mode == 'val':
+            return inaturalist_test_loader(batch_size, normalize, size)
+    elif dataset_name == 'openimageo':
+        if mode == 'val':
+            return openimageo_test_loader(batch_size, normalize, size)
     else:
         raise ValueError('Dataset name not found.')
