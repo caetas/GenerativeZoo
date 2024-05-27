@@ -69,7 +69,7 @@ def parse_args_AdversarialVAE():
     argparser.add_argument('--sample_and_save_frequency', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--discriminator_checkpoint', type=str, default=None, help='discriminator checkpoint path')
-    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray', 'tinyimagenet', 'places365', 'cifar100', 'dtd', 'bottle'])
+    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray', 'tinyimagenet', 'places365', 'cifar100', 'dtd', 'bottle', 'ssb', 'ninco', 'inaturalist', 'openimageo'])
     return argparser.parse_args()
 
 def parse_args_VanillaSGM():
@@ -217,7 +217,7 @@ def parse_args_VanillaGAN():
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--batch_size', type=int, default=128, help='batch size')
     argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray', 'tinyimagenet'])
-    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray', 'tinyimagenet', 'places365', 'dtd', 'cifar100'])
+    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray', 'tinyimagenet', 'places365', 'dtd', 'cifar100', 'ssb', 'ninco', 'inaturalist', 'openimageo'])
     argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
     argparser.add_argument('--lrg', type=float, default=0.0002, help='learning rate generator')
     argparser.add_argument('--lrd', type=float, default=0.0002, help='learning rate discriminator')
@@ -239,7 +239,7 @@ def parse_args_WassersteinGAN():
     argparser.add_argument('--sample', action='store_true', default=False, help='sample from model')
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray', 'tinyimagenet'])
-    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray', 'tinyimagenet'])
+    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'cityscapes', 'xray', 'tinyimagenet', 'ssb'])
     argparser.add_argument('--batch_size', type=int, default=256, help='batch size')
     argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
     argparser.add_argument('--latent_dim', type=int, default=100, help='latent dimension')
@@ -298,7 +298,7 @@ def parse_args_PresGAN():
     argparser.add_argument('--restrict_sigma', type=int, default=0, help='whether to restrict sigma or not')
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
-    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'xray', 'tinyimagenet', 'places365', 'dtd', 'cifar100'])
+    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'xray', 'tinyimagenet', 'places365', 'dtd', 'cifar100', 'ssb', 'ninco', 'inaturalist', 'openimageo'])
 
     return argparser.parse_args()
 

@@ -266,7 +266,7 @@ class AdversarialVAE(nn.Module):
         '''
         super(AdversarialVAE, self).__init__()
         self.device = device
-        self.vae = VanillaVAE(input_shape, input_channels, latent_dim, hidden_dims, lr, batch_size, kld_weight, loss_type).to(self.device)
+        self.vae = VanillaVAE(input_shape, input_channels, latent_dim, hidden_dims.copy(), lr, batch_size, kld_weight, loss_type).to(self.device)
         self.discriminator = Discriminator(input_shape, input_channels, hidden_dims, lr, batch_size).to(self.device)
         self.lr = lr
         self.batch_size = batch_size
@@ -348,12 +348,11 @@ class AdversarialVAE(nn.Module):
         plt.close(fig)
         
 
-    def train_model(self, data_loader, val_loader):
+    def train_model(self, data_loader):
         '''
         Function to train the model
         Args:
         data_loader: DataLoader with the training data
-        val_loader: DataLoader with the validation data
         '''
 
         # Loss function
@@ -441,7 +440,7 @@ class AdversarialVAE(nn.Module):
 
             if (epoch+1) % self.sample_and_save_frequency == 0 or epoch == 0:
                 self.create_grid(title=f"Epoch {epoch}", train=True)
-                self.create_validation_grid(val_loader, title=f"Epoch {epoch}", train=True)
+                self.create_validation_grid(data_loader, title=f"Epoch {epoch}", train=True)
                 torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'AdversarialVAE', f"Discriminator_{self.dataset}_{epoch}.pt"))
         
             if acc_g_loss/len(data_loader.dataset) < best_loss:
@@ -545,6 +544,7 @@ class AdversarialVAE(nn.Module):
         if display:
             # print discriminator metrics
             print(f"ROC AUC Discriminator: {rocauc_discriminator:.6f}, FPR95 Discriminator: {fpr95_discriminator:.6f}, Mean Scores Discriminator: {np.mean(out_scores_discriminator):.6f}, ROC AUC VAE: {rocauc:.6f}, FPR95 VAE: {fpr95:.6f}")
+            print(f"Mean Scores ID: {np.mean(in_scores_discriminator):.6f}")
             # plot the scores
             fig, ax = plt.subplots(1, 2, figsize=(10, 5))
             ax[0].hist(in_scores, bins=100, alpha=0.5, label='In-distribution')

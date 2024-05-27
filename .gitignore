@@ -257,4 +257,7 @@ src/generativezoo/models/SGM/sde_lib.py
 src/generativezoo/models/SGM/up_or_down_sampling.py
 src/generativezoo/models/SGM/utils.py
 src/generativezoo/op
+src/generativezoo/highfreq_cifar.py
+src/generativezoo/tsne.py
+src/generativezoo/corruptions_freq.py
 # EOF
