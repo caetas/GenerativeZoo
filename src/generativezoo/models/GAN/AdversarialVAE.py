@@ -348,12 +348,11 @@ class AdversarialVAE(nn.Module):
         plt.close(fig)
         
 
-    def train_model(self, data_loader, val_loader):
+    def train_model(self, data_loader):
         '''
         Function to train the model
         Args:
         data_loader: DataLoader with the training data
-        val_loader: DataLoader with the validation data
         '''
 
         # Loss function
@@ -441,7 +440,7 @@ class AdversarialVAE(nn.Module):
 
             if (epoch+1) % self.sample_and_save_frequency == 0 or epoch == 0:
                 self.create_grid(title=f"Epoch {epoch}", train=True)
-                self.create_validation_grid(val_loader, title=f"Epoch {epoch}", train=True)
+                self.create_validation_grid(data_loader, title=f"Epoch {epoch}", train=True)
                 torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'AdversarialVAE', f"Discriminator_{self.dataset}_{epoch}.pt"))
         
             if acc_g_loss/len(data_loader.dataset) < best_loss:

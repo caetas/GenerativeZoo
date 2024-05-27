@@ -8,9 +8,14 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 args = parse_args_ConditionalVAE()
 
+if args.dataset == "mnist":
+    size = 32
+else:
+    size = None
+
 if args.train:
     # train dataloader
-    train_loader, in_shape, in_channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, size=32)
+    train_loader, in_shape, in_channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, size=size)
     wandb.init(project='CVAE',
                 
                 config={
@@ -32,7 +37,7 @@ if args.train:
     model.train_model(train_loader, args.n_epochs)
 
 elif args.sample:
-    _, in_shape, in_channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, size=32)
+    _, in_shape, in_channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, size=size)
     model = ConditionalVAE(input_shape=in_shape, input_channels=in_channels, latent_dim=args.latent_dim, batch_size=args.batch_size, device=device, hidden_dims=args.hidden_dims, lr=args.lr)
     model.load_state_dict(torch.load(args.checkpoint))
     model.create_grid(title="Sample", train = False)

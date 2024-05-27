@@ -10,6 +10,11 @@ from utils.util import parse_args_WassersteinGAN
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 args = parse_args_WassersteinGAN()
 
+if args.dataset == 'mnist' or args.dataset == 'fashionmnist':
+    size = 32
+else:
+    size = None
+
 if args.train:
     wandb.init(project="WGAN",
             config={
@@ -26,27 +31,23 @@ if args.train:
                 "gp_weight": args.gp_weight
             },
             name=f"WGAN_{args.dataset}")
-    if args.dataset == 'mnist' or args.dataset == 'fashionmnist':
-        train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=32)
-    else:
-        train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False)
+    
+    train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=size)
     model = WGAN(batch_size = args.batch_size, latent_dim=args.latent_dim, d=args.d, lrg=args.lrg, lrd=args.lrd, beta1=args.beta1, beta2=args.beta2, gp_weight=args.gp_weight, dataset=args.dataset, n_epochs=args.n_epochs, n_critic=args.n_critic, sample_and_save_freq=args.sample_and_save_freq, imgSize=input_size, channels=channels)
     model.train_model(train_loader)
     wandb.finish()
 
 elif args.sample:
-    _, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=1, normalize=False)
+    _, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=1, normalize=False, size=size)
     model = Generator(latent_dim=args.latent_dim, channels=channels, d=args.d, imgSize=input_size).to(device)
     model.load_state_dict(torch.load(args.checkpoint))
     model.sample(n_samples=args.n_samples, device=device)
 
 elif args.outlier_detection:
-    if args.dataset == 'mnist' or args.dataset == 'fashionmnist':
-        in_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=32, mode='val')
-        out_loader, _, _ = pick_dataset(dataset_name=args.out_dataset, batch_size=args.batch_size, normalize=False, size=32, mode='val')
-    else:
-        in_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, mode='val')
-        out_loader, _, _ = pick_dataset(dataset_name=args.out_dataset, batch_size=args.batch_size, normalize=False, mode='val')
+
+    in_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=size, mode='val')
+    out_loader, _, _ = pick_dataset(dataset_name=args.out_dataset, batch_size=args.batch_size, normalize=False, size=input_size, mode='val')
+
     model = WGAN(batch_size = args.batch_size, latent_dim=args.latent_dim, d=args.d, lrg=args.lrg, lrd=args.lrd, beta1=args.beta1, beta2=args.beta2, gp_weight=args.gp_weight, dataset=args.dataset, n_epochs=args.n_epochs, n_critic=args.n_critic, sample_and_save_freq=args.sample_and_save_freq, imgSize=input_size, channels=channels)
     model.D.load_state_dict(torch.load(args.discriminator_checkpoint))
     model.outlier_detection(in_loader, out_loader, display=True)
