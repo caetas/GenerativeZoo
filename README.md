@@ -122,8 +122,8 @@ These models are currently under development and will be added to the repository
 
 #### SGMs
 
-- [ ] NCSN [`Paper`](https://arxiv.org/abs/1907.05600)
-- [ ] NCSN++ [`Paper`](https://openreview.net/forum?id=PxTIG12RRHS)
+- [ ] NCSNv2 [`Paper`](https://arxiv.org/abs/2006.09011)
+- [ ] NCSN++ [`Paper`](https://arxiv.org/abs/2011.13456)
 
 #### Autoregressive
 

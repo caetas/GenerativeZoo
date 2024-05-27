@@ -246,14 +246,9 @@ src/generativezoo/DAE_st.py
 src/generativezoo/ncsn_train.py
 src/generativezoo/ncsnpp_train.py
 src/generativezoo/cdiff.py
-src/generativezoo/models/SGM/layers.py
 src/generativezoo/models/SGM/layerspp.py
 src/generativezoo/models/SGM/losses.py
-src/generativezoo/models/SGM/NCSN.py
 src/generativezoo/models/SGM/NCSNpp.py
-src/generativezoo/models/SGM/normalization.py
-src/generativezoo/models/SGM/sampling.py
-src/generativezoo/models/SGM/sde_lib.py
 src/generativezoo/models/SGM/up_or_down_sampling.py
 src/generativezoo/models/SGM/utils.py
 src/generativezoo/op
