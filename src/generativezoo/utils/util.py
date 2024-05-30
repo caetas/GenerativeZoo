@@ -342,7 +342,7 @@ def parse_args_NCSNv2():
     argparser.add_argument('--act', type=str, default='elu', help='activation', choices=['relu', 'elu', 'swish'])
     argparser.add_argument('--centered', action='store_true', default=False, help='centered')
     argparser.add_argument('--sigma_min', type=float, default=0.01, help='min value for sigma')
-    argparser.add_argument('--sigma_max', type=float, default=0.3, help='max value for sigma')
+    argparser.add_argument('--sigma_max', type=float, default=50, help='max value for sigma')
     argparser.add_argument('--num_scales', type=int, default=232, help='number of scales')
     argparser.add_argument('--normalization', type=str, default='InstanceNorm++', help='Normalization', choices=['InstanceNorm', 'GroupNorm', 'VarianceNorm', 'InstanceNorm++'])
     argparser.add_argument('--num_classes', type=int, default=10, help='number of classes')

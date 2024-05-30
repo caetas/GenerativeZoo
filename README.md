@@ -102,6 +102,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 #### SGMs
 
 - Vanilla SGM [`Paper`](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/VanillaSGM.py)|[`Script`](src/generativezoo/VanSGM.py)|[`Documentation`](docs/VanillaSGM.md)
+- NCSNv2 [`Paper](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/NCSNv2.py)|[`Script`](src/generativezoo/NCSNv2.py)|[`Documentation`](docs/NCSNv2.md)
 
 #### Flow
 
@@ -122,7 +123,6 @@ These models are currently under development and will be added to the repository
 
 #### SGMs
 
-- [ ] NCSNv2 [`Paper`](https://arxiv.org/abs/2006.09011)
 - [ ] NCSN++ [`Paper`](https://arxiv.org/abs/2011.13456)
 
 #### Autoregressive

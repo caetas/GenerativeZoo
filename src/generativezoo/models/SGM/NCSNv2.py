@@ -15,6 +15,11 @@ from .normalization import get_normalization
 from .sde_lib import *
 from .sampling import get_sampling_fn
 from tqdm import tqdm
+from matplotlib import pyplot as plt
+from torchvision.utils import make_grid
+import wandb
+from config import models_dir
+import os
 
 class ExponentialMovingAverage:
   """
@@ -264,6 +269,12 @@ def get_step_fn(sde, train, optimize_fn=None, reduce_mean=False, continuous=True
 
     return step_fn
 
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'NCSNv2')):
+    os.makedirs(os.path.join(models_dir, 'NCSNv2'))
+
 CondResidualBlock = ConditionalResidualBlock
 conv3x3 = ncsn_conv3x3
 
@@ -291,6 +302,7 @@ class NCSNv2(nn.Module):
         self.channels = channels
 
     def train_model(self, train_loader, args):
+        create_checkpoint_dir()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
         # Build one-step training and evaluation functions
         optimize_fn = optimization_manager(args)
@@ -308,24 +320,39 @@ class NCSNv2(nn.Module):
         epoch_bar = tqdm(range(self.n_epochs), desc='Epochs', leave=True)
         self.model.train()
 
+        best_loss = np.inf
         for epoch in epoch_bar:
+            self.model.train()
+            loss_acc = 0.0
             for (x, _) in tqdm(train_loader, desc='Batches', leave=False):
                 x = x.to(self.device)
                 loss = train_step_fn({'model': self.model, 'optimizer': optimizer, 'ema': self.ema, 'step': epoch}, x)
-                break
+                loss_acc += loss.item()
             self.ema.copy_to(self.model.parameters())
-            epoch_bar.set_postfix(loss=loss.item())
-            self.sample(args)
+            epoch_bar.set_postfix(loss=loss_acc / len(train_loader))
+            wandb.log({'loss': loss_acc / len(train_loader)})
+            if loss_acc < best_loss:
+                best_loss = loss_acc
+                torch.save(self.model.state_dict(), os.path.join(models_dir, 'NCSNv2', f'NCSNv2_{args.dataset}.pt'))
+            if (epoch + 1) % args.sample_and_save_freq == 0 or epoch == 0:
+                self.sample(args)
 
     @torch.no_grad()
     def sample(self, args):
         sde = VESDE(sigma_min=self.sigma_min, sigma_max=self.sigma_max, N=self.num_scales)
         sampling_eps = 1e-5
-        sampling_shape = (args.batch_size, self.channels,
+        sampling_shape = (16, self.channels,
                           self.img_size, self.img_size)
         sampling_fn = get_sampling_fn(args, sde, sampling_shape, sampling_eps)
         sample, n = sampling_fn(self.model)
-        print(sample.shape)
+        sample = sample.cpu()
+        sample = torch.clamp(sample, 0, 1)
+        grid = make_grid(sample, nrow=4)
+        fig = plt.figure(figsize=(10,10))
+        plt.imshow(grid.permute(1, 2, 0))
+        plt.axis('off')
+        wandb.log({"Samples": fig})
+        plt.close(fig)
 
 class NCSNv2_64(nn.Module):
   def __init__(self, args, channels=3, image_size=32):
