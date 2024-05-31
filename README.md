@@ -102,7 +102,12 @@ The listed models are already implemented and fully integrated in the model zoo.
 #### SGMs
 
 - Vanilla SGM [`Paper`](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/VanillaSGM.py)|[`Script`](src/generativezoo/VanSGM.py)|[`Documentation`](docs/VanillaSGM.md)
-- NCSNv2 [`Paper](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/NCSNv2.py)|[`Script`](src/generativezoo/NCSNv2.py)|[`Documentation`](docs/NCSNv2.md)
+- NCSNv2 [`Paper`](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/NCSNv2.py)|[`Script`](src/generativezoo/NCSNv2.py)|[`Documentation`](docs/NCSNv2.md)
+
+#### Autoregressive
+
+- VQ-VAE + Transformer [`Paper`](https://arxiv.org/abs/1711.00937)
+- VQ-GAN + Transformer [`Paper`](https://arxiv.org/abs/2012.09841)
 
 #### Flow
 
@@ -116,11 +121,6 @@ These models are currently under development and will be added to the repository
 #### VAEs
 
 - [ ] Hierarchical VAE [`Paper`](https://arxiv.org/abs/2007.03898)
-- [ ] VQ-VAE [`Paper`](https://arxiv.org/abs/1711.00937)
-
-#### GANs
-
-- [ ] VQ-GAN [`Paper`](https://arxiv.org/abs/2012.09841)
 
 #### SGMs
 
@@ -128,7 +128,7 @@ These models are currently under development and will be added to the repository
 
 #### Autoregressive
 
-- [ ] VQ-VAE + Transformer [`Paper`](https://arxiv.org/abs/2012.09841)
+- [ ] PixelCNN
 - [ ] VQ-VAE + Mamba
 
 ## Datasets
