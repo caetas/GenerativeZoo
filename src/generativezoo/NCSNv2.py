@@ -8,8 +8,13 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 args = parse_args_NCSNv2()
 
+if args.dataset == "mnist" or args.dataset == "fashionmnist":
+    size = 32
+else:
+    size = None
+
 if args.train:
-    train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=32)
+    train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=size)
     wandb.init(project="NCSNv2",
                
                 config = {
@@ -46,7 +51,10 @@ if args.train:
     wandb.finish()
 
 elif args.sample:
-    _, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=32)
+    _, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=size)
     model = NCSNv2(input_size, channels, args)
     model.load_checkpoints(args.checkpoint)
-    model.sample(args.num_samples, args.save_dir)
+    model.sample(args, False)
+
+else:
+    raise ValueError("Invalid mode, choose either train, sample or outlier_detection.")
