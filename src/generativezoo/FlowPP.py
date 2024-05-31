@@ -19,7 +19,6 @@ if args.train:
                    'n_epochs': args.n_epochs,
                    'warm_up': args.warm_up,
                    'lr': args.lr,
-                   'sample_and_save_frequency': args.sample_and_save_frequency,
                    'grad_clip': args.grad_clip,
                    'num_blocks': args.num_blocks,
                    'num_components': args.num_components,
@@ -32,6 +31,9 @@ if args.train:
     model = FlowPlusPlus(args, channels=channels, img_size=input_size)
     model.train_model(args, train_loader)
     wandb.finish()
+
 elif args.sample:
-    model = FlowPlusPlus(args)
-    model.sample(16)
+    _, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=False, size=size)
+    model = FlowPlusPlus(args, channels=channels, img_size=input_size)
+    model.load_checkpoints(args)
+    model.sample(16, False)

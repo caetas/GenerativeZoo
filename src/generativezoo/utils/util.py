@@ -103,7 +103,7 @@ def parse_args_FlowPP():
     argparser.add_argument('--num_dequant_blocks', default=2, type=int, help='Number of blocks in dequantization')
     argparser.add_argument('--num_channels', default=96, type=int, help='Number of channels in Flow++')
     argparser.add_argument('--use_attn', action='store_true', default=False, help='use attention')
-    argparser.add_argument('--sample_and_save_frequency', type=int, default=5, help='sample interval')
+    argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample interval')
     return argparser.parse_args()
 
 def parse_args_VanillaVAE():

@@ -13,7 +13,14 @@ from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
 from tqdm import tqdm, trange
 import wandb
+from config import models_dir
+import os
 
+def create_checkpoint_dir():
+    if not os.path.exists(models_dir):
+        os.makedirs(models_dir)
+    if not os.path.exists(models_dir + '/FlowPP'):
+        os.makedirs(models_dir + '/FlowPP')
 
 class FlowPlusPlus(nn.Module):
     """Flow++ Model
@@ -113,6 +120,11 @@ class FlowPlusPlus(nn.Module):
 
         return y, sldj
     
+    def load_checkpoints(self, args):
+        if args.checkpoint is not None:
+            self.flows.load_state_dict(torch.load(args.checkpoint))
+            self.dequant_flows.load_state_dict(torch.load(args.checkpoint.replace('FlowPP', 'DequantFlowPP')))
+    
     @torch.enable_grad()
     def train_model(self, args, train_loader):
         """Train a Flow++ model.
@@ -122,33 +134,53 @@ class FlowPlusPlus(nn.Module):
             train_loader (DataLoader): Training data loader.
 
         """
+        create_checkpoint_dir()
+
         global global_step
         global_step = 0
+
         loss_fn = NLLLoss().to(self.device)
         optimizer = torch.optim.Adam(self.parameters(), lr=args.lr)
+
         warm_up = args.warm_up*args.batch_size
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda step: min(1., step / warm_up))
-        tbar = trange(args.n_epochs, desc='Training', ncols=80)
+
+        tbar = trange(args.n_epochs, desc='Training')
+        best_loss = np.inf
+
         for epoch in tbar:
             self.train()
             total_loss = 0.
-            for (x, _) in tqdm(train_loader, desc='Batches', leave=False, ncols=80):
+            for (x, _) in tqdm(train_loader, desc='Batches', leave=False):
                 x = x.to(self.device)
+
                 optimizer.zero_grad()
                 z, sldj = self.forward(x)
                 loss = loss_fn(z, sldj)
                 loss.backward()
+
                 if args.grad_clip > 0:
                     clip_grad_norm(optimizer, args.grad_clip)
+
                 optimizer.step()
                 scheduler.step()
+
                 total_loss += loss.item()*x.size(0)
                 global_step += x.size(0)
+
+            if total_loss < best_loss:
+                best_loss = total_loss
+                torch.save(self.flows.state_dict(), os.path.join(models_dir, 'FlowPP', f'FlowPP_{args.dataset}.pt'))
+                torch.save(self.dequant_flows.state_dict(), os.path.join(models_dir, 'FlowPP', f'DequantFlowPP_{args.dataset}.pt'))
+
             tbar.set_postfix(loss=total_loss/len(train_loader))
-            self.sample(16)
+            wandb.log({'train_loss': total_loss/len(train_loader)}, step=global_step)
+
+            if (epoch+1) % args.sample_and_save_freq == 0 or epoch == 0:
+                self.sample(16)
 
     @torch.no_grad()
-    def sample(self, num_samples):
+    def sample(self, num_samples, train=True):
         """Sample from a Flow++ model.
 
         Args:
@@ -162,9 +194,13 @@ class FlowPlusPlus(nn.Module):
         # Plot samples
         samples = make_grid(samples, nrow=int(num_samples ** 0.5), padding=0)
         samples = samples.permute(1, 2, 0).cpu().numpy()
+        fig = plt.figure(figsize=(10, 10))
         plt.imshow(samples)
         plt.axis('off')
-        plt.show()
+        if train:
+            wandb.log({'samples': fig}, step=global_step)
+        else:
+            plt.show()
 
 
 
