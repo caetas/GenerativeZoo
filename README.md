@@ -106,8 +106,8 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 #### Autoregressive
 
-- VQ-VAE + Transformer [`Paper`](https://arxiv.org/abs/1711.00937)
-- VQ-GAN + Transformer [`Paper`](https://arxiv.org/abs/2012.09841)
+- VQ-VAE + Transformer [`Paper`](https://arxiv.org/abs/1711.00937)|[`Code`](src/generativezoo/models/AR/VQVAE_Transformer.py)|[`Script`](src/generativezoo/VQVAE_T.py)|[`Documentation`](docs/VQVAE_Transformer.md)
+- VQ-GAN + Transformer [`Paper`](https://arxiv.org/abs/2012.09841)|[`Code`](src/generativezoo/models/AR/VQGAN_Transformer.py)|[`Script`](src/generativezoo/VQGAN_T.py)|[`Documentation`](docs/VQGAN_Transformer.md)
 
 #### Flow
 
