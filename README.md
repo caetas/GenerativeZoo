@@ -108,6 +108,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 - VQ-VAE + Transformer [`Paper`](https://arxiv.org/abs/1711.00937)|[`Code`](src/generativezoo/models/AR/VQVAE_Transformer.py)|[`Script`](src/generativezoo/VQVAE_T.py)|[`Documentation`](docs/VQVAE_Transformer.md)
 - VQ-GAN + Transformer [`Paper`](https://arxiv.org/abs/2012.09841)|[`Code`](src/generativezoo/models/AR/VQGAN_Transformer.py)|[`Script`](src/generativezoo/VQGAN_T.py)|[`Documentation`](docs/VQGAN_Transformer.md)
+- PixelCNN [`Paper`](https://arxiv.org/abs/1606.05328)|[`Code`](src/generativezoo/models/AR/PixelCNN.py)|[`Script`](src/generativezoo/P-CNN.py)|[`Documentation`](docs/PixelCNN.md)
 
 #### Flow
 
@@ -128,7 +129,6 @@ These models are currently under development and will be added to the repository
 
 #### Autoregressive
 
-- [ ] PixelCNN
 - [ ] VQ-VAE + Mamba
 
 ## Datasets

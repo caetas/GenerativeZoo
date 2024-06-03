@@ -17,6 +17,21 @@ def set_seed(seed: int = 42) -> None:
     rng = np.random.default_rng(seed)
     return rng
 
+def parse_args_PixelCNN():
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--train', action='store_true', default=False, help='train model')
+    argparser.add_argument('--sample', action='store_true', default=False, help='sample from model')
+    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn'])
+    argparser.add_argument('--batch_size', type=int, default=128, help='batch size')
+    argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
+    argparser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
+    argparser.add_argument('--gamma', type=float, default=0.99, help='gamma for the lr scheduler')
+    argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
+    argparser.add_argument('--hidden_channels', type=int, default=64, help='number of channels for the convolutional layers')
+    argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
+    
+    return argparser.parse_args()
+
 def parse_args_VQGAN_Transformer():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--train', action='store_true', default=False, help='train model')
