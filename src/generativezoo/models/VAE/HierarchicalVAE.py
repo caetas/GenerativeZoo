@@ -12,6 +12,9 @@ import robust_loss_pytorch
 from tqdm import tqdm, trange
 from torchvision.utils import make_grid
 from matplotlib import pyplot as plt
+import os
+from config import models_dir
+import wandb
 
 class WarmupKLLoss:
 
@@ -550,6 +553,12 @@ class Decoder(nn.Module):
 
         return x_hat, kl_losses
     
+def create_checkpoint_dir():
+    if not os.path.exists(models_dir):
+        os.makedirs(models_dir)
+    if not os.path.exists(os.path.join(models_dir, "HierarchicalVAE")):
+        os.makedirs(os.path.join(models_dir, "HierarchicalVAE"))
+    
 class HierarchicalVAE(nn.Module):
 
     def __init__(self, z_dim, img_dim, channels=3):
@@ -589,7 +598,7 @@ class HierarchicalVAE(nn.Module):
 
         return decoder_output, recon_loss, [kl_loss] + losses
 
-    def train_model(self, data_loader, epochs=10):
+    def train_model(self, data_loader, args):
         """
 
         :param data_loader:
@@ -599,17 +608,20 @@ class HierarchicalVAE(nn.Module):
 
         warmup_kl = WarmupKLLoss(init_weights=[1., 1. / 2, 1. / 8],
                              steps=[4500, 3000, 1500],
-                             M_N=256 / len(data_loader.dataset),
+                             M_N=args.batch_size / len(data_loader.dataset),
                              eta_M_N=5e-6,
                              M_N_decay_step=36000)
         
         print('M_N=', warmup_kl.M_N, 'ETA_M_N=', warmup_kl.eta_M_N)
+        create_checkpoint_dir()
 
-        optimizer = torch.optim.Adamax(self.parameters(), lr=0.01)
+        optimizer = torch.optim.Adamax(self.parameters(), lr=args.lr)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=15, eta_min=1e-4)
         self.apply(add_sn)
-        epoch_bar = trange(epochs, desc="Epoch")
+        epoch_bar = trange(args.n_epochs, desc="Epoch")
         step = 0
+
+        best_loss = np.inf
 
         for epoch in epoch_bar:
 
@@ -639,13 +651,19 @@ class HierarchicalVAE(nn.Module):
             epoch_recon_loss /= len(data_loader.dataset)
             epoch_kl_loss /= len(data_loader.dataset)
 
+            wandb.log({"loss": epoch_loss, "recon_loss": epoch_recon_loss, "kl_loss": epoch_kl_loss})
+
+            if epoch_loss < best_loss:
+                best_loss = epoch_loss
+                torch.save(self.state_dict(), os.path.join(models_dir, "HierarchicalVAE", f"HVAE_{args.dataset}.pt"))
+
             epoch_bar.set_postfix(loss=epoch_loss, recon_loss=epoch_recon_loss, kl_loss=epoch_kl_loss)
             scheduler.step()
 
-            self.sample(16)
+            self.sample(16, train=True)
 
     @torch.no_grad()
-    def sample(self, num_samples):
+    def sample(self, num_samples, train=False):
         """
 
         :param num_samples:
@@ -656,7 +674,12 @@ class HierarchicalVAE(nn.Module):
         z = torch.randn(num_samples, self.z_dim, self.img_dim//32, self.img_dim//32, device=self.device)
         decoder_output, _ = self.decoder(z)
 
+        fig = plt.figure(figsize=(10, 10))
         grid = make_grid(decoder_output, nrow=int(num_samples ** 0.5))
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
-        plt.show()
+        plt.axis("off")
+        if train:
+            wandb.log({"train_samples": fig})
+        else:
+            plt.show()
         

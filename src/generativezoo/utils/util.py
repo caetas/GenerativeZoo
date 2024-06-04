@@ -17,6 +17,21 @@ def set_seed(seed: int = 42) -> None:
     rng = np.random.default_rng(seed)
     return rng
 
+def parse_args_HierarchicalVAE():
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--train', action='store_true', default=False, help='train model')
+    argparser.add_argument('--sample', action='store_true', default=False, help='sample model')
+    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn'])
+    argparser.add_argument('--batch_size', type=int, default=256, help='batch size')
+    argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
+    argparser.add_argument('--lr', type=float, default=0.01, help='learning rate')
+    argparser.add_argument('--latent_dim', type=int, default=512, help='latent dimension')
+    argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
+    argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
+
+    return argparser.parse_args()
+
+
 def parse_args_PixelCNN():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--train', action='store_true', default=False, help='train model')
