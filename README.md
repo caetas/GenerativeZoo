@@ -82,7 +82,8 @@ The listed models are already implemented and fully integrated in the model zoo.
 #### VAEs
 
 - Vanilla VAE [`Paper`](https://arxiv.org/abs/1312.6114)|[`Code`](src/generativezoo/models/VAE/VanillaVAE.py)|[`Script`](src/generativezoo/VanVAE.py)|[`Documentation`](docs/VanillaVAE.md)
-- Conditional VAE [`Paper`](https://openreview.net/forum?id=rJWXGDWd-H)|[`Code`](src/generativezoo/models/VAE/ConditionalVAE.py)|[`Script`](src/generativezoo//CondVAE.py)|[`Documentation`](docs/ConditionalVAE.md)
+- Conditional VAE [`Paper`](https://openreview.net/forum?id=rJWXGDWd-H)|[`Code`](src/generativezoo/models/VAE/ConditionalVAE.py)|[`Script`](src/generativezoo/CondVAE.py)|[`Documentation`](docs/ConditionalVAE.md)
+- Hierarchical VAE [`Paper`](https://arxiv.org/abs/2007.03898)|[`Code`](src/generativezoo/models/VAE/HierarchicalVAE.py)|[`Script`](src/generativezoo/HVAE.py)|[`Documentation`](docs/HierarchicalVAE.md)
 
 #### GANs
 
@@ -118,10 +119,6 @@ The listed models are already implemented and fully integrated in the model zoo.
 ### Future Models
 
 These models are currently under development and will be added to the repository in the future.
-
-#### VAEs
-
-- [ ] Hierarchical VAE [`Paper`](https://arxiv.org/abs/2007.03898)
 
 #### SGMs
 

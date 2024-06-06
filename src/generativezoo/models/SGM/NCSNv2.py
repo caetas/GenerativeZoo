@@ -320,7 +320,6 @@ class NCSNv2(nn.Module):
                                     likelihood_weighting=likelihood_weighting)
         
         epoch_bar = tqdm(range(self.n_epochs), desc='Epochs', leave=True)
-        self.model.train()
 
         best_loss = np.inf
         for epoch in epoch_bar:

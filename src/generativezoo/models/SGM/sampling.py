@@ -40,16 +40,16 @@ def get_score_fn(sde, model, train=False, continuous=False):
     """
 
     def score_fn(x, t):
-        if continuous:
-            labels = sde.marginal_prob(torch.zeros_like(x), t)[1]
-        else:
-            # For VE-trained models, t=0 corresponds to the highest noise level
-            labels = sde.T - t
-            labels *= sde.N - 1
-            labels = torch.round(labels).long()
+      if continuous:
+          labels = sde.marginal_prob(torch.zeros_like(x), t)[1]
+      else:
+          # For VE-trained models, t=0 corresponds to the highest noise level
+          labels = sde.T - t
+          labels *= sde.N - 1
+          labels = torch.round(labels).long()
 
-            score = model(x, labels)
-            return score
+      score = model(x, labels)
+      return score
     return score_fn
 
 
@@ -64,7 +64,7 @@ def from_flattened_numpy(x, shape):
 
 def get_predictor(name):
   if name.lower() == 'none':
-    return NonePredictor
+    return None
   elif name.lower() == 'em':
     return EulerMaruyamaPredictor
   elif name.lower() == 'rd':
@@ -77,7 +77,7 @@ def get_predictor(name):
 
 def get_corrector(name):
   if name.lower() == 'none':
-    return NoneCorrector
+    return None
   elif name.lower() == 'l':
     return LangevinCorrector
   elif name.lower() == 'ald':
