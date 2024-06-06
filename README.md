@@ -120,10 +120,6 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 These models are currently under development and will be added to the repository in the future.
 
-#### SGMs
-
-- [ ] NCSN++ [`Paper`](https://arxiv.org/abs/2011.13456)
-
 #### Autoregressive
 
 - [ ] VQ-VAE + Mamba
