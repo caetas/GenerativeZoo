@@ -152,12 +152,19 @@ class PixelCNN(nn.Module):
         out = out.reshape(out.shape[0], 256, out.shape[1]//256, out.shape[2], out.shape[3])
         return out
     
-    def calc_likelihood(self, x):
+    def calc_likelihood(self, x, train=True):
         # Forward pass with bpd likelihood calculation
-        pred = self.forward(x)
-        nll = F.cross_entropy(pred, x, reduction='none')
-        bpd = nll.mean(dim=[1,2,3]) * np.log2(np.exp(1))
-        return bpd.mean()
+        if train:
+            pred = self.forward(x)
+            nll = F.cross_entropy(pred, x, reduction='none')
+            bpd = nll.mean(dim=[1,2,3]) * np.log2(np.exp(1))
+            return bpd.mean()
+        else:
+            with torch.no_grad():
+                pred = self.forward(x)
+                nll = F.cross_entropy(pred, x, reduction='none')
+                bpd = nll.mean(dim=[1,2,3]) * np.log2(np.exp(1))
+            return bpd
         
     @torch.no_grad()
     def sample(self, img_shape, img=None, train=False):
@@ -248,3 +255,37 @@ class PixelCNN(nn.Module):
             if best_loss > loss_acc:
                 best_loss = loss_acc
                 torch.save(self.state_dict(), os.path.join(models_dir, "PixelCNN", f"PixelCNN_{args.dataset}.pt"))
+
+    def outlier_detection(self, in_loader, out_loader):
+
+        self.eval()
+        in_scores = []
+        out_scores = []
+
+        for batch,_ in tqdm(in_loader, desc="Inlier Detection"):
+            batch = (batch*255.0).clip(0,255).to(torch.long)
+            batch = batch.to(self.device)
+            loss = self.calc_likelihood(batch, train=False)
+            in_scores.append(loss.cpu().numpy())
+        
+        in_scores = np.concatenate(in_scores)
+
+        for batch,_ in tqdm(out_loader, desc="Outlier Detection"):
+            batch = (batch*255.0).clip(0,255).to(torch.long)
+            batch = batch.to(self.device)
+            loss = self.calc_likelihood(batch, train=False)
+            out_scores.append(loss.cpu().numpy())
+        
+        out_scores = np.concatenate(out_scores)
+
+        # Plot histograms in a single plot, no subplots
+        fig = plt.figure(figsize=(10,5))
+        plt.hist(in_scores, bins=50, alpha=0.5, label="Inlier")
+        plt.hist(out_scores, bins=50, alpha=0.5, label="Outlier")
+        plt.legend()
+        plt.xlabel("BPD")
+        plt.ylabel("Count")
+        plt.title("PixelCNN Outlier Detection")
+        plt.show()
+
+        return in_scores, out_scores

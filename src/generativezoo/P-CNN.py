@@ -39,3 +39,13 @@ elif args.sample:
         model.load_state_dict(torch.load(args.checkpoint))
 
     model.sample((16,channels,img_size,img_size), train=False)
+
+elif args.outlier_detection:
+    in_loader, img_size, channels = pick_dataset(args.dataset, normalize=False, batch_size=args.batch_size, size=size)
+    out_loader, _, _ = pick_dataset(args.out_dataset, normalize=False, batch_size=args.batch_size, size=img_size)
+    model = PixelCNN(channels, args.hidden_channels)
+
+    if args.checkpoint is not None:
+        model.load_state_dict(torch.load(args.checkpoint))
+
+    model.outlier_detection(in_loader, out_loader)
