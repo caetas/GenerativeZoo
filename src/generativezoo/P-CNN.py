@@ -5,10 +5,7 @@ import wandb
 
 args = parse_args_PixelCNN()
 
-if args.dataset == "mnist" or args.dataset == "fashionmnist":
-    size = 32
-else:
-    size = None
+size = None
 
 if args.train:
     dataloader, img_size, channels = pick_dataset(args.dataset, normalize=False, batch_size=args.batch_size, size=size)

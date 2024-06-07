@@ -5,10 +5,7 @@ import wandb
 
 args = parse_args_FlowPP()
 
-if args.dataset == 'mnist':
-    size = 32
-else:
-    size = None
+size = None
 
 if args.train:
     train_loader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=False, size=size)

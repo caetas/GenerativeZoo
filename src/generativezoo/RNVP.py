@@ -5,10 +5,7 @@ import wandb
 
 args = parse_args_RealNVP()
 
-if args.dataset == 'mnist' or args.dataset == 'fashionmnist':
-    size = 32
-else:
-    size = None
+size = None
 
 if args.train:
     dataloader, img_size, channels = pick_dataset(args.dataset, batch_size=args.batch_size, normalize = False, size=size)

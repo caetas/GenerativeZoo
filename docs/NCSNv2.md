@@ -37,6 +37,7 @@ This work provides a new theoretical analysis of learning and sampling from scor
 | `--n_steps`                 | Number of steps                                  | `5`         |                                                              |
 | `--probability_flow`        | Probability flow                                 | `False`     |                                                              |
 | `--noise_removal`           | Noise removal                                    | `False`     |                                                              |
+| `--checkpoint`              | Checkpoint path to VQVAE                         | `None`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

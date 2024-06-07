@@ -133,8 +133,12 @@ The following datasets are ready to be used to train and sample from the provide
 ### RGB
 
 - CIFAR-10 [`Source`](https://www.cs.toronto.edu/%7Ekriz/cifar.html)
+- CIFAR-100 [`Source`](https://www.cs.toronto.edu/%7Ekriz/cifar.html)
 - SVHN [`Source`](https://arxiv.org/abs/1312.6082)
+- Places365 [`Source`](https://arxiv.org/abs/1909.02410)
+- DTD [`Source`](https://arxiv.org/abs/1311.3618)
 - TinyImageNet [`Source`](https://cs231n.stanford.edu/reports/2015/pdfs/yle_project.pdf) **MANUAL DOWNLOAD REQUIRED** [`Link`](https://www.kaggle.com/datasets/nikhilshingadiya/tinyimagenet200)
+- Horse2Zebra [`Source`](https://arxiv.org/abs/1703.10593v6) **MANUAL DOWNLOAD REQUIRED** [`Link`](https://www.kaggle.com/datasets/balraj98/horse2zebra-dataset)
 
 ## Tracking
 

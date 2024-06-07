@@ -8,10 +8,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 args = parse_args_Glow()
 normalize = True
 
-if args.dataset == "mnist" or args.dataset == "fashionmnist":
-    size = 32
-else:
-    size = None
+size = None
 
 if args.train:
     wandb.init(project='GLOW',

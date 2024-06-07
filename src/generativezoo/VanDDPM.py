@@ -8,10 +8,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 args = parse_args_DDPM()
 normalize = True
 
-if args.dataset == 'mnist':
-     size = 32
-else:
-     size = None
+size = None
 
 if args.train:
      dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize, size=size)
