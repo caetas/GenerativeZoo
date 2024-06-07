@@ -7,10 +7,7 @@ import wandb
 args = parse_args_CondGAN()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-if args.dataset == 'mnist' or args.dataset == 'fashionmnist':
-    size = 32
-else:
-    size = None
+size = None
 
 if args.train:
     wandb.init(project='ConditionalGAN',

@@ -6,10 +6,7 @@ import wandb
 
 args = parse_args_HierarchicalVAE()
 
-if args.dataset == 'mnist' or args.dataset == 'fashionmnist':
-    size = 32
-else:
-    size = None
+size = None
 
 if args.train:
     dataloader, img_size, channels = pick_dataset(args.dataset, size=size, batch_size=args.batch_size)

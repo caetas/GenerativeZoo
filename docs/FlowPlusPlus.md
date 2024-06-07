@@ -23,6 +23,7 @@ Flow++ is a generative model that aims to learn the underlying probability distr
 | `--num_channels`          | Number of channels in Flow++             | `96`            |                                                                                          |
 | `--use_attn`              | Use attention                            | `False`         |                                                                                          |
 | `--sample_and_save_freq`  | Sample interval                          | `5`             |                                                                                          |
+| `--checkpoint`            | Checkpoint path to VQVAE                 | `None`          |                                                                                          |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

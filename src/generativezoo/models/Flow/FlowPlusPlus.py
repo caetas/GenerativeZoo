@@ -123,7 +123,7 @@ class FlowPlusPlus(nn.Module):
     def load_checkpoints(self, args):
         if args.checkpoint is not None:
             self.flows.load_state_dict(torch.load(args.checkpoint))
-            self.dequant_flows.load_state_dict(torch.load(args.checkpoint.replace('FlowPP', 'DequantFlowPP')))
+            self.dequant_flows.load_state_dict(torch.load(args.checkpoint.replace('FlowPP_', 'DequantFlowPP_')))
     
     @torch.enable_grad()
     def train_model(self, args, train_loader):
@@ -174,7 +174,7 @@ class FlowPlusPlus(nn.Module):
                 torch.save(self.dequant_flows.state_dict(), os.path.join(models_dir, 'FlowPP', f'DequantFlowPP_{args.dataset}.pt'))
 
             tbar.set_postfix(loss=total_loss/len(train_loader))
-            wandb.log({'train_loss': total_loss/len(train_loader)}, step=global_step)
+            wandb.log({'train_loss': total_loss/len(train_loader)})
 
             if (epoch+1) % args.sample_and_save_freq == 0 or epoch == 0:
                 self.sample(16)
@@ -187,7 +187,7 @@ class FlowPlusPlus(nn.Module):
             num_samples (int): Number of samples to generate.
         """
         self.eval()
-        samples = torch.zeros(num_samples, self.channels, self.img_size, self.img_size, device=self.device)
+        samples = torch.randn(num_samples, self.channels, self.img_size, self.img_size, device=self.device)
         samples, _ = self.forward(samples, reverse=True)
         samples = torch.sigmoid(samples)
 
@@ -198,9 +198,58 @@ class FlowPlusPlus(nn.Module):
         plt.imshow(samples)
         plt.axis('off')
         if train:
-            wandb.log({'samples': fig}, step=global_step)
+            wandb.log({'samples': fig})
         else:
             plt.show()
+        plt.close(fig)
+
+    def nll_scores(self, z, sldj):
+        """Compute negative log-likelihood scores.
+
+        Args:
+            z (torch.Tensor): Latent representation.
+            sldj (torch.Tensor): Sum log-determinant of Jacobian.
+
+        Returns:
+            scores (torch.Tensor): Negative log-likelihood scores.
+        """
+        prior_ll = -0.5 * (z ** 2 + np.log(2 * np.pi))
+        prior_ll = prior_ll.flatten(1).sum(-1) \
+            - np.log(256) * np.prod(z.size()[1:])
+        ll = prior_ll + sldj
+        return -ll
+
+    def outlier_detection(self, in_loader, out_loader):
+        """Outlier detection using a Flow++ model.
+
+        Args:
+            in_loader (DataLoader): In-distribution data loader.
+            out_loader (DataLoader): Out-of-distribution data loader.
+        """
+        self.eval()
+        in_scores = []
+        out_scores = []
+
+        for (x, _) in tqdm(in_loader, desc='In-distribution', leave=False):
+            x = x.to(self.device)
+            z, sldj = self.forward(x)
+            in_scores.append(self.nll_scores(z, sldj).cpu().numpy())
+            
+
+        for (x, _) in tqdm(out_loader, desc='Out-of-distribution', leave=False):
+            x = x.to(self.device)
+            z, sldj = self.forward(x)
+            out_scores.append(self.nll_scores(z, sldj).cpu().numpy())
+            
+
+        in_scores = np.concatenate(in_scores)
+        out_scores = np.concatenate(out_scores)
+
+        # Plot histogram of scores
+        plt.hist(in_scores, bins=50, alpha=0.5, label='In-distribution')
+        plt.hist(out_scores, bins=50, alpha=0.5, label='Out-of-distribution')
+        plt.legend()
+        plt.show()
 
 
 

@@ -55,6 +55,12 @@ class WarmupKLLoss:
         return self.stage
 
     def get_loss(self, step, losses):
+        '''
+        Get KL loss with warm-up
+        :param step: int. Current step
+        :param losses: List. KL losses for each stage
+        :return: Tensor. KL loss
+        '''
         loss = 0.
         stage = self._get_stage(step)
 
@@ -85,6 +91,11 @@ class WarmupKLLoss:
 
 
 def add_sn(m):
+    '''
+    Add spectral normalization to module
+    :param m: nn.Module
+    :return: nn.Module
+    '''
     if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
         return spectral_norm(m)
     else:
@@ -283,6 +294,11 @@ class EncoderBlock(nn.Module):
 class Encoder(nn.Module):
 
     def __init__(self, z_dim, channels=3):
+        '''
+        Encoder for Hierarchical VAE
+        :param z_dim: int. Dimension of latent space
+        :param channels: int. Number of channels of input image
+        '''
         super().__init__()
         self.encoder_blocks = nn.ModuleList([
             EncoderBlock([channels, z_dim // 16, z_dim // 8]),  # (16, 16)
@@ -450,6 +466,11 @@ class DecoderBlock(nn.Module):
 class Decoder(nn.Module):
 
     def __init__(self, z_dim, channels=3):
+        '''
+        Decoder for Hierarchical VAE
+        :param z_dim: int. Dimension of latent space
+        :param channels: int. Number of channels of input image
+        '''
         super().__init__()
 
         # Input channels = z_channels * 2 = x_channels + z_channels
@@ -562,6 +583,12 @@ def create_checkpoint_dir():
 class HierarchicalVAE(nn.Module):
 
     def __init__(self, z_dim, img_dim, channels=3):
+        '''
+        Hierarchical VAE
+        :param z_dim: int. Dimension of latent space
+        :param img_dim: tuple. (H, W) of input image
+        :param channels: int. Number of channels of input image
+        '''
         super().__init__()
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

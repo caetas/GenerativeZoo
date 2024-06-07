@@ -36,6 +36,12 @@ def default(val, d):
 
 class Attention(nn.Module):
     def __init__(self, num_channels, num_heads=4, head_dim=32):
+        '''
+        Attention module
+        :param num_channels: number of channels in the input image
+        :param num_heads: number of heads in the multi-head attention
+        :param head_dim: dimension of each head
+        '''
         super().__init__()
         self.scale = head_dim**-0.5
         self.num_heads = num_heads
@@ -44,6 +50,10 @@ class Attention(nn.Module):
         self.to_out = nn.Conv2d(in_channels=hidden_dim, out_channels=num_channels, kernel_size=1)
         
     def forward(self, x):
+        '''
+        Forward pass of the attention module
+        :param x: input image
+        '''
         b, c, h, w = x.shape
         qkv = self.to_qkv(x).chunk(3, dim=1)
         q, k, v = map(
@@ -61,12 +71,23 @@ class Attention(nn.Module):
 
 class Block(nn.Module):
     def __init__(self, in_channels, out_channels, groups=8):
+        '''
+        Block module
+        :param in_channels: number of input channels
+        :param out_channels: number of output channels
+        :param groups: number of groups for group normalization
+        '''
         super().__init__()
         self.projection = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3, padding=1)
         self.group_norm = nn.GroupNorm(num_gruops=groups, num_channels=out_channels)
         self.activation = nn.SiLU()
 
     def forward(self, x, scale_shift=None):
+        '''
+        Forward pass of the block module
+        :param x: input image
+        :param scale_shift: scale and shift values
+        '''
         x = self.projection(x)
         x = self.group_norm(x)
 
@@ -79,6 +100,14 @@ class Block(nn.Module):
 
 class ConvNextBlock(nn.Module):
     def __init__(self, in_channels, out_channels, *, time_embedding_dim=None, channel_scale_factor=2, normalize=True):
+        '''
+        ConvNextBlock module
+        :param in_channels: number of input channels
+        :param out_channels: number of output channels
+        :param time_embedding_dim: dimension of the time embedding
+        :param channel_scale_factor: scaling factor for the number of channels
+        :param normalize: whether to normalize the output
+        '''
         super().__init__()
         self.time_projection = (
             nn.Sequential(
@@ -102,6 +131,11 @@ class ConvNextBlock(nn.Module):
         self.residual_connection = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=1) if in_channels != out_channels else nn.Identity()
 
     def forward(self, x, time_emb=None):
+        '''
+        Forward pass of the ConvNextBlock module
+        :param x: input image
+        :param time_emb: time embedding
+        '''
         h = self.ds_conv(x)
         if exists(x=self.time_projection) and exists(x=time_emb):
             assert exists(x=time_emb), "time embedding must be passed in"
@@ -122,6 +156,12 @@ class Downsample(nn.Module):
     
 class LinearAttention(nn.Module):
     def __init__(self, num_channels, num_heads=4, head_dim=32):
+        '''
+        LinearAttention module
+        :param num_channels: number of channels in the input image
+        :param num_heads: number of heads in the multi-head attention
+        :param head_dim: dimension of each head
+        '''
         super().__init__()
         self.scale = head_dim**-0.5
         self.num_heads = num_heads
@@ -134,6 +174,10 @@ class LinearAttention(nn.Module):
         )
 
     def forward(self, x):
+        '''
+        Forward pass of the linear attention module
+        :param x: input image
+        '''
         b, c, h, w = x.shape
         qkv = self.to_qkv(x).chunk(3, dim=1)
         q, k, v = map(
@@ -152,6 +196,10 @@ class LinearAttention(nn.Module):
 
 class SinusoidalPositionEmbeddings(nn.Module):
     def __init__(self, dim):
+        '''
+        SinusoidalPositionEmbeddings module
+        :param dim: dimension of the sinusoidal position embeddings
+        '''
         super().__init__()
         self.dim = dim
         self.half_dim = dim // 2
@@ -185,6 +233,13 @@ class Residual(nn.Module):
 
 class ResNetBlock(nn.Module): 
     def __init__(self, in_channels, out_channels, *, time_embedding_dim=None, groups=8):
+        '''
+        ResNetBlock module
+        :param in_channels: number of input channels
+        :param out_channels: number of output channels
+        :param time_embedding_dim: dimension of the time embedding
+        :param groups: number of groups for group normalization
+        '''
         super().__init__()
         self.time_projection = (
             nn.Sequential(
@@ -220,6 +275,18 @@ class Upsample(nn.Module):
 
 class UNet(nn.Module):
     def __init__(self, n_features, init_channels=None, out_channels=None, channel_scale_factors=(1, 2, 4, 8), in_channels=3, with_time_emb=True, resnet_block_groups=8, use_convnext=True, convnext_scale_factor=2):
+        '''
+        UNet module
+        :param n_features: number of features
+        :param init_channels: number of initial channels
+        :param out_channels: number of output channels
+        :param channel_scale_factors: scaling factors for the number of channels
+        :param in_channels: number of input channels
+        :param with_time_emb: whether to use time embeddings
+        :param resnet_block_groups: number of groups for group normalization in the ResNet block
+        :param use_convnext: whether to use ConvNext block
+        :param convnext_scale_factor: scaling factor for the number of channels in the ConvNext block
+        '''
         super().__init__()
 
         # determine dimensions
@@ -323,88 +390,43 @@ class UNet(nn.Module):
             x = upsample(x)
         
         return self.final_conv(x)
-    
-    def generate_masks(self, x, time):
-        x = self.init_conv(x)
-
-        t = self.time_projection(time) if exists(self.time_projection) else None
-
-        noisy_latent_representation_stack = []
-
-        # downsample
-        for block1, block2, attn, downsample in self.encoder:
-            x = block1(x, time_emb=t)
-            x = block2(x, time_emb=t)
-            x = attn(x)
-            noisy_latent_representation_stack.append(x)
-            x = downsample(x)
-        
-        # bottleneck
-        x = self.mid_block1(x, time_emb=t)
-        x = self.mid_attn(x)
-        x = self.mid_block2(x, time_emb=t)
-
-        # upsample
-        for block1, block2, attn, upsample in self.decoder:
-            x = torch.cat((x, noisy_latent_representation_stack.pop()), dim=1)
-            x = block1(x, time_emb=t)
-            x = block2(x, time_emb=t)
-            x = attn(x)
-            break
-        
-        return x
-    
-    def modulation(self, x, time, mask, factor):
-        x = self.init_conv(x)
-
-        t = self.time_projection(time) if exists(self.time_projection) else None
-
-        noisy_latent_representation_stack = []
-
-        # downsample
-        for block1, block2, attn, downsample in self.encoder:
-            x = block1(x, time_emb=t)
-            x = block2(x, time_emb=t)
-            x = attn(x)
-            noisy_latent_representation_stack.append(x)
-            x = downsample(x)
-        
-        # bottleneck
-        x = self.mid_block1(x, time_emb=t)
-        x = self.mid_attn(x)
-        x = self.mid_block2(x, time_emb=t)
-
-        c = 0
-        # upsample
-        for block1, block2, attn, upsample in self.decoder:
-            x = torch.cat((x, noisy_latent_representation_stack.pop()), dim=1)
-            x = block1(x, time_emb=t)
-            x = block2(x, time_emb=t)
-            x = attn(x)
-            if c == 0:
-                x = x + factor * mask
-            x = upsample(x)
-            c += 1
-        
-        return self.final_conv(x)
 
 def plot_samples(samples):
-     n_rows = int(np.sqrt(samples.shape[0]))
-     n_cols = n_rows
-     samples = np.transpose(samples, (0, 2, 3, 1))
-     samples = samples * 0.5 + 0.5
-     samples = np.clip(samples, 0, 1)
-     fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 10))
-     for i, ax in enumerate(axes.flat):
-          if samples.shape[-1] == 1:
-               ax.imshow(samples[i].squeeze(), cmap='gray')
-          else:
-               ax.imshow(samples[i])
-          ax.axis('off')
-     plt.show()
+    '''
+    Plot samples
+    :param samples: samples to plot
+    '''
+    n_rows = int(np.sqrt(samples.shape[0]))
+    n_cols = n_rows
+    samples = np.transpose(samples, (0, 2, 3, 1))
+    samples = samples * 0.5 + 0.5
+    samples = np.clip(samples, 0, 1)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 10))
+    for i, ax in enumerate(axes.flat):
+        if samples.shape[-1] == 1:
+            ax.imshow(samples[i].squeeze(), cmap='gray')
+        else:
+            ax.imshow(samples[i])
+        ax.axis('off')
+    plt.show()
 
 class VanillaDDPM(nn.Module):
     def __init__(self, device, args, n_features, image_size, init_channels=None, out_channels=None, channel_scale_factors=(1, 2, 4, 8), in_channels=3, with_time_emb=True, resnet_block_groups=8, use_convnext=True, convnext_scale_factor=2):
+        '''
+        VanillaDDPM module
+        :param device: device to run the model on
+        :param args: arguments
+        :param n_features: number of features
+        :param image_size: size of the image
+        :param init_channels: number of initial channels
+        :param out_channels: number of output channels
+        :param channel_scale_factors: scaling factors for the number of channels
+        :param in_channels: number of input channels
+        :param with_time_emb: whether to use time embeddings
+        :param resnet_block_groups: number of groups for group normalization in the ResNet block
+        :param use_convnext: whether to use ConvNext block
+        :param convnext_scale_factor: scaling factor for the number of channels in the ConvNext block
+        '''
         super().__init__()
         self.reverse_transform = Compose([
                                         Lambda(lambda t: (t + 1) / 2),
@@ -430,6 +452,10 @@ class VanillaDDPM(nn.Module):
 
 
     def train_model(self, dataloader):
+        '''
+        Train the model
+        :param dataloader: dataloader
+        '''
         best_loss = np.inf
         create_checkpoint_dir()
         for epoch in range(self.n_epochs):
@@ -475,6 +501,11 @@ class VanillaDDPM(nn.Module):
             wandb.log({"DDPM Loss": acc_loss/len(dataloader.dataset)})
     
     def outlier_score(self, x_start, t):
+        '''
+        Compute the outlier score
+        :param x_start: input image
+        :param t: time
+        '''
         noise = torch.randn_like(x_start)
 
         x_noisy = self.forward_diffusion_model.q_sample(x_start=x_start, t=t, noise=noise)
@@ -496,6 +527,13 @@ class VanillaDDPM(nn.Module):
     
     @torch.no_grad()
     def outlier_detection(self, val_loader, out_loader, in_name, out_name):
+        '''
+        Outlier detection
+        :param val_loader: validation loader
+        :param out_loader: outlier loader
+        :param in_name: name of the in-distribution dataset
+        :param out_name: name of the out-of-distribution dataset
+        '''
         self.denoising_model.eval()
         val_loss = 0.0
         val_scores = []
@@ -530,12 +568,23 @@ class VanillaDDPM(nn.Module):
         plt.title('{} vs {} AUC: {:.4f}'.format(in_name, out_name, auc_score))
         plt.show()
     
+    @torch.no_grad()
     def sample(self, batch_size=16):
+        '''
+        Sample images
+        :param batch_size: batch size
+        '''
         samps = self.sampler.sample(model=self.denoising_model, image_size=self.image_size, batch_size=batch_size, channels=self.num_channels)[-1]
         plot_samples(samps)
 
 class LinearScheduler():
     def __init__(self, beta_start=0.0001, beta_end=0.02, timesteps=1000):
+        '''
+        Linear scheduler
+        :param beta_start: starting beta value
+        :param beta_end: ending beta value
+        :param timesteps: number of timesteps
+        '''
         self.timesteps = timesteps
         self.beta_start = beta_start
         self.beta_end = beta_end
@@ -567,6 +616,12 @@ def extract_time_index(a, t, x_shape):
     
 class ForwardDiffusion():
     def __init__(self, sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod, reverse_transform):
+        '''
+        Forward diffusion module
+        :param sqrt_alphas_cumprod: square root of the cumulative product of alphas
+        :param sqrt_one_minus_alphas_cumprod: square root of the cumulative product of 1 - alphas
+        :param reverse_transform: reverse transform
+        '''
         self.sqrt_alphas_cumprod = sqrt_alphas_cumprod
         self.sqrt_one_minus_alphas_cumprod = sqrt_one_minus_alphas_cumprod
         self.reverse_transform = reverse_transform
@@ -588,6 +643,13 @@ class ForwardDiffusion():
 
 class Sampler():
     def __init__(self, betas, timesteps=1000, sample_timesteps=100, ddpm=1.0):
+        '''
+        Sampler module
+        :param betas: beta values
+        :param timesteps: number of timesteps
+        :param sample_timesteps: number of sample timesteps
+        :param ddpm: diffusion coefficient
+        '''
         self.betas = betas
         self.alphas = (1-self.betas).cumprod(dim=0)
         self.timesteps = timesteps
@@ -597,6 +659,13 @@ class Sampler():
     
     @torch.no_grad()
     def p_sample(self, model, x, t, tau_index):
+        '''
+        Sample from the model
+        :param model: model
+        :param x: input image
+        :param t: time
+        :param tau_index: tau index
+        '''
         betas_t = extract_time_index(self.betas, t, x.shape)
         alpha_t = extract_time_index(self.alphas, t, x.shape)
         x0_t = (x - (1-alpha_t).sqrt()*model(x, t))/alpha_t.sqrt()
@@ -612,6 +681,11 @@ class Sampler():
     
     @torch.no_grad()
     def p_sample_loop(self, model, shape):
+        '''
+        Sample from the model
+        :param model: model
+        :param shape: shape of the input image
+        '''
         device = next(model.parameters()).device
 
         b = shape[0]
@@ -627,9 +701,25 @@ class Sampler():
     
     @torch.no_grad()
     def sample(self, model, image_size, batch_size=16, channels=3):
+        '''
+        Sample from the model
+        :param model: model
+        :param image_size: size of the image
+        :param batch_size: batch size
+        :param channels: number of channels
+        '''
         return self.p_sample_loop(model, shape=(batch_size, channels, image_size, image_size))
 
 def get_loss(forward_diffusion_model, denoising_model, x_start, t, noise=None, loss_type="l2"):
+    '''
+    Get the loss
+    :param forward_diffusion_model: forward diffusion model
+    :param denoising_model: denoising model
+    :param x_start: input image
+    :param t: time
+    :param noise: noise
+    :param loss_type: type of loss
+    '''
     if noise is None:
         noise = torch.randn_like(x_start)
 
@@ -648,6 +738,14 @@ def get_loss(forward_diffusion_model, denoising_model, x_start, t, noise=None, l
     return loss
 
 def outlier_score(forward_diffusion_model, denoising_model, x_start, t, loss_type):
+    '''
+    Compute the outlier score
+    :param forward_diffusion_model: forward diffusion model
+    :param denoising_model: denoising model
+    :param x_start: input image
+    :param t: time
+    :param loss_type: type of loss
+    '''
     noise = torch.randn_like(x_start)
 
     x_noisy = forward_diffusion_model.q_sample(x_start=x_start, t=t, noise=noise)

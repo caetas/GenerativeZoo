@@ -1,6 +1,6 @@
-###################################################################################################
-### Code based onhttps://github.com/TeeyoHuang/conditional-GAN/blob/master/conditional_DCGAN.py ###
-###################################################################################################
+####################################################################################################
+### Code based on https://github.com/TeeyoHuang/conditional-GAN/blob/master/conditional_DCGAN.py ###
+####################################################################################################
 
 from torch import nn
 import torch
@@ -31,6 +31,13 @@ def weights_init_normal(m):
 class Generator(nn.Module):
     # initializers
     def __init__(self, n_classes, latent_dim, d=128, channels=3):
+        '''
+        Generator model
+        :param n_classes: number of classes
+        :param latent_dim: latent dimension
+        :param d: number of channels in the first layer
+        :param channels: number of channels in the input image
+        '''
         super(Generator, self).__init__()
         self.deconv1_1 = nn.ConvTranspose2d(latent_dim, d*2, 4, 1, 0)
         self.deconv1_1_bn = nn.BatchNorm2d(d*2)
@@ -46,6 +53,12 @@ class Generator(nn.Module):
 
     # forward method
     def forward(self, input, label):
+        '''
+        Forward pass
+        :param input: input tensor
+        :param label: label tensor
+        :return: output tensor
+        '''
         x = F.relu(self.deconv1_1_bn(self.deconv1_1(input)))
         y = F.relu(self.deconv1_2_bn(self.deconv1_2(label)))
         x = torch.cat([x, y], 1)
@@ -56,6 +69,12 @@ class Generator(nn.Module):
     
     @torch.no_grad()
     def sample(self, n_samples, device, n_classes):
+        '''
+        Sample from the generator
+        :param n_samples: number of samples to generate
+        :param device: device to run the model on
+        :param n_classes: number of classes
+        '''
         z = torch.randn(n_samples, self.latent_dim, 1, 1).to(device)
         labels = torch.randint(0, n_classes, (n_samples,))
         labels = F.one_hot(labels, n_classes).float().to(device).view(n_samples, n_classes, 1, 1)
@@ -72,6 +91,12 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     # initializers
     def __init__(self, n_classes, d=128, channels=3):
+        '''
+        Discriminator model
+        :param n_classes: number of classes
+        :param d: number of channels in the first layer
+        :param channels: number of channels in the input image
+        '''
         super(Discriminator, self).__init__()
         self.conv1_1 = nn.Conv2d(channels, d//2, 4, 2, 1)
         self.conv1_2 = nn.Conv2d(n_classes, d//2, 4, 2, 1)
@@ -84,6 +109,12 @@ class Discriminator(nn.Module):
 
     # def forward(self, input):
     def forward(self, input, label):
+        '''
+        Forward pass
+        :param input: input tensor
+        :param label: label tensor
+        :return: output tensor
+        '''
         x = F.leaky_relu(self.conv1_1(input), 0.2)
         y = F.leaky_relu(self.conv1_2(label), 0.2)
         x = torch.cat([x, y], 1)
@@ -94,6 +125,21 @@ class Discriminator(nn.Module):
 
 class ConditionalGAN(nn.Module):
     def __init__(self, n_epochs, device, latent_dim, d, channels, lr, beta1, beta2, img_size, sample_and_save_freq, n_classes, dataset = 'mnist'):
+        '''
+        Conditional GAN model
+        :param n_epochs: number of epochs to train the model
+        :param device: device to run the model on
+        :param latent_dim: latent dimension
+        :param d: number of channels in the first layer
+        :param channels: number of channels in the input image
+        :param lr: learning rate
+        :param beta1: beta1 parameter for Adam optimizer
+        :param beta2: beta2 parameter for Adam optimizer
+        :param img_size: size of the input image
+        :param sample_and_save_freq: frequency to sample and save the images
+        :param n_classes: number of classes
+        :param dataset: dataset to train the model on
+        '''
         super(ConditionalGAN, self).__init__()
         self.n_epochs = n_epochs
         self.device = device
@@ -113,6 +159,10 @@ class ConditionalGAN(nn.Module):
         self.dataset = dataset
 
     def train_model(self, dataloader):
+        '''
+        Train the Conditional GAN model
+        :param dataloader: data loader
+        '''
         # Loss function
         adversarial_loss = torch.nn.BCELoss()
 

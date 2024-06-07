@@ -8,10 +8,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 args = parse_args_NCSNv2()
 
-if args.dataset == "mnist" or args.dataset == "fashionmnist":
-    size = 32
-else:
-    size = None
+size = None
 
 if args.train:
     train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=size)

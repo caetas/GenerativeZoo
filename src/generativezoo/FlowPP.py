@@ -5,10 +5,7 @@ import wandb
 
 args = parse_args_FlowPP()
 
-if args.dataset == 'mnist':
-    size = 32
-else:
-    size = None
+size = None
 
 if args.train:
     train_loader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=False, size=size)
@@ -37,3 +34,10 @@ elif args.sample:
     model = FlowPlusPlus(args, channels=channels, img_size=input_size)
     model.load_checkpoints(args)
     model.sample(16, False)
+
+elif args.outlier_detection:
+    in_loader, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=False, size=size)
+    out_loader, _, _ = pick_dataset(args.dataset, 'val', args.batch_size, normalize=False, size=input_size)
+    model = FlowPlusPlus(args, channels=channels, img_size=input_size)
+    model.load_checkpoints(args)
+    model.outlier_detection(in_loader, out_loader)

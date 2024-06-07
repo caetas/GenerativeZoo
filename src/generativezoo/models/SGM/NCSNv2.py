@@ -282,6 +282,13 @@ conv3x3 = ncsn_conv3x3
 
 class NCSNv2(nn.Module):
     def __init__(self, img_size, channels, args):
+        '''
+        NCNv2 model class
+        Args:
+            img_size: int, size of the image
+            channels: int, number of channels in the image
+            args: argparse object, arguments for the model
+        '''
         super(NCSNv2, self).__init__()
         if img_size < 96:
             self.model = NCSNv2_64(args, channels=channels, image_size=img_size)
@@ -304,6 +311,12 @@ class NCSNv2(nn.Module):
         self.channels = channels
 
     def train_model(self, train_loader, args):
+        '''
+        Train the NCSNv2 model
+        Args:
+            train_loader: DataLoader object, dataloader for the training data
+            args: argparse object, arguments for the model
+        '''
         create_checkpoint_dir()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
         # Build one-step training and evaluation functions
@@ -340,6 +353,13 @@ class NCSNv2(nn.Module):
 
     @torch.no_grad()
     def sample(self, args, train=True):
+        '''
+        Generate samples from the model
+        Args:
+            args: argparse object, arguments for the model
+            train: bool, whether to sample from the model during training or not
+        '''
+        self.model.eval()
         sde = VESDE(sigma_min=self.sigma_min, sigma_max=self.sigma_max, N=self.num_scales)
         sampling_eps = 1e-5
         sampling_shape = (16, self.channels,
@@ -357,30 +377,7 @@ class NCSNv2(nn.Module):
         else:
            plt.show()
         plt.close(fig)
-
-    def outlier_detection(self, in_loader, out_loader):
-      self.model.eval()
-      in_scores = []
-      out_scores = []
-      sde = VESDE(sigma_min=self.sigma_min, sigma_max=self.sigma_max, N=self.num_scales)
-      likelihood_fn = get_likelihood_fn(sde)
-
-      for (x, _) in tqdm(in_loader, desc='Inlier Batches', leave=True):
-        x = x.to(self.device)
-        bpd,_,_ = likelihood_fn(self.model, x)
-        in_scores.append(bpd.detach().cpu().numpy().reshape(-1))
-
-      in_scores = np.concatenate(in_scores)
-
-      for (x, _) in tqdm(out_loader, desc='Outlier Batches', leave=True):
-        x = x.to(self.device)
-        bpd,_,_ = likelihood_fn(self.model, x)
-        out_scores.append(bpd.detach().cpu().numpy().reshape(-1))
-
-      out_scores = np.concatenate(out_scores)
-
-      return in_scores, out_scores
-
+        
 class NCSNv2_64(nn.Module):
   def __init__(self, args, channels=3, image_size=32):
     super().__init__()

@@ -7,10 +7,7 @@ import wandb
 args = parse_args_PresGAN()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-if args.dataset == "mnist":
-    size = 32
-else:
-    size = None
+size = None
 
 if args.train:
     train_dataloader, input_size, channels = pick_dataset(dataset_name = args.dataset, batch_size=args.batch_size, normalize = True, size=size)

@@ -65,13 +65,13 @@ def mnist_train_loader(batch_size, normalize = False, input_shape = None):
 
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
 
@@ -84,20 +84,20 @@ def mnist_train_loader(batch_size, normalize = False, input_shape = None):
     if input_shape is not None:
         return training_loader, input_shape, 1
     else:
-        return training_loader, 28, 1
+        return training_loader, 32, 1
 
 def mnist_val_loader(batch_size, normalize = False, input_shape = None):
 
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,)),
             #transforms.Lambda(lambda x: x.repeat(3, 1, 1) )
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
 
@@ -110,19 +110,19 @@ def mnist_val_loader(batch_size, normalize = False, input_shape = None):
     if input_shape is not None:
         return validation_loader, input_shape, 1
     else:
-        return validation_loader, 28, 1
+        return validation_loader, 32, 1
 
 def chestmnist_train_loader(batch_size, normalize = False, input_shape = None):
 
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
     
@@ -140,19 +140,19 @@ def chestmnist_train_loader(batch_size, normalize = False, input_shape = None):
     if input_shape is not None:
         return training_loader, input_shape, 1
     else:
-        return training_loader, 28, 1
+        return training_loader, 32, 1
 
 def chestmnist_val_loader(batch_size, normalize = False, input_shape = None):
     
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
 
@@ -169,19 +169,19 @@ def chestmnist_val_loader(batch_size, normalize = False, input_shape = None):
     if input_shape is not None:
         return validation_loader, input_shape, 1
     else:
-        return validation_loader, 28, 1
+        return validation_loader, 32, 1
 
 def octmnist_train_loader(batch_size, normalize = False, input_shape = None):
     
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
 
@@ -199,19 +199,19 @@ def octmnist_train_loader(batch_size, normalize = False, input_shape = None):
     if input_shape is not None:
         return training_loader, input_shape, 1
     else:
-        return training_loader, 28, 1
+        return training_loader, 32, 1
 
 def octmnist_val_loader(batch_size, normalize = False, input_shape = None):
         
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
 
@@ -228,19 +228,19 @@ def octmnist_val_loader(batch_size, normalize = False, input_shape = None):
     if input_shape is not None:
         return validation_loader, input_shape, 1
     else:
-        return validation_loader, 28, 1
+        return validation_loader, 32, 1
 
 def tissuemnist_train_loader(batch_size, normalize = False, input_shape = None):
             
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
     
@@ -258,19 +258,19 @@ def tissuemnist_train_loader(batch_size, normalize = False, input_shape = None):
     if input_shape is not None:
         return training_loader, input_shape, 1
     else:
-        return training_loader, 28, 1
+        return training_loader, 32, 1
 
 def tissuemnist_val_loader(batch_size, normalize = False, input_shape = None):
                     
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
     
@@ -288,19 +288,19 @@ def tissuemnist_val_loader(batch_size, normalize = False, input_shape = None):
     if input_shape is not None:
         return validation_loader, input_shape, 1
     else:
-        return validation_loader, 28, 1
+        return validation_loader, 32, 1
 
 def pneumoniamnist_train_loader(batch_size, normalize = False, input_shape = None):
                             
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
 
@@ -318,19 +318,19 @@ def pneumoniamnist_train_loader(batch_size, normalize = False, input_shape = Non
     if input_shape is not None:
         return training_loader, input_shape, 1
     else:
-        return training_loader, 28, 1 
+        return training_loader, 32, 1 
 
 def pneumoniamnist_val_loader(batch_size, normalize = False, input_shape = None):
                                     
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
     
@@ -348,19 +348,19 @@ def pneumoniamnist_val_loader(batch_size, normalize = False, input_shape = None)
     if input_shape is not None:
         return validation_loader, input_shape, 1
     else:
-        return validation_loader, 28, 1
+        return validation_loader, 32, 1
 
 def fashion_mnist_train_loader(batch_size, normalize = False, input_shape = None):
     
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
     
@@ -374,19 +374,19 @@ def fashion_mnist_train_loader(batch_size, normalize = False, input_shape = None
     if input_shape is not None:
         return training_loader, input_shape, 1
     else:
-        return training_loader, 28, 1
+        return training_loader, 32, 1
 
 def fashion_mnist_val_loader(batch_size, normalize = False, input_shape = None):
     
     if normalize:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
     else:
         transform = transforms.Compose([
-            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(28),
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
             transforms.ToTensor(),
         ])
     
@@ -400,7 +400,7 @@ def fashion_mnist_val_loader(batch_size, normalize = False, input_shape = None):
     if input_shape is not None:
         return validation_loader, input_shape, 1
     else:
-        return validation_loader, 28, 1
+        return validation_loader, 32, 1
 
 
 def svhn_train_loader(batch_size, normalize = False, input_shape = None):
@@ -455,367 +455,6 @@ def svhn_val_loader(batch_size, normalize = False, input_shape = None):
     else:
         return validation_loader, 32, 3
 
-class MVTecDataset(Dataset):
-
-    def __init__(self, root, dataset = 'bottle', train = False, good = True, transform=None):
-        self.root = root
-        self.transform = transform
-        self.train = train
-        self.good = good
-        if train:
-            self.imgs = glob(os.path.join(root, dataset, 'train', 'good', '*.png'))
-        else:
-            if good:
-                self.imgs = glob(os.path.join(root, dataset, 'test', 'good', '*.png'))
-            else:
-                self.imgs = glob(os.path.join(root, dataset, 'test', '*', '*.png'))
-                self.imgs = [img for img in self.imgs if 'good' not in img]
-        
-    def __len__(self):
-        return len(self.imgs)
-    
-    def __getitem__(self, idx):
-        img = Image.open(self.imgs[idx])
-        if self.transform:
-            img = self.transform(img)
-        return img, 1
-
-class MVTecDatasetFull(Dataset):
-
-    def __init__(self, root, dataset = 'bottle', train = False, transform=None):
-        self.root = root
-        self.transform = transform
-        self.train = train
-        if train:
-            self.imgs = glob(os.path.join(root, dataset, 'train', '*', '*.png'))
-        else:
-            self.imgs = glob(os.path.join(root, dataset, 'test', '*', '*.png'))
-        
-    def __len__(self):
-        return len(self.imgs)
-    
-    def __getitem__(self, idx):
-        img = Image.open(self.imgs[idx]).convert('L')
-        if self.transform:
-            img = self.transform(img)
-        # if image name contains good, label is 0, else 1
-        if 'good' in self.imgs[idx]:
-            return img, 0
-        else:
-            return img, 1
-    
-def mvtec_toothbrush_train_loader(batch_size, normalize = False, input_shape = None):
-            
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-        ])
-    
-    training_data = MVTecDataset(root=data_raw_dir, dataset = 'toothbrush', train = True, good = True, transform=transform)
-
-    training_loader = DataLoader(training_data, 
-                                batch_size=batch_size, 
-                                shuffle=True,
-                                pin_memory=True)
-    
-    if input_shape is not None:
-        return training_loader, input_shape, 3
-    else:
-        return training_loader, 128, 3
-
-def mvtec_toothbrush_val_loader(batch_size, normalize = False, good = True, input_shape = None):
-                
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-        ])
-    
-    validation_data = MVTecDataset(root=data_raw_dir, dataset = 'toothbrush', train = False, good = good, transform=transform)
-
-    validation_loader = DataLoader(validation_data,
-                                batch_size=batch_size,
-                                shuffle=True,
-                                pin_memory=True)
-    
-    if input_shape is not None:
-        return validation_loader, input_shape, 3
-    else:
-        return validation_loader, 128, 3
-
-def mvtec_bottle_train_loader(batch_size, normalize = False, input_shape = None):
-        
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-        ])
-    
-    training_data = MVTecDataset(root=data_raw_dir, dataset = 'bottle', train = True, good = True, transform=transform)
-
-    training_loader = DataLoader(training_data, 
-                                batch_size=batch_size, 
-                                shuffle=True,
-                                pin_memory=True)
-   
-    if input_shape is not None:
-        return training_loader, input_shape, 3
-    else:
-        return training_loader, 128, 3
-    
-def mvtec_bottle_val_loader(batch_size, normalize = False, good = True, input_shape = None):
-                    
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-        ])
-    
-    validation_data = MVTecDataset(root=data_raw_dir, dataset = 'bottle', train = False, good = good, transform=transform)
-
-    validation_loader = DataLoader(validation_data,
-                                batch_size=batch_size,
-                                shuffle=True,
-                                pin_memory=True)
-    
-    if input_shape is not None:
-        return validation_loader, input_shape, 3
-    else:
-        return validation_loader, 128, 3
-
-def textile_train_loader(batch_size, normalize = False, input_shape = None):
-        
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((32,32)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,), (0.5,))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((32,32)),
-            transforms.ToTensor(),
-        ])
-    
-    training_data = MVTecDataset(root=data_raw_dir, dataset = 'TextileDefects32', train = True, good = True, transform=transform)
-
-    training_loader = DataLoader(training_data, 
-                                batch_size=batch_size, 
-                                shuffle=True,
-                                pin_memory=True)
-    
-    if input_shape is not None:
-        return training_loader, input_shape, 1
-    else:
-        return training_loader, 32, 1
-
-def textile_val_loader(batch_size, normalize = False, good = True, input_shape = None):
-                    
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((32,32)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,), (0.5,))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((32,32)),
-            transforms.ToTensor(),
-        ])
-    
-    validation_data = MVTecDataset(root=data_raw_dir, dataset = 'TextileDefects32', train = False, good = good, transform=transform)
-
-    validation_loader = DataLoader(validation_data,
-                                batch_size=batch_size,
-                                shuffle=True,
-                                pin_memory=True)
-    
-    if input_shape is not None:
-        return validation_loader, input_shape, 1
-    else:
-        return validation_loader, 32, 1
-
-def headct_train_loader(batch_size, normalize = False, input_shape = None):
-
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
-            transforms.ToTensor(),
-            transforms.RandomHorizontalFlip(),
-            transforms.Normalize((0.5,), (0.5,))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
-            transforms.ToTensor(),
-        ])
-    
-    training_data = MVTecDatasetFull(root=data_raw_dir, dataset = 'headct', train = True, transform=transform)
-
-    training_loader = DataLoader(training_data, 
-                                batch_size=batch_size, 
-                                shuffle=True,
-                                pin_memory=True)
-   
-    if input_shape is not None:
-        return training_loader, input_shape, 1
-    else:
-        return training_loader, 64, 1
-
-def headct_val_loader(batch_size, normalize = False, input_shape = None):
-
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,), (0.5,))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
-            transforms.ToTensor(),
-        ])
-    
-    validation_data = MVTecDatasetFull(root=data_raw_dir, dataset = 'headct', train = False, transform = transform)
-
-    validation_loader = DataLoader(validation_data,
-                                batch_size=batch_size,
-                                shuffle=True,
-                                pin_memory=True)
-    
-    if input_shape is not None:
-        return validation_loader, input_shape, 1
-    else:
-        return validation_loader, 64, 1
-    
-
-def cityscapes_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
-
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-        ])
-    
-    training_data = datasets.Cityscapes(root=data_raw_dir, split='train', transform=transform, target_transform=transforms.Compose([transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)), transforms.ToTensor()]))
-
-    training_loader = DataLoader(training_data, 
-                                batch_size=batch_size, 
-                                shuffle=True,
-                                pin_memory=True,
-                                num_workers = num_workers)
-    
-    if input_shape is not None:
-        return training_loader, input_shape, 3
-    else:
-        return training_loader, 128, 3
-    
-def cityscapes_val_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
-
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-        ])
-    
-    validation_data = datasets.Cityscapes(root=data_raw_dir, split='val', transform=transform, target_transform=transforms.Compose([transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)), transforms.ToTensor()]))
-
-    validation_loader = DataLoader(validation_data,
-                                batch_size=batch_size,
-                                shuffle=True,
-                                pin_memory=True,
-                                num_workers = num_workers)
-    
-    if input_shape is not None:
-        return validation_loader, input_shape, 3
-    else:
-        return validation_loader, 128, 3
-    
-class CityscapesDataset(Dataset):
-
-    def __init__(self, root, train = False, transform=None):
-        self.root = root
-        self.transform = transform
-        self.train = train
-        if train:
-            self.imgs = glob(os.path.join(root, 'train', '*', '*.png'))
-        else:
-            self.imgs = glob(os.path.join(root, 'val', '*', '*.png'))
-        
-    def __len__(self):
-        return len(self.imgs)
-    
-    def __getitem__(self, idx):
-        img = Image.open(self.imgs[idx])
-        if self.transform:
-            img = self.transform(img)
-        # if image name contains good, label is 0, else 1
-        return img, 0
-
-
-def cityscapes_rain_val_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-        ])
-    
-    dataset = CityscapesDataset(root = os.path.join(data_raw_dir, 'leftImg8bit_trainval_rain','leftImg8bit_rain'), train=False, transform=transform)
-
-    validation_loader = DataLoader(dataset,
-                                batch_size=batch_size,
-                                shuffle=True,
-                                pin_memory=True,
-                                num_workers = num_workers)
-    
-    if input_shape is not None:
-        return validation_loader, input_shape, 3
-    else:
-        return validation_loader, 128, 3
-    
 class TinyImageNetDataset(Dataset):
     
         def __init__(self, root, train = False, transform=None):
@@ -1057,288 +696,6 @@ def dtd_test_loader(batch_size, normalize = False, input_shape = None, num_worke
         return test_loader, input_shape, 3
     else:
         return test_loader, 128, 3
-
-class XraysDataset(Dataset):
-    
-        def __init__(self, root, flavour = 17, mode = 'test', transform=None):
-            self.root = root
-            self.transform = transform
-            self.mode = mode
-            self.flavour = flavour
-            if mode == 'train':
-                self.imgs = np.load(os.path.join(root, 'train', str(flavour)+'.npy'))
-            elif mode == 'val':
-                self.imgs = np.load(os.path.join(root, 'val', str(flavour)+'.npy'))
-            else:
-                self.imgs = np.load(os.path.join(root, 'test', str(flavour)+'.npy'))
-            
-        def __len__(self):
-            return self.imgs.shape[0]
-        
-        def __getitem__(self, idx):
-            img = self.imgs[idx]
-            img = img.transpose(2,0,1)
-            img = torch.tensor(img).float()
-            if self.transform:
-                img = self.transform(img)
-            return img, self.flavour
-    
-def xrays_train_loader(batch_size, normalize = False, input_shape = None):
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.Normalize((0.5,), (0.5,))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-        ])
-    
-    training_data = XraysDataset(root = os.path.join(data_raw_dir, 'xrays'), flavour = 17, mode = 'train', transform=transform)
-
-    training_loader = DataLoader(training_data, 
-                                batch_size=batch_size, 
-                                shuffle=True,
-                                pin_memory=True)
-    
-    if input_shape is not None:
-        return training_loader, input_shape, 1
-    else:
-        return training_loader, 128, 1
-
-def xrays_val_loader(batch_size, normalize = False, input_shape = None):
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.Normalize((0.5,), (0.5,))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-        ])
-    
-    validation_data = XraysDataset(root = os.path.join(data_raw_dir, 'xrays'), flavour = 17, mode = 'val', transform=transform)
-
-    validation_loader = DataLoader(validation_data,
-                                batch_size=batch_size,
-                                shuffle=True,
-                                pin_memory=True)
-    
-    if input_shape is not None:
-        return validation_loader, input_shape, 1
-    else:
-        return validation_loader, 128, 1
-
-def xrays_test_loader(batch_size, normalize = False, input_shape = None, flavour = 17):
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.Normalize((0.5,), (0.5,))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-        ])
-    
-    test_data = XraysDataset(root = os.path.join(data_raw_dir, 'xrays'), flavour = flavour, mode = 'test', transform=transform)
-
-    test_loader = DataLoader(test_data,
-                                batch_size=batch_size,
-                                shuffle=True,
-                                pin_memory=True)
-    
-    if input_shape is not None:
-        return test_loader, input_shape, 1
-    else:
-        return test_loader, 128, 1
-
-class SSBDataset(Dataset):
-    
-    def __init__(self, root, mode = 'test', transform=None):
-        self.root = root
-        self.transform = transform
-        # img list is in a .txt file
-        with open(os.path.join(root, 'test_ssb_hard.txt'), 'r') as f:
-            self.imgs = f.readlines()
-        # remove ' -1' from the end of each line
-        self.imgs = [img[:-3] for img in self.imgs]
-        # remove ssb_hard/
-        self.imgs = [img[9:] for img in self.imgs]
-        
-    def __len__(self):
-        return len(self.imgs)
-    
-    def __getitem__(self, idx):
-        img = Image.open(os.path.join(self.root, self.imgs[idx])).convert('RGB')
-        if self.transform:
-            img = self.transform(img)
-        return img, 1
-
-def ssb_test_loader(batch_size, normalize = False, input_shape = None):
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-        ])
-    
-    test_data = SSBDataset(root = os.path.join(data_raw_dir, 'ssb_hard'), mode = 'test', transform=transform)
-
-    test_loader = DataLoader(test_data,
-                                batch_size=batch_size,
-                                shuffle=True,
-                                pin_memory=True)
-    
-    if input_shape is not None:
-        return test_loader, input_shape, 3
-    else:
-        return test_loader, 128, 3
-
-class NINCODataset(Dataset):
-        
-    def __init__(self, root, mode = 'test', transform=None):
-        self.root = root
-        self.transform = transform
-        # img list is in a .txt file
-        with open(os.path.join(root, 'test_ninco.txt'), 'r') as f:
-            self.imgs = f.readlines()
-        # remove ' -1' from the end of each line
-        self.imgs = [img[:-3] for img in self.imgs]
-        # remove ninco/
-        self.imgs = [img[6:] for img in self.imgs]
-        
-    def __len__(self):
-        return len(self.imgs)
-    
-    def __getitem__(self, idx):
-        img = Image.open(os.path.join(self.root, self.imgs[idx])).convert('RGB')
-        if self.transform:
-            img = self.transform(img)
-        return img, 1
-
-def ninco_test_loader(batch_size, normalize = False, input_shape = None):
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-        ])
-    
-    test_data = NINCODataset(root = os.path.join(data_raw_dir, 'ninco'), mode = 'test', transform=transform)
-
-    test_loader = DataLoader(test_data,
-                                batch_size=batch_size,
-                                shuffle=True,
-                                pin_memory=True)
-    
-    if input_shape is not None:
-        return test_loader, input_shape, 3
-    else:
-        return test_loader, 128, 3
-    
-class iNaturalistDataset(Dataset):
-        
-    def __init__(self, root, mode = 'test', transform=None):
-        self.root = root
-        self.transform = transform
-        # img list is in a .txt file
-        with open(os.path.join(root, 'test_inaturalist.txt'), 'r') as f:
-            self.imgs = f.readlines()
-        # remove ' -1' from the end of each line
-        self.imgs = [img[:-3] for img in self.imgs]
-        # remove inaturalist/
-        self.imgs = [img[12:] for img in self.imgs]
-        
-    def __len__(self):
-        return len(self.imgs)
-    
-    def __getitem__(self, idx):
-        img = Image.open(os.path.join(self.root, self.imgs[idx])).convert('RGB')
-        if self.transform:
-            img = self.transform(img)
-        return img, 1
-
-def inaturalist_test_loader(batch_size, normalize = False, input_shape = None):
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-        ])
-    
-    test_data = iNaturalistDataset(root = os.path.join(data_raw_dir, 'inaturalist'), mode = 'test', transform=transform)
-
-    test_loader = DataLoader(test_data,
-                                batch_size=batch_size,
-                                shuffle=True,
-                                pin_memory=True)
-    
-    if input_shape is not None:
-        return test_loader, input_shape, 3
-    else:
-        return test_loader, 128, 3
-
-class OpenImageODataset(Dataset):
-            
-    def __init__(self, root, mode = 'test', transform=None):
-        self.root = root
-        self.transform = transform
-        # img list is in a .txt file
-        with open(os.path.join(root, 'test_openimage_o.txt'), 'r') as f:
-            self.imgs = f.readlines()
-        # remove ' -1' from the end of each line
-        self.imgs = [img[:-3] for img in self.imgs]
-        # remove openimage_o/
-        self.imgs = [img[12:] for img in self.imgs]
-        
-    def __len__(self):
-        return len(self.imgs)
-    
-    def __getitem__(self, idx):
-        img = Image.open(os.path.join(self.root, self.imgs[idx])).convert('RGB')
-        if self.transform:
-            img = self.transform(img)
-        return img, 1
-
-def openimageo_test_loader(batch_size, normalize = False, input_shape = None):
-    if normalize:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))
-        ])
-    else:
-        transform = transforms.Compose([
-            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-            transforms.ToTensor(),
-        ])
-    
-    test_data = OpenImageODataset(root = os.path.join(data_raw_dir, 'openimage_o'), mode = 'test', transform=transform)
-
-    test_loader = DataLoader(test_data,
-                                batch_size=batch_size,
-                                shuffle=True,
-                                pin_memory=True)
-    
-    if input_shape is not None:
-        return test_loader, input_shape, 3
-    else:
-        return test_loader, 128, 3
     
 def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None, num_workers = 0):
     if dataset_name == 'mnist':
@@ -1386,36 +743,6 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return cifar100_train_loader(batch_size, normalize, size)
         elif mode == 'val':
             return cifar100_val_loader(batch_size, normalize, size)
-    elif dataset_name == 'bottle':
-        if mode == 'train':
-            return mvtec_bottle_train_loader(batch_size, normalize, size)
-        elif mode == 'val':
-            return mvtec_bottle_val_loader(batch_size, normalize, good, size)
-    elif dataset_name == 'toothbrush':
-        if mode == 'train':
-            return mvtec_toothbrush_train_loader(batch_size, normalize, size)
-        elif mode == 'val':
-            return mvtec_toothbrush_val_loader(batch_size, normalize, good, size)
-    elif dataset_name == 'textile':
-        if mode == 'train':
-            return textile_train_loader(batch_size, normalize, size)
-        elif mode == 'val':
-            return textile_val_loader(batch_size, normalize, good, size)
-    elif dataset_name == 'headct':
-        if mode == 'train':
-            return headct_train_loader(batch_size, normalize, size)
-        elif mode == 'val':
-            return headct_val_loader(batch_size, normalize, size)
-    elif dataset_name == 'cityscapes':
-        if mode == 'train':
-            return cityscapes_train_loader(batch_size, normalize, size, num_workers = num_workers)
-        elif mode == 'val':
-            return cityscapes_val_loader(batch_size, normalize, size, num_workers = num_workers)
-    elif dataset_name == 'xray':
-        if mode == 'train':
-            return xrays_train_loader(batch_size, normalize, size)
-        elif mode == 'val':
-            return xrays_val_loader(batch_size, normalize, size)
     elif dataset_name == 'tinyimagenet':
         if mode == 'train':
             return tinyimagenet_train_loader(batch_size, normalize, size)
@@ -1431,17 +758,5 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return dtd_train_loader(batch_size, normalize, size, num_workers = num_workers)
         elif mode == 'val':
             return dtd_test_loader(batch_size, normalize, size, num_workers = num_workers)
-    elif dataset_name == 'ssb':
-        if mode == 'val':
-            return ssb_test_loader(batch_size, normalize, size)
-    elif dataset_name == 'ninco':
-        if mode == 'val':
-            return ninco_test_loader(batch_size, normalize, size)
-    elif dataset_name == 'inaturalist':
-        if mode == 'val':
-            return inaturalist_test_loader(batch_size, normalize, size)
-    elif dataset_name == 'openimageo':
-        if mode == 'val':
-            return openimageo_test_loader(batch_size, normalize, size)
     else:
         raise ValueError('Dataset name not found.')
