@@ -82,7 +82,8 @@ The listed models are already implemented and fully integrated in the model zoo.
 #### VAEs
 
 - Vanilla VAE [`Paper`](https://arxiv.org/abs/1312.6114)|[`Code`](src/generativezoo/models/VAE/VanillaVAE.py)|[`Script`](src/generativezoo/VanVAE.py)|[`Documentation`](docs/VanillaVAE.md)
-- Conditional VAE [`Paper`](https://openreview.net/forum?id=rJWXGDWd-H)|[`Code`](src/generativezoo/models/VAE/ConditionalVAE.py)|[`Script`](src/generativezoo//CondVAE.py)|[`Documentation`](docs/ConditionalVAE.md)
+- Conditional VAE [`Paper`](https://openreview.net/forum?id=rJWXGDWd-H)|[`Code`](src/generativezoo/models/VAE/ConditionalVAE.py)|[`Script`](src/generativezoo/CondVAE.py)|[`Documentation`](docs/ConditionalVAE.md)
+- Hierarchical VAE [`Paper`](https://arxiv.org/abs/2007.03898)|[`Code`](src/generativezoo/models/VAE/HierarchicalVAE.py)|[`Script`](src/generativezoo/HVAE.py)|[`Documentation`](docs/HierarchicalVAE.md)
 
 #### GANs
 
@@ -102,37 +103,19 @@ The listed models are already implemented and fully integrated in the model zoo.
 #### SGMs
 
 - Vanilla SGM [`Paper`](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/VanillaSGM.py)|[`Script`](src/generativezoo/VanSGM.py)|[`Documentation`](docs/VanillaSGM.md)
-
-#### Flow
-
-- Glow [`Paper`](https://arxiv.org/abs/1807.03039)|[`Code`](src\generativezoo\models\Flow\Glow.py)|[`Script`](src/generativezoo/GLOW.py)|[`Documentation`](docs/Glow.md)
-
-### Future Models
-
-These models are currently under development and will be added to the repository in the future.
-
-#### VAEs
-
-- [ ] Hierarchical VAE [`Paper`](https://arxiv.org/abs/2007.03898)
-- [ ] VQ-VAE [`Paper`](https://arxiv.org/abs/1711.00937)
-
-#### GANs
-
-- [ ] VQ-GAN [`Paper`](https://arxiv.org/abs/2012.09841)
-
-#### SGMs
-
-- [ ] NCSN [`Paper`](https://arxiv.org/abs/1907.05600)
-- [ ] NCSN++ [`Paper`](https://openreview.net/forum?id=PxTIG12RRHS)
+- NCSNv2 [`Paper`](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/NCSNv2.py)|[`Script`](src/generativezoo/NCSNv2.py)|[`Documentation`](docs/NCSNv2.md)
 
 #### Autoregressive
 
-- [ ] VQ-VAE + Transformer [`Paper`](https://arxiv.org/abs/2012.09841)
-- [ ] VQ-VAE + Mamba
+- VQ-VAE + Transformer [`Paper`](https://arxiv.org/abs/1711.00937)|[`Code`](src/generativezoo/models/AR/VQVAE_Transformer.py)|[`Script`](src/generativezoo/VQVAE_T.py)|[`Documentation`](docs/VQVAE_Transformer.md)
+- VQ-GAN + Transformer [`Paper`](https://arxiv.org/abs/2012.09841)|[`Code`](src/generativezoo/models/AR/VQGAN_Transformer.py)|[`Script`](src/generativezoo/VQGAN_T.py)|[`Documentation`](docs/VQGAN_Transformer.md)
+- PixelCNN [`Paper`](https://arxiv.org/abs/1606.05328)|[`Code`](src/generativezoo/models/AR/PixelCNN.py)|[`Script`](src/generativezoo/P-CNN.py)|[`Documentation`](docs/PixelCNN.md)
 
-#### Flow-Based Models
+#### Flow
 
-- [ ] Flow++ [`Paper`](https://arxiv.org/abs/1902.00275)
+- RealNVP [`Paper`](https://arxiv.org/abs/1605.08803)|[`Code`](src\generativezoo\models\Flow\RealNVP.py)|[`Script`](src/generativezoo/RealNVP.py)|[`Documentation`](docs/RealNVP.md)
+- Glow [`Paper`](https://arxiv.org/abs/1807.03039)|[`Code`](src\generativezoo\models\Flow\Glow.py)|[`Script`](src/generativezoo/GLOW.py)|[`Documentation`](docs/Glow.md)
+- Flow++ [`Paper`](https://arxiv.org/abs/1902.00275)|[`Code`](src\generativezoo\models\Flow\FlowPlusPlus.py)|[`Script`](src\generativezoo\FlowPP.py)|[`Documentation`](docs/FlowPlusPlus.md)
 
 ## Datasets
 
@@ -215,6 +198,10 @@ All the repositories used to generate this code are mentioned in each of the cor
 - [ddim](https://github.com/ermongroup/ddim)
 - [Generative Models](https://github.com/Project-MONAI/GenerativeModels)
 - [Glow-PyTorch](https://github.com/y0ast/Glow-PyTorch)
+- [flowplusplus](https://github.com/chrischute/flowplusplus)
+- [nvae](https://github.com/GlassyWing/nvae)
+- [uvadlc_notebooks](https://github.com/phlippe/uvadlc_notebooks)
+- [real-nvp](https://github.com/chrischute/real-nvp)
 - [score_sde_pytorch](https://github.com/yang-song/score_sde_pytorch)
     - [SGM Tutorial](https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing)
 
