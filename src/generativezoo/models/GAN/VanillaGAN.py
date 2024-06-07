@@ -32,6 +32,13 @@ def weights_init_normal(m):
 class Generator(nn.Module):
     # initializers
     def __init__(self, latent_dim, d=128, channels=3, imgSize=32):
+        '''
+        Generator model
+        :param latent_dim: latent dimension
+        :param d: number of channels in the first layer
+        :param channels: number of channels in the output image
+        :param imgSize: size of the output image
+        '''
         super(Generator, self).__init__()
         if imgSize < 64:
             self.main = nn.Sequential(
@@ -107,6 +114,10 @@ class Generator(nn.Module):
 
     # forward method
     def forward(self, input):
+        '''
+        Forward pass of the generator
+        :param input: input tensor
+        '''
         if self.imgSize > 64:
             input = input.view(input.size(0), -1)
             input = self.reshape(input)
@@ -116,6 +127,12 @@ class Generator(nn.Module):
     
     @torch.no_grad()
     def sample(self, n_samples, device):
+        '''
+        Generate samples from the model
+        :param n_samples: number of samples to generate
+        :param device: device to use
+        '''
+        self.eval()
         z = torch.randn(n_samples, self.latent_dim, 1, 1).to(device)
         imgs = self.forward(z)
         imgs = (imgs + 1) / 2
@@ -130,6 +147,12 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     # initializers
     def __init__(self, d=128, channels=3, imgSize=32):
+        '''
+        Discriminator model
+        :param d: number of channels in the first layer
+        :param channels: number of channels in the input image
+        :param imgSize: size of the input image
+        '''
         super(Discriminator, self).__init__()
         if imgSize < 64:
             self.main = nn.Sequential(
@@ -198,11 +221,23 @@ class Discriminator(nn.Module):
 
     # def forward(self, input):
     def forward(self, input):
+        '''
+        Forward pass of the discriminator
+        :param input: input tensor
+        '''
         x = self.main(input)
         return x
     
     @torch.no_grad()
     def outlier_detection(self, in_loader, out_loader, device, in_array=None, display=True):
+        '''
+        Detect outliers using the discriminator
+        :param in_loader: dataloader for in-distribution data
+        :param out_loader: dataloader for out-of-distribution data
+        :param device: device to use
+        :param in_array: in-distribution predictions
+        :param display: whether to display the results
+        '''
         self.eval()
 
         in_preds = []
@@ -256,6 +291,21 @@ class Discriminator(nn.Module):
     
 class VanillaGAN(nn.Module):
     def __init__(self, n_epochs, device, latent_dim, d=128, channels=3, lrg = 0.0002, lrd = 0.0002, beta1 = 0.5, beta2 = 0.999, img_size = 32, sample_and_save_freq = 5, dataset = 'mnist'):
+        '''
+        Vanilla GAN model
+        :param n_epochs: number of epochs
+        :param device: device to use
+        :param latent_dim: latent dimension
+        :param d: number of channels in the first layer
+        :param channels: number of channels in the output image
+        :param lrg: learning rate for the generator
+        :param lrd: learning rate for the discriminator
+        :param beta1: beta1 for the Adam optimizer
+        :param beta2: beta2 for the Adam optimizer
+        :param img_size: size of the output image
+        :param sample_and_save_freq: frequency to sample and save images
+        :param dataset: dataset name
+        '''
         super(VanillaGAN, self).__init__()
         self.n_epochs = n_epochs
         self.device = device
@@ -275,6 +325,10 @@ class VanillaGAN(nn.Module):
         self.dataset = dataset
     
     def train_model(self, dataloader):
+        '''
+        Train the model
+        :param dataloader: dataloader for the data
+        '''
         # Loss function
         adversarial_loss = torch.nn.BCELoss()
 

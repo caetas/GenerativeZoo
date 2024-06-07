@@ -180,7 +180,7 @@ for more information.
 
 ## License
 
-This project is licensed under the terms of the `No license` license.
+This project is licensed under the terms of the `CC-BY-4.0` license.
 See [LICENSE](LICENSE) for more details.
 
 ## References

@@ -110,6 +110,19 @@ def create_checkpoint_dir():
 class PixelCNN(nn.Module):
     
     def __init__(self, c_in, c_hidden):
+        """
+        PixelCNN model with gated convolutions.
+        Inputs:
+            c_in - Number of input channels
+            c_hidden - Number of hidden channels in the model
+
+        The model consists of the following components:
+        - Initial convolutions that skip the center pixel
+        - Gated convolutions with dilation
+        - Output classification convolution
+
+        The model is trained with a cross-entropy loss and can be used for sampling.
+        """
         super().__init__()
         
         self.channels = c_in
@@ -153,6 +166,13 @@ class PixelCNN(nn.Module):
         return out
     
     def calc_likelihood(self, x, train=True):
+        """
+        Calculate the negative log-likelihood of the input.
+        Inputs:
+            x - Image tensor with float values between 0 and 1.
+            train - If True, the batch mean of the loss is returned.
+                    If False, the loss for each sample is returned, and no gradients are calculated.
+        """
         # Forward pass with bpd likelihood calculation
         if train:
             pred = self.forward(x)
@@ -205,23 +225,36 @@ class PixelCNN(nn.Module):
             wandb.log({"Samples": fig})
         else:
             plt.show()
+        
+        plt.close(fig)
     
     def configure_optimizers(self, args):
+        "Configure optimizer and scheduler for training."
         optimizer = torch.optim.Adam(self.parameters(), lr = args.lr)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=args.gamma)
         return optimizer, scheduler
     
     def training_step(self, batch, batch_idx):
+        "Training step for the model."
         loss = self.calc_likelihood(batch)                             
         return loss
     
     def validation_step(self, batch, batch_idx):
+        "Validation step for the model."
         loss = self.calc_likelihood(batch)
     
     def test_step(self, batch, batch_idx):
+        "Test step for the model."
         loss = self.calc_likelihood(batch)
 
     def train_model(self, dataloader, args, img_size=32):
+        """
+        Train the model with the given data.
+        Inputs:
+            dataloader - Dataloader for the training data.
+            args - Arguments for training.
+            img_size - Size of the images in the dataset.
+        """
 
         create_checkpoint_dir()
         optimizer, scheduler = self.configure_optimizers(args)
@@ -257,7 +290,12 @@ class PixelCNN(nn.Module):
                 torch.save(self.state_dict(), os.path.join(models_dir, "PixelCNN", f"PixelCNN_{args.dataset}.pt"))
 
     def outlier_detection(self, in_loader, out_loader):
-
+        """
+        Detect outliers using the PixelCNN model.
+        Inputs:
+            in_loader - Dataloader for the inlier data.
+            out_loader - Dataloader for the outlier data.
+        """
         self.eval()
         in_scores = []
         out_scores = []

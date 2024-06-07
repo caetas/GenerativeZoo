@@ -20,9 +20,9 @@ docs_require = find_requirements("requirements-docs.txt")
 
 setup(
     name="GenerativeZoo",
-    version="0.11.0",
+    version="0.20.0",
     author="Francisco Caetano",
-    description="A short description of the project. No quotes.",
+    description="A Model Zoo for Generative Models.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(where="src"),

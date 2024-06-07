@@ -3,9 +3,9 @@
 default_context:
   project_name: "GenerativeZoo"
   repo_name: "GenerativeZoo"
-  description: "A short description of the project. No quotes."
-  organization: "None"
-  license: "No license"
-  organization_email: "none@none.pt"
+  description: "Model Zoo for Generative Models"
+  organization: "TU/e"
+  license: "CC-BY-4.0"
+  organization_email: "f.t.de.espirito.santo.e.caetano@tue.nl"
   line_length: "120"
   python_minimal_version: "3.9"

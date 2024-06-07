@@ -22,6 +22,10 @@ def create_checkpoint_dir():
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_features):
+        '''
+        Residual Block
+        :param in_features: number of input features
+        '''
         super(ResidualBlock, self).__init__()
 
         conv_block = [  nn.ReflectionPad2d(1),
@@ -39,6 +43,12 @@ class ResidualBlock(nn.Module):
 
 class Generator(nn.Module):
     def __init__(self, input_nc, output_nc, n_residual_blocks=9):
+        '''
+        Generator model
+        :param input_nc: number of input channels
+        :param output_nc: number of output channels
+        :param n_residual_blocks: number of residual blocks
+        '''
         super(Generator, self).__init__()
 
         # Initial convolution block       
@@ -99,6 +109,10 @@ class Generator(nn.Module):
 
 class Discriminator(nn.Module):
     def __init__(self, input_nc):
+        '''
+        Discriminator model
+        :param input_nc: number of input channels
+        '''
         super(Discriminator, self).__init__()
 
         # A bunch of convolutions one after another
@@ -137,6 +151,12 @@ def weights_init_normal(m):
 
 class LambdaLR():
     def __init__(self, n_epochs, offset, decay_start_epoch):
+        '''
+        LambdaLR scheduler
+        :param n_epochs: number of epochs
+        :param offset: offset
+        :param decay_start_epoch: epoch to start decaying
+        '''
         assert ((n_epochs - decay_start_epoch) > 0), "Decay must start before the training session ends!"
         self.n_epochs = n_epochs
         self.offset = offset
@@ -147,6 +167,17 @@ class LambdaLR():
 
 class CycleGAN(nn.Module):
     def __init__(self, in_channels, out_channels, n_epochs, lr, decay, device, sample_and_save_freq=5, name='horse2zebra'):
+        '''
+        CycleGAN model
+        :param in_channels: number of input channels
+        :param out_channels: number of output channels
+        :param n_epochs: number of epochs
+        :param lr: learning rate
+        :param decay: decay
+        :param device: device
+        :param sample_and_save_freq: sample and save frequency
+        :param name: name
+        '''
         super(CycleGAN, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -166,7 +197,13 @@ class CycleGAN(nn.Module):
         self.D_B.apply(weights_init_normal)
 
     def train_model(self, dataloader_A, dataloader_B, testloader_A, testloader_B):
-
+        '''
+        Train the CycleGAN model
+        :param dataloader_A: dataloader for dataset A
+        :param dataloader_B: dataloader for dataset B
+        :param testloader_A: test dataloader for dataset A
+        :param testloader_B: test dataloader for dataset B
+        '''
         # Losses
         criterion_GAN = nn.MSELoss()
         criterion_cycle = nn.L1Loss()

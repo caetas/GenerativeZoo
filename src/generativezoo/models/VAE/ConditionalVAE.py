@@ -1,3 +1,7 @@
+######################################################################################
+### Code based on https://github.com/AntixK/PyTorch-VAE/blob/master/models/cvae.py ###
+######################################################################################
+
 import torch
 from torch import nn
 from torch.nn import functional as F

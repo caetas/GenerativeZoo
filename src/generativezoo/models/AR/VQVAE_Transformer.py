@@ -25,6 +25,12 @@ def create_checkpoint_dir():
 
 class VQVAETransformer(nn.Module):
     def __init__(self, args, channels=3, img_size=32):
+        '''
+        VQVAETransformer model
+        :param args: arguments
+        :param channels: number of channels in the input image
+        :param img_size: size of the input image
+        '''
         super(VQVAETransformer, self).__init__()
         self.vqvae = VQVAE(spatial_dims=2,
                             in_channels=channels,
@@ -57,6 +63,11 @@ class VQVAETransformer(nn.Module):
         self.img_size = img_size
     
     def train_VQVAE(self, args, train_loader):
+        '''
+        Train the VQVAE model
+        :param args: arguments
+        :param train_loader: training data loader
+        '''
 
         optimizer = torch.optim.Adam(params=self.vqvae.parameters(), lr=args.lr)
         l1_loss = nn.L1Loss()
@@ -89,6 +100,12 @@ class VQVAETransformer(nn.Module):
                 self.reconstruct(x[:8])
 
     def train_Transformer(self, args, train_loader):
+        '''
+        Train the Transformer model
+        :param args: arguments
+        :param train_loader: training data loader
+        '''
+
         optimizer = torch.optim.Adam(params=self.transformer.parameters(), lr=args.lr_t)
         ce_loss = nn.CrossEntropyLoss()
 
@@ -120,6 +137,12 @@ class VQVAETransformer(nn.Module):
                 self.sample(16)
     
     def train_model(self, args, train_loader_a, train_loader_b):
+        '''
+        Train the VQVAE and Transformer models
+        :param args: arguments
+        :param train_loader_a: training data loader for VQVAE
+        :param train_loader_b: training data loader for Transformer
+        '''
         create_checkpoint_dir()
         print('Training VQVAE...')
         self.train_VQVAE(args, train_loader_a)
@@ -130,6 +153,11 @@ class VQVAETransformer(nn.Module):
 
     @torch.no_grad()
     def reconstruct(self, x, train=True):
+        '''
+        Reconstruct the input image
+        :param x: input image
+        :param train: whether to log the image to wandb
+        '''
         self.vqvae.eval()
         x = x.to(self.device)
         x_recon, _ = self.vqvae(x)
@@ -145,9 +173,15 @@ class VQVAETransformer(nn.Module):
             wandb.log({'reconstruction': fig})
         else:
             plt.show()
+        plt.close(fig)
     
     @torch.no_grad()
     def sample(self, num_samples, train=True):
+        '''
+        Generate samples from the model
+        :param num_samples: number of samples to generate
+        :param train: whether to log the samples to wandb
+        '''
         self.vqvae.eval()
         self.transformer.eval()
         images = []
@@ -165,6 +199,11 @@ class VQVAETransformer(nn.Module):
             plt.show()
 
     def load_checkpoint(self, checkpoint_vqvae=None, checkpoint_transformer=None):
+        '''
+        Load the model checkpoints
+        :param checkpoint_vqvae: checkpoint for VQVAE model
+        :param checkpoint_transformer: checkpoint for Transformer model
+        '''
         if checkpoint_vqvae is not None:
             self.vqvae.load_state_dict(torch.load(checkpoint_vqvae))
         if checkpoint_transformer is not None:

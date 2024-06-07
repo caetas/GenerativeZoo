@@ -1,3 +1,7 @@
+###############################################################
+### Code adapted from https://github.com/y0ast/Glow-PyTorch ###
+###############################################################
+
 import math
 import torch
 import torch.nn as nn
@@ -80,6 +84,9 @@ def gaussian_sample(mean, logs, temperature=1):
 
 
 def squeeze2d(input, factor):
+    """
+    squeeze a 4D tensor of B x C x H x W into a 4D tensor of B x (C*f*f) x (H/f) x (W/f)
+    """
     if factor == 1:
         return input
 
@@ -95,6 +102,9 @@ def squeeze2d(input, factor):
 
 
 def unsqueeze2d(input, factor):
+    """
+    unsqueeze a 4D tensor of B x C x H x W into a 4D tensor of B x (C/f/f) x (H*f) x (W*f)
+    """
     if factor == 1:
         return input
 
@@ -112,15 +122,17 @@ def unsqueeze2d(input, factor):
 
 
 class _ActNorm(nn.Module):
-    """
-    Activation Normalization
-    Initialize the bias and scale with a given minibatch,
-    so that the output per-channel have zero mean and unit variance for that.
-
-    After initialization, `bias` and `logs` will be trained as parameters.
-    """
-
     def __init__(self, num_features, scale=1.0):
+        """
+        Activation Normalization
+        Initialize the bias and scale with a given minibatch,
+        so that the output per-channel have zero mean and unit variance for that.
+
+        After initialization, `bias` and `logs` will be trained as parameters.
+        params:
+            num_features: int, number of features in the input tensor
+            scale: float, scale factor for the initialized logs
+        """
         super().__init__()
         # register mean and scale
         size = [1, num_features, 1, 1]
@@ -131,6 +143,9 @@ class _ActNorm(nn.Module):
         self.inited = False
 
     def initialize_parameters(self, input):
+        """
+        Initialize the parameters with the first minibatch
+        """
         if not self.training:
             raise ValueError("In Eval mode, but ActNorm not inited")
 
@@ -174,6 +189,11 @@ class _ActNorm(nn.Module):
         return input, logdet
 
     def forward(self, input, logdet=None, reverse=False):
+        """
+        input: 4D Tensor, BCHW
+        logdet: 1D Tensor, batch size
+        reverse: bool, if True, reverse the transformation
+        """
         self._check_input_dim(input)
 
         if not self.inited:

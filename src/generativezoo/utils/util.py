@@ -156,6 +156,7 @@ def parse_args_FlowPP():
     argparser.add_argument('--num_channels', default=96, type=int, help='Number of channels in Flow++')
     argparser.add_argument('--use_attn', action='store_true', default=False, help='use attention')
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample interval')
+    argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     return argparser.parse_args()
 
 def parse_args_VanillaVAE():
@@ -473,9 +474,7 @@ def parse_args_NCSNv2():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--train', action='store_true', default=False, help='train model')
     argparser.add_argument('--sample', action='store_true', default=False, help='sample from model')
-    argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn'])
-    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn'])
     argparser.add_argument('--batch_size', type=int, default=128, help='batch size')
     argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
     argparser.add_argument('--lr', type=float, default=0.0002, help='learning rate')

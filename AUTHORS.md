@@ -4,7 +4,7 @@ Credits
 Project Lead
 ----------------
 
-* Francisco Caetano <franciscocaetano99@gmail.com>
+* Francisco Caetano <f.t.de.espirito.santo.e.caetano@tue.nl>
 
 Project Contributors
 ------------
