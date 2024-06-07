@@ -22,12 +22,12 @@ You can find out more about the parameters by checking [`util.py`](./../src/gene
 
 ## Training
 
-The PresGAN can be trained in a similar fashion to other GANs in the zoo:
+HVAE can be trained similarly to other models in the Zoo:
 
     python HVAE.py --train --dataset svhn
 
 ## Sampling
 
-For sampling you must provide the generator checkpoint:
+For sampling you must provide the HVAE checkpoint:
 
     python HVAE.py --sample --dataset svhn --checkpoint ./../../models/HierarchicalVAE/HVAE_svhn.pt

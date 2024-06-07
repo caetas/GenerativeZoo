@@ -21,13 +21,13 @@
 
 ## Training
 
-The PresGAN can be trained in a similar fashion to other GANs in the zoo:
+The PixelCNNcan be trained with:
 
     python P-CNN.py --train
 
 ## Sampling
 
-For sampling you must provide the generator checkpoint:
+For sampling you must provide the checkpoint:
 
     python P-CNN.py --sample --checkpoint ./../../models/PixelCNN/PixelCNN_mnist.pt
 
