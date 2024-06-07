@@ -191,7 +191,6 @@ venv
 src/generativezoo/cifar10c.py
 src/generativezoo/cifar10c_adv.py
 src/generativezoo/xrays.py
-src/generativezoo/RNVP.py
 src/generativezoo/Flow/RealNVP.py
 src/generativezoo/xrays_gan.py
 src/generativezoo/xrays_adv.py
@@ -249,4 +248,5 @@ src/generativezoo/cdiff.py
 src/generativezoo/highfreq_cifar.py
 src/generativezoo/tsne.py
 src/generativezoo/corruptions_freq.py
+src/generativezoo/models/VAE/VQVAE.py
 # EOF

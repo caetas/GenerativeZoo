@@ -113,16 +113,9 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 #### Flow
 
+- RealNVP [`Paper`](https://arxiv.org/abs/1605.08803)|[`Code`](src\generativezoo\models\Flow\RealNVP.py)|[`Script`](src/generativezoo/RealNVP.py)|[`Documentation`](docs/RealNVP.md)
 - Glow [`Paper`](https://arxiv.org/abs/1807.03039)|[`Code`](src\generativezoo\models\Flow\Glow.py)|[`Script`](src/generativezoo/GLOW.py)|[`Documentation`](docs/Glow.md)
 - Flow++ [`Paper`](https://arxiv.org/abs/1902.00275)|[`Code`](src\generativezoo\models\Flow\FlowPlusPlus.py)|[`Script`](src\generativezoo\FlowPP.py)|[`Documentation`](docs/FlowPlusPlus.md)
-
-### Future Models
-
-These models are currently under development and will be added to the repository in the future.
-
-#### Autoregressive
-
-- [ ] VQ-VAE + Mamba
 
 ## Datasets
 
@@ -205,6 +198,10 @@ All the repositories used to generate this code are mentioned in each of the cor
 - [ddim](https://github.com/ermongroup/ddim)
 - [Generative Models](https://github.com/Project-MONAI/GenerativeModels)
 - [Glow-PyTorch](https://github.com/y0ast/Glow-PyTorch)
+- [flowplusplus](https://github.com/chrischute/flowplusplus)
+- [nvae](https://github.com/GlassyWing/nvae)
+- [uvadlc_notebooks](https://github.com/phlippe/uvadlc_notebooks)
+- [real-nvp](https://github.com/chrischute/real-nvp)
 - [score_sde_pytorch](https://github.com/yang-song/score_sde_pytorch)
     - [SGM Tutorial](https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing)
 

@@ -29,6 +29,10 @@ Glow is a simple type of generative flow using an invertible 1x1 convolution. Al
 | `--checkpoint`       | Checkpoint path                       | `None`  |                                                      |
 | `--n_bits`           | Number of bits                        | `8`     |                                                      |
 
+You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
+
+    python GLOW.py --help
+
 ## Training
 
 You can train this model with the following command:
