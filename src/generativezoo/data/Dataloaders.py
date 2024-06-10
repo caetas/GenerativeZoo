@@ -697,6 +697,78 @@ def dtd_test_loader(batch_size, normalize = False, input_shape = None, num_worke
     else:
         return test_loader, 128, 3
     
+class ImageNetDataset(Dataset):  
+    def __init__(self, root, train = False, transform=None):
+        self.root = root
+        self.transform = transform
+        self.train = train
+        self.imgs = []
+        if train:
+            self.imgs = glob(os.path.join(root, 'imagenet', 'train', '*', '*.JPEG'))
+        else:
+            self.imgs = glob(os.path.join(root, 'imagenet', 'test', '*.JPEG'))
+
+    def __len__(self):
+        return len(self.imgs)
+    
+    def __getitem__(self, idx):
+        img = Image.open(self.imgs[idx]).convert('RGB')
+        if self.transform:
+            img = self.transform(img)
+        return img, 0
+    
+def imagenet_train_loader(batch_size, normalize = False, input_shape = None):
+        
+        if normalize:
+            transform = transforms.Compose([
+                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
+            ])
+        else:
+            transform = transforms.Compose([
+                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.ToTensor(),
+            ])
+        
+        training_data = ImageNetDataset(root=data_raw_dir, train = True, transform=transform)
+    
+        training_loader = DataLoader(training_data, 
+                                    batch_size=batch_size, 
+                                    shuffle=True,
+                                    pin_memory=True)
+        
+        if input_shape is not None:
+            return training_loader, input_shape, 3
+        else:
+            return training_loader, 256, 3
+        
+def imagenet_val_loader(batch_size, normalize = False, input_shape = None):
+                    
+        if normalize:
+            transform = transforms.Compose([
+                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
+            ])
+        else:
+            transform = transforms.Compose([
+                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.ToTensor(),
+            ])
+        
+        validation_data = ImageNetDataset(root=data_raw_dir, train = False, transform=transform)
+    
+        validation_loader = DataLoader(validation_data,
+                                    batch_size=batch_size,
+                                    shuffle=True,
+                                    pin_memory=True)
+        
+        if input_shape is not None:
+            return validation_loader, input_shape, 3
+        else:
+            return validation_loader, 256, 3    
+
 def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None, num_workers = 0):
     if dataset_name == 'mnist':
         if mode == 'train':
@@ -758,5 +830,10 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return dtd_train_loader(batch_size, normalize, size, num_workers = num_workers)
         elif mode == 'val':
             return dtd_test_loader(batch_size, normalize, size, num_workers = num_workers)
+    if dataset_name == 'imagenet':
+        if mode == 'train':
+            return imagenet_train_loader(batch_size, normalize, size)
+        elif mode == 'val':
+            return imagenet_val_loader(batch_size, normalize, size)
     else:
         raise ValueError('Dataset name not found.')
