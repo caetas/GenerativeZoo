@@ -8,7 +8,7 @@ The Conditional Variational Autoencoder (Conditional VAE) is an extension of the
 |-----------------|---------------------------------------|---------|----------------------------------------------------|
 | `--train`       | Train model                           | `False` |                                                    |
 | `--sample`      | Sample model                          | `False` |                                                    |
-| `--dataset`     | Dataset name                          | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`|
+| `--dataset`     | Dataset name                          | `'mnist'` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`|
 | `--batch_size`  | Batch size                            | `128`   |                                                    |
 | `--n_epochs`    | Number of epochs                      | `100`   |                                                    |
 | `--lr`          | Learning rate                         | `0.0002`|                                                    |

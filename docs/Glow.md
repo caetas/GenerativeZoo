@@ -9,8 +9,8 @@ Glow is a simple type of generative flow using an invertible 1x1 convolution. Al
 | `--train`            | Train model                           | `False` |                                                      |
 | `--sample`           | Sample from model                     | `False` |                                                      |
 | `--outlier_detection`| Outlier detection                     | `False` |                                                      |
-| `--dataset`          | Dataset name                          | `mnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `cityscapes` |
-| `--out_dataset`      | Outlier dataset name                  | `mnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `cityscapes` |
+| `--dataset`          | Dataset name                          | `mnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
+| `--out_dataset`      | Outlier dataset name                  | `fashionmnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
 | `--batch_size`       | Batch size                            | `128`   |                                                      |
 | `--n_epochs`         | Number of epochs                      | `100`   |                                                      |
 | `--lr`               | Learning rate                         | `0.0002`|                                                      |
@@ -28,6 +28,8 @@ Glow is a simple type of generative flow using an invertible 1x1 convolution. Al
 | `--sample_and_save_freq` | Sample and save frequency         | `5`     |                                                      |
 | `--checkpoint`       | Checkpoint path                       | `None`  |                                                      |
 | `--n_bits`           | Number of bits                        | `8`     |                                                      |
+| `--max_grad_clip`    | Max Grad clip                         | `0.0`   |                                                      |
+| `--max_grad_norm`    | Max Grad Norm                         | `0.0`   |                                                      |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 
