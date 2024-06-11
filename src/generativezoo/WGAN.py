@@ -30,7 +30,7 @@ if args.train:
             name=f"WGAN_{args.dataset}")
     
     train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=size)
-    model = WGAN(batch_size = args.batch_size, latent_dim=args.latent_dim, d=args.d, lrg=args.lrg, lrd=args.lrd, beta1=args.beta1, beta2=args.beta2, gp_weight=args.gp_weight, dataset=args.dataset, n_epochs=args.n_epochs, n_critic=args.n_critic, sample_and_save_freq=args.sample_and_save_freq, imgSize=input_size, channels=channels)
+    model = WGAN(args=args, imgSize=input_size, channels=channels)
     model.train_model(train_loader)
     wandb.finish()
 

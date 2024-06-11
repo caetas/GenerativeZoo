@@ -473,12 +473,12 @@ class RealNVP(nn.Module):
         num_blocks (int): Number of residual blocks in the s and t network of
         `Coupling` layers.
     """
-    def __init__(self, num_scales=2, in_channels=3, mid_channels=64, num_blocks=8, img_size=32):
+    def __init__(self, img_size, in_channels, args):
         super(RealNVP, self).__init__()
         # Register data_constraint to pre-process images, not learnable
         self.register_buffer('data_constraint', torch.tensor([0.9], dtype=torch.float32))
 
-        self.flows = _RealNVP(0, num_scales, in_channels, mid_channels, num_blocks)
+        self.flows = _RealNVP(0, args.num_scales, in_channels, args.mid_channels, args.num_blocks)
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.flows.to(self.device)

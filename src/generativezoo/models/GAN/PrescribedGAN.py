@@ -283,64 +283,42 @@ def create_checkpoint_dir():
     os.makedirs(os.path.join(models_dir, 'PrescribedGAN'))
 
 class PresGAN(nn.Module):
-    def __init__(self, imgSize, nz, ngf, ndf, nc, device, beta1, lrD, lrG, sigma_lr, n_epochs, num_gen_images, restrict_sigma, sigma_min, sigma_max, stepsize_num, lambda_, burn_in, num_samples_posterior, leapfrog_steps, flag_adapt, hmc_learning_rate, hmc_opt_accept, dataset='cifar10', sample_and_save_freq=5):
+    def __init__(self, imgSize, channels, args):
         '''
         Prescribed GAN
         imgSize: size of the image
-        nz: size of the latent vector
-        ngf: number of filters in the generator
-        ndf: number of filters in the discriminator
-        nc: number of channels in the image
-        device: device to run the model
-        beta1: beta1 for Adam optimizer
-        lrD: learning rate for the discriminator
-        lrG: learning rate for the generator
-        sigma_lr: learning rate for the standard deviation
-        n_epochs: number of epochs to train the model
-        num_gen_images: number of images to generate
-        restrict_sigma: restrict sigma to a range
-        sigma_min: minimum value of sigma
-        sigma_max: maximum value of sigma
-        stepsize_num: step size for HMC
-        lambda_: lambda for the entropy term
-        burn_in: number of burn-in steps
-        num_samples_posterior: number of samples to generate
-        leapfrog_steps: number of leapfrog steps
-        flag_adapt: flag to adapt step size
-        hmc_learning_rate: learning rate for step size adaptation
-        hmc_opt_accept: optimal acceptance rate
-        dataset: dataset to train the model
-        sample_and_save_freq: frequency to sample and save the model
+        channels: number of channels in the image
+        args: arguments
         '''
         super(PresGAN, self).__init__()
-        self.netG = Generator(imgSize, nz, ngf, nc).to(device)
-        self.netD = Discriminator(imgSize, ndf, nc).to(device)
-        self.log_sigma = nn.Parameter(torch.zeros(1, imgSize, imgSize, requires_grad=True, device=device))
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.netG = Generator(imgSize, args.nz, args.ngf, channels).to(self.device)
+        self.netD = Discriminator(imgSize, args.ndf, channels).to(self.device)
+        self.log_sigma = nn.Parameter(torch.zeros(1, imgSize, imgSize, requires_grad=True, device=self.device))
         self.imgSize = imgSize
-        self.nz = nz
-        self.ngf = ngf
-        self.ndf = ndf
-        self.nc = nc
-        self.beta1 = beta1
-        self.lrD = lrD
-        self.lrG = lrG
-        self.sigma_lr = sigma_lr
-        self.n_epochs = n_epochs
-        self.num_gen_images = num_gen_images
-        self.device = device
-        self.restrict_sigma = restrict_sigma
-        self.sigma_min = sigma_min
-        self.sigma_max = sigma_max
-        self.stepsize_num = stepsize_num
-        self.lambda_ = lambda_
-        self.burn_in = burn_in
-        self.num_samples_posterior = num_samples_posterior
-        self.leapfrog_steps = leapfrog_steps
-        self.flag_adapt = flag_adapt
-        self.hmc_learning_rate = hmc_learning_rate
-        self.hmc_opt_accept = hmc_opt_accept
-        self.dataset = dataset
-        self.sample_and_save_freq = sample_and_save_freq
+        self.nz = args.nz
+        self.ngf = args.ngf
+        self.ndf = args.ndf
+        self.nc = channels
+        self.beta1 = args.beta1
+        self.lrD = args.lrD
+        self.lrG = args.lrG
+        self.sigma_lr = args.sigma_lr
+        self.n_epochs = args.n_epochs
+        self.num_gen_images = args.num_gen_images
+        self.restrict_sigma = args.restrict_sigma
+        self.sigma_min = args.sigma_min
+        self.sigma_max = args.sigma_max
+        self.stepsize_num = args.stepsize_num
+        self.lambda_ = args.lambda_
+        self.burn_in = args.burn_in
+        self.num_samples_posterior = args.num_samples_posterior
+        self.leapfrog_steps = args.leapfrog_steps
+        self.flag_adapt = args.flag_adapt
+        self.hmc_learning_rate = args.hmc_learning_rate
+        self.hmc_opt_accept = args.hmc_opt_accept
+        self.dataset = args.dataset
+        self.sample_and_save_freq = args.sample_and_save_freq
     
     def forward(self, input):
         '''

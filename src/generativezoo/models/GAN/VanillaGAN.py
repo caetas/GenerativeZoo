@@ -290,39 +290,30 @@ class Discriminator(nn.Module):
         return auroc, fpr95, in_array, np.mean(out_array)
     
 class VanillaGAN(nn.Module):
-    def __init__(self, n_epochs, device, latent_dim, d=128, channels=3, lrg = 0.0002, lrd = 0.0002, beta1 = 0.5, beta2 = 0.999, img_size = 32, sample_and_save_freq = 5, dataset = 'mnist'):
+    def __init__(self, args, channels=3, img_size = 32):
         '''
         Vanilla GAN model
-        :param n_epochs: number of epochs
-        :param device: device to use
-        :param latent_dim: latent dimension
-        :param d: number of channels in the first layer
-        :param channels: number of channels in the output image
-        :param lrg: learning rate for the generator
-        :param lrd: learning rate for the discriminator
-        :param beta1: beta1 for the Adam optimizer
-        :param beta2: beta2 for the Adam optimizer
-        :param img_size: size of the output image
-        :param sample_and_save_freq: frequency to sample and save images
-        :param dataset: dataset name
+        :param args: arguments
+        :param channels: number of channels in the image
+        :param img_size: size of the image
         '''
         super(VanillaGAN, self).__init__()
-        self.n_epochs = n_epochs
-        self.device = device
-        self.generator = Generator(latent_dim = latent_dim, channels=channels, imgSize=img_size, d=d).to(self.device)
-        self.discriminator = Discriminator(channels=channels, d=d, imgSize=img_size).to(self.device)
-        self.latent_dim = latent_dim
-        self.d = d
+        self.n_epochs = args.n_epochs
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.generator = Generator(latent_dim = args.latent_dim, channels=channels, imgSize=img_size, d=args.d).to(self.device)
+        self.discriminator = Discriminator(channels=channels, d=args.d, imgSize=img_size).to(self.device)
+        self.latent_dim = args.latent_dim
+        self.d = args.d
         self.channels = channels
-        self.lrg = lrg
-        self.lrd = lrd
-        self.beta1 = beta1
-        self.beta2 = beta2
+        self.lrg = args.lrg
+        self.lrd = args.lrd
+        self.beta1 = args.beta1
+        self.beta2 = args.beta2
         self.img_size = img_size
-        self.sample_and_save_freq = sample_and_save_freq
+        self.sample_and_save_freq = args.sample_and_save_freq
         self.generator.apply(weights_init_normal)
         self.discriminator.apply(weights_init_normal)
-        self.dataset = dataset
+        self.dataset = args.dataset
     
     def train_model(self, dataloader):
         '''

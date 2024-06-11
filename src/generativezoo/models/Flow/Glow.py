@@ -618,31 +618,38 @@ def create_checkpoint_dir():
 
 
 class Glow(nn.Module):
-    def __init__(self,image_shape,hidden_channels,K,L,actnorm_scale,flow_permutation,flow_coupling,LU_decomposed,learn_top,y_condition, device, n_epochs = 100, lr = 1e-4, num_classes = 10, n_bits = 8, sample_and_save_freq = 5, dataset = 'mnist'):
+    def __init__(self,image_shape,hidden_channels,args):
+        '''
+        Glow model
+        :param image_shape: tuple, shape of the input image
+        :param hidden_channels: int, number of hidden channels
+        :param args: arguments
+        '''
         super().__init__()
-        self.flow = FlowNet(image_shape=image_shape,hidden_channels=hidden_channels,K=K,L=L,actnorm_scale=actnorm_scale,flow_permutation=flow_permutation,flow_coupling=flow_coupling,LU_decomposed=LU_decomposed).to(device)
-        self.y_condition = y_condition
-        self.n_epochs = n_epochs
-        self.lr = lr
-        self.device = device
-        self.y_classes = num_classes
-        self.n_bits = n_bits
-        self.sample_and_save_freq = sample_and_save_freq
-        self.K = K
-        self.L = L
-        self.hidden_channels = hidden_channels
-        self.dataset = dataset
-        self.learn_top = learn_top
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.flow = FlowNet(image_shape=image_shape,hidden_channels=hidden_channels,K=args.K,L=args.L,actnorm_scale=args.actnorm_scale,flow_permutation=args.flow_permutation,flow_coupling=args.flow_coupling,LU_decomposed=args.LU_decomposed).to(self.device)
+        self.y_condition = args.y_condition
+        self.n_epochs = args.n_epochs
+        self.lr = args.lr
+        self.y_classes = args.num_classes
+        self.n_bits = args.n_bits
+        self.sample_and_save_freq = args.sample_and_save_freq
+        self.K = args.K
+        self.L = args.L
+        self.hidden_channels = args.hidden_channels
+        self.dataset = args.dataset
+        self.learn_top = args.learn_top
+        self.y_condition = args.y_condition
 
         # learned prior
-        if learn_top:
+        if self.learn_top:
             C = self.flow.output_shapes[-1][1]
             self.learn_top_fn = Conv2dZeros(C * 2, C * 2)
 
-        if y_condition:
+        if self.y_condition:
             C = self.flow.output_shapes[-1][1]
-            self.project_ycond = LinearZeros(num_classes, 2 * C)
-            self.project_class = LinearZeros(C, num_classes)
+            self.project_ycond = LinearZeros(args.num_classes, 2 * C)
+            self.project_class = LinearZeros(C, args.num_classes)
 
         self.register_buffer(
             "prior_h",
@@ -656,7 +663,7 @@ class Glow(nn.Module):
             ),
         )
 
-        self=self.to(device)
+        self=self.to(self.device)
 
     def prior(self, data, y_onehot=None, n=16):
         if data is not None:
@@ -728,10 +735,10 @@ class Glow(nn.Module):
 
         return x
 
-    def train_model(self,dataloader):
-        optimizer = torch.optim.Adam(self.flow.parameters(), lr=self.lr)
+    def train_model(self,dataloader, args):
+        optimizer = torch.optim.Adamax(self.parameters(), lr=self.lr)
         epoch_bar = trange(self.n_epochs, desc="Epochs")
-        self.flow.train()
+        self.train()
         create_checkpoint_dir()
         best_loss = np.inf
 
@@ -749,6 +756,11 @@ class Glow(nn.Module):
                     z, nll, y_logits = self.forward(x, None)
                     losses = compute_loss(nll)
                 losses["total_loss"].backward()
+
+                if args.max_grad_clip > 0:
+                    torch.nn.utils.clip_grad_value_(self.parameters(), args.max_grad_clip)
+                if args.max_grad_norm > 0:
+                    torch.nn.utils.clip_grad_norm_(self.parameters(), args.max_grad_norm)
                 optimizer.step()
                 total_loss += losses["total_loss"].item()
 
@@ -761,6 +773,7 @@ class Glow(nn.Module):
             if total_loss < best_loss:
                 best_loss = total_loss
                 torch.save(self.state_dict(), os.path.join(models_dir,'Glow', f"Glow_{self.dataset}_{self.K}_{self.L}_{self.hidden_channels}.pt"))
+                self.load_state_dict(torch.load(os.path.join(models_dir,'Glow', f"Glow_{self.dataset}_{self.K}_{self.L}_{self.hidden_channels}.pt")))
 
     
     def sample(self, n=16, y_onehot=None, temperature=None, train=True):
@@ -818,6 +831,11 @@ class Glow(nn.Module):
         plt.ylabel('Frequency')
         plt.show()
         return in_scores, out_scores
+    
+    def load_checkpoint(self, args):
+        if args.checkpoint is not None:
+            self.load_state_dict(torch.load(args.checkpoint))
+        self.set_actnorm_init()
 
 def compute_loss(nll, reduction="mean"):
     if reduction == "mean":

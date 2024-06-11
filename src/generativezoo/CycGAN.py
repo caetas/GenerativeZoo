@@ -28,7 +28,7 @@ if args.train:
     train_dataloader_B = get_horse2zebra_dataloader(data_raw_dir, args.dataset, args.batch_size, True, 'B', args.input_size)
     test_dataloader_A = get_horse2zebra_dataloader(data_raw_dir, args.dataset, args.batch_size, False, 'A', args.input_size)
     test_dataloader_B = get_horse2zebra_dataloader(data_raw_dir, args.dataset, args.batch_size, False, 'B', args.input_size)
-    model = CycleGAN(args.in_channels, args.out_channels, args.n_epochs, args.lr, args.decay, device, args.sample_and_save_freq, args.dataset)
+    model = CycleGAN(args.in_channels, args.out_channels, args)
     model.train_model(train_dataloader_A, train_dataloader_B, test_dataloader_A, test_dataloader_B)
 
 elif args.test:

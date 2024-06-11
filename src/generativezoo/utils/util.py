@@ -174,6 +174,7 @@ def parse_args_VanillaVAE():
     argparser.add_argument('--num_samples', type=int, default=16, help='number of samples')
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--loss_type', type=str, default='mse', help='loss type', choices=['mse', 'ssim'])
+    argparser.add_argument('--kld_weight', type=float, default=1e-4, help='kl weight')
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     return argparser.parse_args()
 
@@ -189,7 +190,9 @@ def parse_args_ConditionalVAE():
     argparser.add_argument('--hidden_dims', type=int, nargs='+', default=None, help='hidden dimensions')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--num_samples', type=int, default=16, help='number of samples')
-    argparser.add_argument('--n_classes', type=int, default=10, help='number of classes')
+    argparser.add_argument('--num_classes', type=int, default=10, help='number of classes')
+    argparser.add_argument('--kld_weight', type=float, default=1e-4, help='kl weight')
+    argparser.add_argument('--loss_type', type=str, default='mse', help='loss type', choices=['mse', 'ssim'])
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     return argparser.parse_args()
 
@@ -198,7 +201,7 @@ def parse_args_AdversarialVAE():
     argparser.add_argument('--train', action='store_true', default=False, help='train model')
     argparser.add_argument('--test', action='store_true', default=False, help='test model')
     argparser.add_argument('--sample', action='store_true', default=False, help='sample model')
-    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet'])
+    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet', 'imagenet'])
     argparser.add_argument('--batch_size', type=int, default=128, help='batch size')
     argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
     argparser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
@@ -212,6 +215,8 @@ def parse_args_AdversarialVAE():
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--discriminator_checkpoint', type=str, default=None, help='discriminator checkpoint path')
     argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet'])
+    argparser.add_argument('--kld_weight', type=float, default=1e-4, help='kl weight')
+    argparser.add_argument('--loss_type', type=str, default='mse', help='loss type', choices=['mse', 'ssim'])
     return argparser.parse_args()
 
 def parse_args_VanillaSGM():
@@ -257,7 +262,7 @@ def parse_args_DDPM():
     argparser.add_argument('--convnext_scale_factor', type=int, default = 2, help='convnext scale factor (default: 2)')
     argparser.add_argument('--beta_start', type=float, default=0.0001, help='beta start')
     argparser.add_argument('--beta_end', type=float, default=0.02, help='beta end')
-    argparser.add_argument('--sample_and_save_freq', type=int, default=10, help='sample and save frequency')
+    argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet'])
     argparser.add_argument('--ddpm', type=float, default=1.0, help='ddim sampling is 0.0, pure ddpm is 1.0')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
@@ -468,6 +473,8 @@ def parse_args_Glow():
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--n_bits', type=int, default=8, help='number of bits')
+    argparser.add_argument('--max_grad_clip', type=float, default=0.0, help='max grad clip')
+    argparser.add_argument('--max_grad_norm', type=float, default=0.0, help='max grad norm')
     return argparser.parse_args()
 
 def parse_args_NCSNv2():

@@ -12,7 +12,7 @@ size = None
 
 if args.train:
      dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize, size=size)
-     model = VanillaDDPM(device, args, n_features=args.n_features, init_channels=args.init_channels, channel_scale_factors=args.channel_scale_factors, in_channels=channels, image_size=input_size)
+     model = VanillaDDPM(args, channels=channels, image_size=input_size)
      
      wandb.init(project='DDPM',
                 
@@ -40,13 +40,13 @@ if args.train:
 
 elif args.sample:
      _, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize, size=size)
-     model = VanillaDDPM(device, args, n_features=args.n_features, init_channels=args.init_channels, channel_scale_factors=args.channel_scale_factors, in_channels=channels, image_size=input_size)
+     model = VanillaDDPM(args, channels=channels, image_size=input_size)
      model.denoising_model.load_state_dict(torch.load(args.checkpoint))
-     model.sample(args.n_samples)
+     model.sample(args.num_samples)
 
 elif args.outlier_detection:
      dataloader_a, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize, size=size)
-     model = VanillaDDPM(device, args, n_features=args.n_features, init_channels=args.init_channels, channel_scale_factors=args.channel_scale_factors, in_channels=channels, image_size=input_size)
+     model = VanillaDDPM(args, channels=channels, image_size=input_size)
      model.denoising_model.load_state_dict(torch.load(args.checkpoint))
      dataloader_b, input_size_b, channels_b = pick_dataset(args.out_dataset, 'val', args.batch_size, normalize=normalize, good = False, size=input_size)
      model.outlier_detection(dataloader_a,dataloader_b, args.dataset, args.out_dataset)

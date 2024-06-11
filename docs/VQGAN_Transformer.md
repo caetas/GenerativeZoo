@@ -8,7 +8,7 @@ The Vector Quantised-Generative Adversarial Network (VQ-GAN) is composed of an V
 |-----------------------------|--------------------------------------------------|------------|--------------------------------------------------------------|
 | `--train`                   | Train model                                      | `False`    |                                                              |
 | `--sample`                  | Sample model                                     | `False`    |                                                              |
-| `--dataset`                 | Dataset name                                     | `'mnist'`  | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'` |
+| `--dataset`                 | Dataset name                                     | `'mnist'`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
 | `--batch_size`              | Batch size                                       | `128`      |                                                              |
 | `--n_epochs`                | Number of epochs for VQGAN                       | `100`      |                                                              |
 | `--lr`                      | Learning rate VQGAN                              | `0.0002`   |                                                              |

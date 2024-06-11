@@ -8,7 +8,7 @@ PresGANs add noise to the output of a density network and optimize an entropy-re
 |---------------------------|----------------------------------------------------|----------|----------------------------------------------------------------------------------------------------------|
 | `--train`                 | Train model                                        | `False`  |                                                                                                          |
 | `--sample`                | Sample from model                                  | `False`  |                                                                                                          |
-| `--dataset`               | Dataset name                                       | `mnist`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `xray`, `tinyimagenet` |
+| `--dataset`               | Dataset name                                       | `mnist`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
 | `--nz`                    | Size of the latent z vector                        | `100`    |                                                                                                          |
 | `--ngf`                   |                                                    | `64`     |                                                                                                          |
 | `--ndf`                   |                                                    | `64`     |                                                                                                          |
@@ -38,7 +38,7 @@ PresGANs add noise to the output of a density network and optimize an entropy-re
 | `--restrict_sigma`        | Whether to restrict sigma or not                  | `0`      |                                                                                                          |
 | `--sample_and_save_freq`  | Sample and save frequency                         | `5`      |                                                                                                          |
 | `--outlier_detection`     | Outlier detection                                  | `False`  |                                                                                                          |
-| `--out_dataset`           | Outlier dataset name                              | `fashionmnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `xray`, `tinyimagenet`, `places365`, `dtd`, `cifar100` |
+| `--out_dataset`           | Outlier dataset name                              | `fashionmnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

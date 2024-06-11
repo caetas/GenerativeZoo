@@ -351,48 +351,35 @@ def ode_sampler(score_model,
   return x
 
 class VanillaSGM(nn.Module):
-  def __init__(self, device, sigma = 25.0, n_epochs = 50, lr = 1e-4, model_channels=[32, 64, 128, 256], embed_dim=256, in_channels=1, input_size=28, dataset='mnist', sample_and_save_freq=10, num_steps = 1000, snr = 0.16, sampler_type = 'PC', atol = 1e-6, rtol = 1e-6, eps = 1e-3):
+  def __init__(self, args, in_channels=1, input_size=28):
     '''
     Vanilla SGM model
     Args:
-      device: A PyTorch device object.
-      sigma: The $\sigma$ in our SDE.
-      n_epochs: The number of training epochs.
-      lr: The learning rate.
-      model_channels: The number of channels for feature maps of each resolution.
-      embed_dim: The dimensionality of Gaussian random feature embeddings.
+      args: The arguments for the model
       in_channels: The number of input channels.
       input_size: The size of the input image.
-      dataset: The dataset to be used for training
-      sample_and_save_freq: The frequency at which to sample and save the model
-      num_steps: The number of sampling steps.
-      snr: The signal-to-noise ratio for the PC sampler.
-      sampler_type: The type of sampler. One of 'EM', 'PC', and 'ODE'.
-      atol: Tolerance of absolute errors for the ODE sampler.
-      rtol: Tolerance of relative errors for the ODE sampler.
-      eps: The smallest time step for numerical stability.
     '''
     super(VanillaSGM, self).__init__()
-    self.device = device
-    self.sigma = sigma
-    self.n_epochs = n_epochs
-    self.lr = lr
-    self.model_channels = model_channels
-    self.embed_dim = embed_dim
+    self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    self.sigma = args.sigma
+    self.n_epochs = args.n_epochs
+    self.lr = args.lr
+    self.model_channels = args.model_channels
+    self.embed_dim = args.embed_dim
     self.in_channels = in_channels
     self.input_size = input_size
-    self.marginal_prob_std_fn = functools.partial(marginal_prob_std, sigma=sigma, device=device)
-    self.diffusion_coeff_fn = functools.partial(diffusion_coeff, sigma=sigma, device=device)
+    self.marginal_prob_std_fn = functools.partial(marginal_prob_std, sigma=args.sigma, device=self.device)
+    self.diffusion_coeff_fn = functools.partial(diffusion_coeff, sigma=args.sigma, device=self.device)
     self.model = ScoreNet(self.marginal_prob_std_fn, self.model_channels, self.embed_dim, in_channels=in_channels, input_size=input_size).to(self.device)
-    self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
-    self.dataset = dataset
-    self.sample_and_save_freq = sample_and_save_freq
-    self.num_steps = num_steps
-    self.snr = snr
-    self.sampler_type = sampler_type
-    self.atol = atol
-    self.rtol = rtol
-    self.eps = eps
+    self.optimizer = torch.optim.Adam(self.model.parameters(), lr=args.lr)
+    self.dataset = args.dataset
+    self.sample_and_save_freq = args.sample_and_save_freq
+    self.num_steps = args.num_steps
+    self.snr = args.snr
+    self.sampler_type = args.sampler_type
+    self.atol = args.atol
+    self.rtol = args.rtol
+    self.eps = args.eps
 
   def train_model(self, dataloader):
     '''

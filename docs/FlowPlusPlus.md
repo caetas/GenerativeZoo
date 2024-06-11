@@ -9,8 +9,8 @@ Flow++ is a generative model that aims to learn the underlying probability distr
 | `--train`                 | Train model                              | `False`         |                                                                                          |
 | `--sample`                | Sample from model                        | `False`         |                                                                                          |
 | `--outlier_detection`     | Outlier detection                        | `False`         |                                                                                          |
-| `--dataset`               | Dataset name                             | `'mnist'`       | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'tinyimagenet'`  |
-| `--out_dataset`           | Outlier dataset name                     | `'fashionmnist'`| `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'tinyimagenet'`  |
+| `--dataset`               | Dataset name                             | `'mnist'`       | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`  |
+| `--out_dataset`           | Outlier dataset name                     | `'fashionmnist'`| `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`  |
 | `--batch_size`            | Batch size                               | `8`             |                                                                                          |
 | `--n_epochs`              | Number of epochs                         | `100`           |                                                                                          |
 | `--lr`                    | Learning rate                            | `1e-3`          |                                                                                          |

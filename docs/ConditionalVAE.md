@@ -8,7 +8,7 @@ The Conditional Variational Autoencoder (Conditional VAE) is an extension of the
 |-----------------|---------------------------------------|---------|----------------------------------------------------|
 | `--train`       | Train model                           | `False` |                                                    |
 | `--sample`      | Sample model                          | `False` |                                                    |
-| `--dataset`     | Dataset name                          | `'mnist'` | `'mnist'`, `'cifar10'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`|
+| `--dataset`     | Dataset name                          | `'mnist'` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`|
 | `--batch_size`  | Batch size                            | `128`   |                                                    |
 | `--n_epochs`    | Number of epochs                      | `100`   |                                                    |
 | `--lr`          | Learning rate                         | `0.0002`|                                                    |
@@ -18,7 +18,8 @@ The Conditional Variational Autoencoder (Conditional VAE) is an extension of the
 | `--num_samples` | Number of samples                     | `16`    |                                                    |
 | `--n_classes`   | Number of classes on dataset          | `10`    |                                                    |
 | `--sample_and_save_frequency`| sample and save frequency | `5`    |                                                    |
-| `--loss_type`   | Type of loss for training             | `'mse'` | `'mse'`, `'ssim'`                                  |
+| `--loss_type`             | Type of loss to evaluate reconstruction            | `mse`    |  `mse`, `ssim`             |
+| `--kld_weight`            | KL-Divergence weight                               | `1e-4`   |                            |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

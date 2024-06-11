@@ -24,20 +24,20 @@ if args.train:
                 },
                 name = 'VanillaSGM_{}'.format(args.dataset))
     dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize, size=size)
-    model = VanillaSGM(device, args.sigma, args.n_epochs, args.lr, args.model_channels, args.embed_dim, channels, input_size, args.dataset, args.sample_and_save_freq, args.sample_timesteps, args.snr, args.sampler_type, args.atol, args.rtol, args.eps)
+    model = VanillaSGM(args, channels, input_size)
     model.train_model(dataloader)
     wandb.finish()
 
 elif args.sample:
     _, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize, size=size)
-    model = VanillaSGM(device, args.sigma, args.n_epochs, args.lr, args.model_channels, args.embed_dim, channels, input_size, args.dataset, args.sample_and_save_freq, args.sample_timesteps, args.snr, args.sampler_type, args.atol, args.rtol, args.eps)
+    model = VanillaSGM(args, channels, input_size)
     model.model.load_state_dict(torch.load(args.checkpoint))
     model.sample(args.num_samples)
 
 elif args.outlier_detection:
     dataloader_a, input_size_a, channels_a = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize, size=size)
     dataloader_b, input_size_b, channels_b = pick_dataset(args.out_dataset, 'val', args.batch_size, normalize=normalize, size=input_size_a)
-    model = VanillaSGM(device, args.sigma, args.n_epochs, args.lr, args.model_channels, args.embed_dim, channels_a, input_size_a, args.dataset, args.sample_and_save_freq, args.sample_timesteps, args.snr, args.sampler_type, args.atol, args.rtol, args.eps)
+    model = VanillaSGM(args, channels_a, input_size_a)
     model.model.load_state_dict(torch.load(args.checkpoint))
     model.outlier_detection(dataloader_a, dataloader_b)
 

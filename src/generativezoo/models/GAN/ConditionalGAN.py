@@ -124,39 +124,30 @@ class Discriminator(nn.Module):
         return x
 
 class ConditionalGAN(nn.Module):
-    def __init__(self, n_epochs, device, latent_dim, d, channels, lr, beta1, beta2, img_size, sample_and_save_freq, n_classes, dataset = 'mnist'):
+    def __init__(self,channels, img_size, args):
         '''
         Conditional GAN model
-        :param n_epochs: number of epochs to train the model
-        :param device: device to run the model on
-        :param latent_dim: latent dimension
-        :param d: number of channels in the first layer
         :param channels: number of channels in the input image
-        :param lr: learning rate
-        :param beta1: beta1 parameter for Adam optimizer
-        :param beta2: beta2 parameter for Adam optimizer
         :param img_size: size of the input image
-        :param sample_and_save_freq: frequency to sample and save the images
-        :param n_classes: number of classes
-        :param dataset: dataset to train the model on
+        :param args: arguments
         '''
         super(ConditionalGAN, self).__init__()
-        self.n_epochs = n_epochs
-        self.device = device
-        self.latent_dim = latent_dim
-        self.d = d
-        self.n_classes = n_classes
+        self.n_epochs = args.n_epochs
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.latent_dim = args.latent_dim
+        self.d = args.d
+        self.n_classes = args.n_classes
         self.channels = channels
-        self.lr = lr
-        self.beta1 = beta1
-        self.beta2 = beta2
+        self.lr = args.lr
+        self.beta1 = args.beta1
+        self.beta2 = args.beta2
         self.img_size = img_size
-        self.sample_and_save_freq = sample_and_save_freq
-        self.generator = Generator(n_classes=self.n_classes, d=self.d, latent_dim = latent_dim, channels=channels).to(device)
-        self.discriminator = Discriminator(n_classes=self.n_classes, d = self.d, channels=channels).to(device)
+        self.sample_and_save_freq = args.sample_and_save_freq
+        self.generator = Generator(n_classes=self.n_classes, d=self.d, latent_dim = self.latent_dim, channels=channels).to(self.device)
+        self.discriminator = Discriminator(n_classes=self.n_classes, d = self.d, channels=channels).to(self.device)
         self.generator.apply(weights_init_normal)
         self.discriminator.apply(weights_init_normal)
-        self.dataset = dataset
+        self.dataset = args.dataset
 
     def train_model(self, dataloader):
         '''

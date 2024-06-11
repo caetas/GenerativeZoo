@@ -320,51 +320,39 @@ def ddpm_schedules(beta1, beta2, T):
     }
 
 class ConditionalDDPM(nn.Module):
-    def __init__(self, in_channels, n_feat, n_classes, input_size, betas, n_T, n_Tau, device, lr, n_epochs, sample_and_save_freq, drop_prob=0.1, ddpm = 1.0, dataset = 'mnist', ws_test = [0.0, 0.5, 2.0]):
+    def __init__(self, in_channels, input_size, args, ws_test = [0.0, 0.5, 2.0]):
         '''Conditional DDPM
         Args:
         in_channels: int, number of input channels
-        n_feat: int, number of features in the model
-        n_classes: int, number of classes in the dataset
         input_size: int, size of the input image
-        betas: tuple, beta_start and beta_end
-        n_T: int, number of timesteps
-        n_Tau: int, number of timesteps to sample
-        device: str, device to run the model on
-        lr: float, learning rate
-        n_epochs: int, number of epochs to train
-        sample_and_save_freq: int, frequency of sampling and saving images
-        drop_prob: float, dropout probability
-        ddpm: float, strength of DDPM (1.0 is DDPM, 0.0 is DDIM)
-        dataset: str, name of the dataset
-        ws_test: list, strength of generative guidance
+        args: argparse.ArgumentParser, arguments containing model hyperparameters
         '''
         super(ConditionalDDPM, self).__init__()
 
-        self.denoising_model = ContextUnet(in_channels=in_channels, n_feat = n_feat, n_classes=n_classes, input_size=input_size).to(device)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.denoising_model = ContextUnet(in_channels=in_channels, n_feat = args.n_features, n_classes=args.n_classes, input_size=input_size).to(self.device)
         # register_buffer allows accessing dictionary produced by ddpm_schedules
         # e.g. can access self.sqrtab later
-        for k, v in ddpm_schedules(betas[0], betas[1], n_T).items():
+        for k, v in ddpm_schedules(args.beta_start, args.beta_end, args.timesteps).items():
             self.register_buffer(k, v)
-        self.sqrtab = self.sqrtab.to(device)
-        self.sqrtmab = self.sqrtmab.to(device)
-        self.n_T = n_T
-        self.n_Tau = n_Tau
-        self.scaling = n_T//n_Tau
-        self.device = device
-        self.drop_prob = drop_prob
+        self.sqrtab = self.sqrtab.to(self.device)
+        self.sqrtmab = self.sqrtmab.to(self.device)
+        self.n_T = args.timesteps
+        self.n_Tau = args.sample_timesteps
+        self.scaling = args.timesteps//args.sample_timesteps
+        self.drop_prob = args.drop_prob
         self.loss_mse = nn.MSELoss()
-        self.beta_start = betas[0]
-        self.beta_end = betas[1]
-        self.lr = lr
-        self.n_epochs = n_epochs
+        self.beta_start = args.beta_start
+        self.beta_end = args.beta_end
+        self.lr = args.lr
+        self.n_epochs = args.n_epochs
         self.optim = torch.optim.Adam(self.denoising_model.parameters(), lr=self.lr)
-        self.ddpm = ddpm
-        self.n_classes = n_classes
+        self.ddpm = args.ddpm
+        self.n_classes = args.n_classes
         self.in_channels = in_channels
         self.input_size = input_size
-        self.dataset = dataset
-        self.sample_and_save_freq = sample_and_save_freq
+        self.dataset = args.dataset
+        self.sample_and_save_freq = args.sample_and_save_freq
         self.ws_test = ws_test
 
     def forward(self, x, c):
@@ -424,7 +412,7 @@ class ConditionalDDPM(nn.Module):
 
         x_i_store = [] # keep track of generated steps in case want to plot something 
 
-        for j in trange(self.n_Tau, 0, -1, desc="Sampling Timestep"):
+        for j in trange(self.n_Tau, 0, -1, desc="Sampling Timestep", leave=False):
             i = j*self.scaling
             t_is = torch.tensor([i / self.n_T]).to(self.device)
             t_is = t_is.repeat(n_sample,1,1,1)

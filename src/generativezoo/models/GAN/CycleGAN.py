@@ -166,7 +166,7 @@ class LambdaLR():
         return 1.0 - max(0, epoch + self.offset - self.decay_start_epoch)/(self.n_epochs - self.decay_start_epoch)
 
 class CycleGAN(nn.Module):
-    def __init__(self, in_channels, out_channels, n_epochs, lr, decay, device, sample_and_save_freq=5, name='horse2zebra'):
+    def __init__(self, in_channels, out_channels, args):
         '''
         CycleGAN model
         :param in_channels: number of input channels
@@ -181,12 +181,12 @@ class CycleGAN(nn.Module):
         super(CycleGAN, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.n_epochs = n_epochs
-        self.lr = lr
-        self.decay = decay
-        self.device = device
-        self.sample_and_save_freq = sample_and_save_freq
-        self.name = name
+        self.n_epochs = args.n_epochs
+        self.lr = args.lr
+        self.decay = args.decay
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.sample_and_save_freq = args.sample_and_save_freq
+        self.name = args.dataset
         self.G_AB = Generator(in_channels, out_channels).to(self.device)
         self.G_BA = Generator(out_channels, in_channels).to(self.device)
         self.D_A = Discriminator(in_channels).to(self.device)
