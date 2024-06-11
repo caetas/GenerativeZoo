@@ -193,50 +193,39 @@ def create_checkpoint_dir():
         os.makedirs(os.path.join(models_dir, 'WassersteinGAN'))
 
 class WGAN(nn.Module):
-    def __init__(self, latent_dim, d=64, channels=3, imgSize=32, batch_size=64, n_epochs = 100, gp_weight=10, n_critic=5, dataset='cifar10', sample_and_save_freq = 5, lrd=0.0002, lrg=0.0002, beta1=0.5, beta2=0.999):
+    def __init__(self, args, channels=3, imgSize=32):
         '''
         Wasserstein GAN with Gradient Penalty
         Args:
-            latent_dim: int, size of the latent dimension
-            d: int, number of filters in the final layer
+            args: Namespace, arguments for the model
             channels: int, number of channels in the image
             imgSize: int, size of the image
-            batch_size: int, batch size
-            n_epochs: int, number of epochs
-            gp_weight: int, weight of the gradient penalty
-            n_critic: int, number of critic iterations
-            dataset: str, dataset name
-            sample_and_save_freq: int, frequency of sampling and saving the model
-            lrd: float, learning rate for the discriminator
-            lrg: float, learning rate for the generator
-            beta1: float, beta1 for Adam optimizer
-            beta2: float, beta2 for Adam optimizer
         '''
         super(WGAN, self).__init__()
-        self.latent_dim = latent_dim
-        self.G = Generator(latent_dim, d, channels, imgSize)
-        self.D = Discriminator(d, channels, imgSize)
+        self.latent_dim = args.latent_dim
+        self.G = Generator(args.latent_dim, args.d, channels, imgSize)
+        self.D = Discriminator(args.d, channels, imgSize)
         self.G.apply(weights_init_normal)
         self.D.apply(weights_init_normal)
-        self.optimizer_G = torch.optim.Adam(self.G.parameters(), lr=lrg, betas=(beta1, beta2))
-        self.optimizer_D = torch.optim.Adam(self.D.parameters(), lr=lrd, betas=(beta1, beta2))
+        self.optimizer_G = torch.optim.Adam(self.G.parameters(), lr=args.lrg, betas=(args.beta1, args.beta2))
+        self.optimizer_D = torch.optim.Adam(self.D.parameters(), lr=args.lrd, betas=(args.beta1, args.beta2))
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.G.to(self.device)
         self.D.to(self.device)
-        self.batch_size = batch_size
+        self.batch_size = args.batch_size
         self.imgSize = imgSize
         self.channels = channels
-        self.d = d
+        self.d = args.d
         self.num_steps = 0
-        self.gp_weight = gp_weight
-        self.critic_iterations = n_critic
-        self.dataset = dataset
-        self.sample_and_save_freq = sample_and_save_freq
-        self.n_epochs = n_epochs
-        self.lrd = lrd
-        self.lrg = lrg
-        self.beta1 = beta1
-        self.beta2 = beta2
+        self.gp_weight = args.gp_weight
+        self.critic_iterations = args.n_critic
+        self.dataset = args.dataset
+        self.sample_and_save_freq = args.sample_and_save_freq
+        self.n_epochs = args.n_epochs
+        self.lrd = args.lrd
+        self.lrg = args.lrg
+        self.beta1 = args.beta1
+        self.beta2 = args.beta2
 
     def _gradient_penalty(self, real, fake):
         '''
