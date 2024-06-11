@@ -259,7 +259,7 @@ def parse_args_DDPM():
     argparser.add_argument('--convnext_scale_factor', type=int, default = 2, help='convnext scale factor (default: 2)')
     argparser.add_argument('--beta_start', type=float, default=0.0001, help='beta start')
     argparser.add_argument('--beta_end', type=float, default=0.02, help='beta end')
-    argparser.add_argument('--sample_and_save_freq', type=int, default=10, help='sample and save frequency')
+    argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet'])
     argparser.add_argument('--ddpm', type=float, default=1.0, help='ddim sampling is 0.0, pure ddpm is 1.0')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')

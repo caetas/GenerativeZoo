@@ -30,12 +30,12 @@ if args.train:
                 },
 
                 name = 'CDDPM_{}'.format(args.dataset))
-    model = ConditionalDDPM(in_channels=channels, n_feat=args.n_features, n_classes=args.n_classes, n_T=args.timesteps, drop_prob=args.drop_prob, device=device, input_size=input_size, betas=(args.beta_start, args.beta_end), n_epochs=args.n_epochs, lr=args.lr, ddpm=args.ddpm, ws_test=args.ws_test, dataset=args.dataset, n_Tau=args.sample_timesteps, sample_and_save_freq=args.sample_and_save_freq)
+    model = ConditionalDDPM(in_channels=channels, input_size=input_size, args=args)
     model.train_model(train_dataloader)
 
 elif args.sample:
     _, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize, size=size)
-    model = ConditionalDDPM(in_channels=channels, n_feat=args.n_features, n_classes=args.n_classes, n_T=args.timesteps, drop_prob=args.drop_prob, device=device, input_size=input_size, betas=(args.beta_start, args.beta_end), n_epochs=args.n_epochs, lr=args.lr, ddpm=args.ddpm, ws_test=args.ws_test, dataset=args.dataset, n_Tau=args.sample_timesteps, sample_and_save_freq=args.sample_and_save_freq)
+    model = ConditionalDDPM(in_channels=channels, input_size=input_size, args=args)
     model.denoising_model.load_state_dict(torch.load(args.checkpoint))
     model.sample(guide_w=args.guide_w)
 

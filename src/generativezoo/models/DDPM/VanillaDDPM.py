@@ -411,21 +411,13 @@ def plot_samples(samples):
     plt.show()
 
 class VanillaDDPM(nn.Module):
-    def __init__(self, device, args, n_features, image_size, init_channels=None, out_channels=None, channel_scale_factors=(1, 2, 4, 8), in_channels=3, with_time_emb=True, resnet_block_groups=8, use_convnext=True, convnext_scale_factor=2):
+    def __init__(self, args, image_size, channels, with_time_emb=True):
         '''
         VanillaDDPM module
-        :param device: device to run the model on
         :param args: arguments
-        :param n_features: number of features
         :param image_size: size of the image
-        :param init_channels: number of initial channels
-        :param out_channels: number of output channels
-        :param channel_scale_factors: scaling factors for the number of channels
         :param in_channels: number of input channels
         :param with_time_emb: whether to use time embeddings
-        :param resnet_block_groups: number of groups for group normalization in the ResNet block
-        :param use_convnext: whether to use ConvNext block
-        :param convnext_scale_factor: scaling factor for the number of channels in the ConvNext block
         '''
         super().__init__()
         self.reverse_transform = Compose([
@@ -435,8 +427,8 @@ class VanillaDDPM(nn.Module):
                                         Lambda(lambda t: t.numpy().astype(np.uint8)),
                                         ToPILImage(),
                                     ])
-        self.device = device
-        self.denoising_model = UNet(n_features, init_channels, out_channels, channel_scale_factors, in_channels, with_time_emb, resnet_block_groups, use_convnext, convnext_scale_factor).to(self.device)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.denoising_model = UNet(args.n_features, args.init_channels, channels, args.channel_scale_factors, channels, with_time_emb, args.resnet_block_groups, args.use_convnext, args.convnext_scale_factor).to(self.device)
         self.scheduler = LinearScheduler(args.beta_start, args.beta_end, args.timesteps)
         self.forward_diffusion_model = ForwardDiffusion(self.scheduler.sqrt_alphas_cumprod, self.scheduler.sqrt_one_minus_alphas_cumprod, self.reverse_transform)
         self.sampler = Sampler(self.scheduler.betas, args.timesteps, args.sample_timesteps, args.ddpm)
@@ -447,7 +439,7 @@ class VanillaDDPM(nn.Module):
         self.sample_and_save_freq = args.sample_and_save_freq
         self.loss_type = args.loss_type
         self.image_size = image_size
-        self.num_channels = in_channels
+        self.num_channels = channels
         self.dataset = args.dataset
 
 
@@ -458,10 +450,10 @@ class VanillaDDPM(nn.Module):
         '''
         best_loss = np.inf
         create_checkpoint_dir()
-        for epoch in range(self.n_epochs):
+        for epoch in tqdm(range(self.n_epochs), desc='Training DDPM', leave=True):
             acc_loss = 0.0
-            with tqdm(dataloader, desc=f'Training DDPM') as pbar:
-                for step, batch in enumerate(dataloader):
+            with tqdm(dataloader, desc=f'Batches', leave=False) as pbar:
+                for step,batch in enumerate(dataloader):
                     self.optimizer.zero_grad()
                     batch_size = batch[0].shape[0]
                     batch = batch[0].to(self.device)
@@ -476,7 +468,7 @@ class VanillaDDPM(nn.Module):
 
                     # save generated images
                 if epoch % self.sample_and_save_freq == 0:
-                    samples = self.sampler.sample(model=self.denoising_model, image_size=self.image_size, batch_size=1, channels=self.num_channels)
+                    samples = self.sampler.sample(model=self.denoising_model, image_size=self.image_size, batch_size=16, channels=self.num_channels)
                     all_images = samples[-1] 
                     all_images = (all_images + 1) * 0.5
                     # all_images is a numpy array, plot 9 images from it

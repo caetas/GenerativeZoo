@@ -24,17 +24,14 @@ def create_checkpoint_dir():
     os.makedirs(os.path.join(models_dir, 'DiffusionAE'))
 
 class DiffAE(nn.Module):
-    def __init__(self, embedding_dimension = 64, num_train_timesteps = 1000, inference_timesteps = 100, lr = 1e-5, n_epochs = 50, in_channels = 3, model_channels = (64,128,256), attention_levels = (False, True, True), num_res_blocks = 1, sample_and_save_freq = 50, dataset = 'mnist'):
+    def __init__(self, args, in_channels = 3):
         '''Diffusion Autoencoder model
         Args:
-            embedding_dimension (int): the dimension of the latent space
-            num_train_timesteps (int): the number of timesteps to train the diffusion model
-            inference_timesteps (int): the number of timesteps to use for inference
-            lr (float): the learning rate for the optimizer
-            n_epochs (int): the number of epochs to train the model
+            args (argparse.ArgumentParser): the arguments to configure the model
+            in_channels (int): the number of input channels
         '''
         super(DiffAE, self).__init__()
-        self.embedding_dimension = embedding_dimension
+        self.embedding_dimension = args.embedding_dimension
         self.encoder = torchvision.models.resnet18()
         self.encoder.fc = nn.Linear(512, self.embedding_dimension)
         if in_channels == 1:
@@ -43,9 +40,9 @@ class DiffAE(nn.Module):
                     spatial_dims=2,
                     in_channels=in_channels,
                     out_channels=in_channels,
-                    num_channels=model_channels,
-                    attention_levels=attention_levels,
-                    num_res_blocks=num_res_blocks,
+                    num_channels=args.model_channels,
+                    attention_levels=args.attention_levels,
+                    num_res_blocks=args.num_res_blocks,
                     num_head_channels=64,
                     with_conditioning=True,
                     cross_attention_dim=1,
@@ -53,13 +50,13 @@ class DiffAE(nn.Module):
         self.torch_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.encoder.to(self.torch_device)
         self.unet.to(self.torch_device)
-        self.scheduler = DDIMScheduler(num_train_timesteps = num_train_timesteps)
+        self.scheduler = DDIMScheduler(num_train_timesteps = args.num_train_timesteps)
         self.inferer = DiffusionInferer(self.scheduler)
-        self.inference_timesteps = inference_timesteps
-        self.lr = lr
-        self.n_epochs = n_epochs
-        self.sample_and_save_freq = sample_and_save_freq
-        self.dataset = dataset
+        self.inference_timesteps = args.inference_timesteps
+        self.lr = args.lr
+        self.n_epochs = args.n_epochs
+        self.sample_and_save_freq = args.sample_and_save_freq
+        self.dataset = args.dataset
 
     def forward(self, xt, x_cond, t):
         '''Forward pass of the model
