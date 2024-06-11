@@ -245,38 +245,28 @@ class Discriminator(nn.Module):
         return loss(x, y)
     
 class AdversarialVAE(nn.Module):
-    def __init__(self, input_shape, device, input_channels, latent_dim, n_epochs, hidden_dims = None, lr = 5e-3, batch_size = 64, gen_weight = 0.0005, recon_weight = 0.001, sample_and_save_frequency = 10, dataset = 'mnist', loss_type = 'mse', kld_weight = 1e-4):
+    def __init__(self, input_shape, input_channels, args):
         '''
         Adversarial VAE model
         Args:
         input_shape: Tuple with the input shape of the images
         device: Device to use for the model
         input_channels: Number of channels of the input images
-        latent_dim: Dimension of the latent space
-        n_epochs: Number of epochs to train the model
-        hidden_dims: List with the number of channels of the hidden layers of the VAE
-        lr: Learning rate for the optimizers
-        batch_size: Batch size for the training
-        gen_weight: Weight for the generator loss
-        recon_weight: Weight for the reconstruction loss
-        sample_and_save_frequency: Frequency to sample and save the images
-        dataset: Name of the dataset
-        loss_type: Type of loss to use for the VAE. It can be 'mse' or 'bce'
-        kld_weight: Weight for the KLD loss
+        args: Namespace with the arguments for the model
         '''
         super(AdversarialVAE, self).__init__()
-        self.device = device
-        self.vae = VanillaVAE(input_shape, input_channels, latent_dim, hidden_dims.copy(), lr, batch_size, kld_weight, loss_type).to(self.device)
-        self.discriminator = Discriminator(input_shape, input_channels, hidden_dims, lr, batch_size).to(self.device)
-        self.lr = lr
-        self.batch_size = batch_size
-        self.gen_weight = gen_weight
-        self.recon_weight = recon_weight
-        self.n_epochs = n_epochs
-        self.sample_and_save_frequency = sample_and_save_frequency
-        self.dataset = dataset
-        self.loss_type = loss_type
-        self.kld_weight = kld_weight
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.vae = VanillaVAE(input_shape, input_channels, args.latent_dim, args.hidden_dims.copy(), args.lr, args.batch_size, args.kld_weight, args.loss_type).to(self.device)
+        self.discriminator = Discriminator(input_shape, input_channels, args.hidden_dims, args.lr, args.batch_size).to(self.device)
+        self.lr = args.lr
+        self.batch_size = args.batch_size
+        self.gen_weight = args.gen_weight
+        self.recon_weight = args.recon_weight
+        self.n_epochs = args.n_epochs
+        self.sample_and_save_frequency = args.sample_and_save_frequency
+        self.dataset = args.dataset
+        self.loss_type = args.loss_type
+        self.kld_weight = args.kld_weight
 
     def forward(self, x):
         '''

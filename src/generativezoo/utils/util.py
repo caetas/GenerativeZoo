@@ -212,6 +212,8 @@ def parse_args_AdversarialVAE():
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--discriminator_checkpoint', type=str, default=None, help='discriminator checkpoint path')
     argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet'])
+    argparser.add_argument('--kld_weight', type=float, default=1e-4, help='kl weight')
+    argparser.add_argument('--loss_type', type=str, default='mse', help='loss type', choices=['mse', 'ssim'])
     return argparser.parse_args()
 
 def parse_args_VanillaSGM():
@@ -468,6 +470,8 @@ def parse_args_Glow():
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--n_bits', type=int, default=8, help='number of bits')
+    argparser.add_argument('--max_grad_clip', type=float, default=0.0, help='max grad clip')
+    argparser.add_argument('--max_grad_norm', type=float, default=0.0, help='max grad norm')
     return argparser.parse_args()
 
 def parse_args_NCSNv2():
