@@ -174,6 +174,7 @@ def parse_args_VanillaVAE():
     argparser.add_argument('--num_samples', type=int, default=16, help='number of samples')
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--loss_type', type=str, default='mse', help='loss type', choices=['mse', 'ssim'])
+    argparser.add_argument('--kld_weight', type=float, default=1e-4, help='kl weight')
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     return argparser.parse_args()
 
@@ -189,7 +190,9 @@ def parse_args_ConditionalVAE():
     argparser.add_argument('--hidden_dims', type=int, nargs='+', default=None, help='hidden dimensions')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--num_samples', type=int, default=16, help='number of samples')
-    argparser.add_argument('--n_classes', type=int, default=10, help='number of classes')
+    argparser.add_argument('--num_classes', type=int, default=10, help='number of classes')
+    argparser.add_argument('--kld_weight', type=float, default=1e-4, help='kl weight')
+    argparser.add_argument('--loss_type', type=str, default='mse', help='loss type', choices=['mse', 'ssim'])
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     return argparser.parse_args()
 

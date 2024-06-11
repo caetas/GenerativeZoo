@@ -20,57 +20,49 @@ def create_checkpoint_dir():
     os.makedirs(os.path.join(models_dir, 'ConditionalVAE'))
 
 class ConditionalVAE(nn.Module):
-    def __init__(self, input_shape, input_channels, latent_dim, num_classes, device, hidden_dims = None, lr = 5e-3, batch_size = 64, sample_and_save_freq = 5, dataset = 'mnist', kld_weight = 1e-3, loss_type = 'mse'):
+    def __init__(self, input_shape, input_channels, args):
         '''Conditional VAE model
         Args:
         input_shape: int, input shape of the image
         input_channels: int, number of channels of the input image
-        latent_dim: int, dimension of the latent space
-        num_classes: int, number of classes for the conditional VAE
-        device: torch.device to run the model
-        hidden_dims: list, list of integers with the number of channels of the hidden layers, if none it will be [32, 64, 128, 256, 512]
-        lr: float, learning rate for the optimizer
-        batch_size: int, batch size for the training
-        sample_and_save_freq: int, frequency in epochs to generate some samples
-        dataset: str, name of dataset
-        kld_weight: float, weight for the KLD loss
-        loss_type: str, type of loss to use, 'mse' or 'ssim'
+        args: argparse.ArgumentParser, arguments for the model
         '''
         super(ConditionalVAE, self).__init__()
 
-        self.num_classes = num_classes
+        self.num_classes = args.num_classes
         self.input_shape = input_shape
         self.input_channels = input_channels
         self.final_channels = input_channels
-        self.latent_dim = latent_dim
-        self.lr = lr
-        self.batch_size = batch_size
-        self.device = device
-        self.sample_and_save_freq = sample_and_save_freq
-        self.dataset = dataset
+        self.latent_dim = args.latent_dim
+        self.lr = args.lr
+        self.batch_size = args.batch_size
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.sample_and_save_freq = args.sample_and_save_freq
+        self.dataset = args.dataset
         self.mssim_loss = MSSIM(self.input_channels,
                                 7,
                                 True)
-        self.kld_weight = kld_weight
-        self.loss_type = loss_type
+        self.kld_weight = args.kld_weight
+        self.loss_type = args.loss_type
 
-        self.embed_class = nn.Linear(num_classes, self.input_shape**2)
+        self.embed_class = nn.Linear(self.num_classes, self.input_shape**2)
         self.embed_data = nn.Conv2d(self.input_channels, self.input_channels, kernel_size=1)
+        self.hidden_dims = args.hidden_dims
 
-        if hidden_dims is None:
-            hidden_dims = [32, 64, 128, 256, 512]
+        if self.hidden_dims is None:
+            self.hidden_dims = [32, 64, 128, 256, 512]
         
-        self.hidden_dims_str = '_'.join(map(str, hidden_dims))
+        self.hidden_dims_str = '_'.join(map(str, self.hidden_dims))
         
         # each layer decreases the h and w by 2, so we need to divide by 2**(number of layers) to know the factor for the flattened input
-        self.multiplier = int(self.input_shape/(2**len(hidden_dims)))
-        self.last_channel = hidden_dims[-1]
+        self.multiplier = int(self.input_shape/(2**len(self.hidden_dims)))
+        self.last_channel = self.hidden_dims[-1]
         modules = []
 
         # to account for classes
         input_channels += 1
 
-        for h_dim in hidden_dims:
+        for h_dim in self.hidden_dims:
             modules.append(
                 nn.Sequential(
                     nn.Conv2d(input_channels, h_dim, kernel_size = 3, stride = 2, padding = 1),
@@ -81,30 +73,30 @@ class ConditionalVAE(nn.Module):
             input_channels = h_dim
 
         self.encoder = nn.Sequential(*modules)
-        self.fc_mu = nn.Linear(hidden_dims[-1]*(self.multiplier**2), latent_dim)
-        self.fc_logvar = nn.Linear(hidden_dims[-1]*(self.multiplier**2), latent_dim)
+        self.fc_mu = nn.Linear(self.hidden_dims[-1]*(self.multiplier**2), self.latent_dim)
+        self.fc_logvar = nn.Linear(self.hidden_dims[-1]*(self.multiplier**2), self.latent_dim)
 
         modules = []
 
-        self.decoder_input = nn.Linear(latent_dim + num_classes, hidden_dims[-1]*(self.multiplier**2))
+        self.decoder_input = nn.Linear(self.latent_dim + self.num_classes, self.hidden_dims[-1]*(self.multiplier**2))
 
-        hidden_dims.reverse()
+        self.hidden_dims.reverse()
 
-        for i in range(len(hidden_dims) - 1):
+        for i in range(len(self.hidden_dims) - 1):
             modules.append(
                 nn.Sequential(
-                    nn.ConvTranspose2d(hidden_dims[i], hidden_dims[i + 1], kernel_size=3, stride = 2, padding=1, output_padding=1),
-                    nn.BatchNorm2d(hidden_dims[i + 1]),
+                    nn.ConvTranspose2d(self.hidden_dims[i], self.hidden_dims[i + 1], kernel_size=3, stride = 2, padding=1, output_padding=1),
+                    nn.BatchNorm2d(self.hidden_dims[i + 1]),
                     nn.LeakyReLU())
             )
         
         self.decoder = nn.Sequential(*modules)
 
         self.final_layer = nn.Sequential(
-            nn.ConvTranspose2d(hidden_dims[-1], hidden_dims[-1], kernel_size=3, stride = 2, padding=1, output_padding=1),
-            nn.BatchNorm2d(hidden_dims[-1]),
+            nn.ConvTranspose2d(self.hidden_dims[-1], self.hidden_dims[-1], kernel_size=3, stride = 2, padding=1, output_padding=1),
+            nn.BatchNorm2d(self.hidden_dims[-1]),
             nn.LeakyReLU(),
-            nn.Conv2d(hidden_dims[-1], out_channels=self.final_channels, kernel_size=3, padding=1),
+            nn.Conv2d(self.hidden_dims[-1], out_channels=self.final_channels, kernel_size=3, padding=1),
             nn.Tanh()
         )
 

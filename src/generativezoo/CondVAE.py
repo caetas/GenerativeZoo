@@ -24,18 +24,20 @@ if args.train:
                     'hidden_dims': args.hidden_dims,
                     'input_size': in_shape,
                     'channels': in_channels,
-                    'n_classes': args.n_classes
+                    'num_classes': args.num_classes,
+                    'loss_type': args.loss_type,
+                    'kld_weight': args.kld_weight
                 },
 
                 name = 'CVAE_{}'.format(args.dataset))
     # create model
-    model = ConditionalVAE(input_shape=in_shape, input_channels=in_channels, num_classes=args.n_classes, latent_dim=args.latent_dim, batch_size=args.batch_size, device=device, hidden_dims=args.hidden_dims, lr=args.lr, sample_and_save_freq=args.sample_and_save_freq, dataset=args.dataset)
+    model = ConditionalVAE(input_shape=in_shape, input_channels=in_channels, args=args)
     # train model
     model.train_model(train_loader, args.n_epochs)
 
 elif args.sample:
     _, in_shape, in_channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, size=size)
-    model = ConditionalVAE(input_shape=in_shape, input_channels=in_channels, latent_dim=args.latent_dim, batch_size=args.batch_size, device=device, hidden_dims=args.hidden_dims, lr=args.lr)
+    model = ConditionalVAE(input_shape=in_shape, input_channels=in_channels, args=args)
     model.load_state_dict(torch.load(args.checkpoint))
     model.create_grid(title="Sample", train = False)
 else:

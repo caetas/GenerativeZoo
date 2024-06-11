@@ -19,7 +19,8 @@ The Vanilla VAE (Variational Autoencoder) is a generative model that learns to e
 | `--checkpoint`  | Checkpoint path                       | `None`  |                                                    |
 | `--num_samples` | Number of samples                     | `16`    |                                                    |
 | `--sample_and_save_frequency`| sample and save frequency| `5`     |                                                    |
-| `--loss_type`   | Type of loss for training             | `'mse'` | `'mse'`, `'ssim'`                                  |
+| `--loss_type`             | Type of loss to evaluate reconstruction            | `mse`    |  `mse`, `ssim`             |
+| `--kld_weight`            | KL-Divergence weight                               | `1e-4`   |                            |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 
