@@ -35,9 +35,7 @@ build-env-dev:
 	@python3 -m venv .venv-dev && \
 	source .venv-dev/bin/activate && \
 	python3 -m pip install --upgrade pip setuptools && \
-	python3 -m pip install -r requirements/requirements.txt && \
-	python3 -m pip install -r requirements/requirements-dev.txt && \
-	python3 -m pip install -r requirements/requirements-notebook.txt
+	python3 -m pip install -r requirements/requirements.txt
 
 ## Build virtualenv for documentation
 build-env-docs:

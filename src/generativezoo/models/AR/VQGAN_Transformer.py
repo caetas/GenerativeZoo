@@ -17,6 +17,7 @@ import numpy as np
 import os
 from config import models_dir
 import wandb
+from sklearn.metrics import roc_auc_score, roc_curve
 
 def create_checkpoint_dir():
     if not os.path.exists(models_dir):
@@ -228,6 +229,7 @@ class VQGANTransformer(nn.Module):
             sample = self.inferer.sample(transformer_model=self.transformer, vqvae_model=self.vqvae, ordering=self.ordering, latent_spatial_dim=(self.spatial_shape[0], self.spatial_shape[1]), starting_tokens=self.bos * torch.ones((1, 1), device=self.device), verbose=False)
             images.append(sample)
         images = torch.cat(images, dim=0)
+        images = torch.clamp(images, 0, 1)
         fig = plt.figure(figsize=(10, 10))
         grid = make_grid(images, nrow=int(num_samples**0.5))
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
@@ -235,6 +237,42 @@ class VQGANTransformer(nn.Module):
         if train:
             wandb.log({'samples': fig})
         else:
+            plt.show()
+
+    @torch.no_grad()
+    def outlier_detection(self, in_loader, out_loader, display=True, in_array=None):
+        '''
+        Perform outlier detection using the VQGAN-Transformer model
+        :param in_loader: input data loader
+        :param out_loader: out-of-distribution data loader
+        :param display: whether to display the results
+        :param in_array: input array
+        '''
+        self.vqvae.eval()
+        self.transformer.eval()
+        if in_array is None:
+            in_scores = []
+            for x, _ in tqdm(in_loader, desc='In-distribution', leave=False):
+                nll = self.inferer.get_likelihood(x.to(self.device), self.vqvae, self.transformer, self.ordering)
+                in_scores.append(-nll.sum(dim=(1, 2)).cpu().numpy())
+            in_array = np.concatenate(in_scores)
+
+        out_scores = []
+        for x, _ in tqdm(out_loader, desc='Out-of-distribution', leave=False):
+            nll = self.inferer.get_likelihood(x.to(self.device), self.vqvae, self.transformer, self.ordering)
+            out_scores.append(-nll.sum(dim=(1, 2)).cpu().numpy())
+        out_array = np.concatenate(out_scores)
+
+        auc = roc_auc_score([0]*len(in_array) + [1]*len(out_array), np.concatenate([in_array, out_array]))
+        fpr, tpr, _ = roc_curve([0]*len(in_array) + [1]*len(out_array), np.concatenate([in_array, out_array]))
+        fpr95 = fpr[np.argmax(tpr >= 0.95)]
+
+        print(f'AUC: {auc:.4f}, FPR95: {fpr95:.4f}')
+
+        if display:
+            plt.hist(in_array, bins=50, alpha=0.5, label='In-distribution')
+            plt.hist(out_array, bins=50, alpha=0.5, label='Out-of-distribution')
+            plt.legend()
             plt.show()
 
     def load_checkpoint(self, checkpoint_vqvae=None, checkpoint_transformer=None):

@@ -45,3 +45,10 @@ elif args.sample:
     model = VQGANTransformer(args, channels=channels, img_size=input_size)
     model.load_checkpoint(args.checkpoint, args.checkpoint_t)
     model.sample(16, train=False)
+
+elif args.outlier_detection:
+    in_loader, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=False, size=size)
+    out_loader, _, _ = pick_dataset(args.out_dataset, 'val', args.batch_size, normalize=False, size=input_size)
+    model = VQGANTransformer(args, channels=channels, img_size=input_size)
+    model.load_checkpoint(args.checkpoint, args.checkpoint_t)
+    model.outlier_detection(in_loader, out_loader)
