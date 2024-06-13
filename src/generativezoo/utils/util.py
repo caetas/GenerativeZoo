@@ -98,6 +98,8 @@ def parse_args_VQGAN_Transformer():
     argparser.add_argument('--num_layers_d', type=int, default=3, help='number of layers in discriminator')
     argparser.add_argument('--num_channels_d', type=int, default=64, help='number of channels in discriminator')
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
+    argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
+    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet'])
     args = argparser.parse_args()
     args.num_channels = tuple(args.num_channels)
     args.num_res_channels = tuple(args.num_res_channels)
