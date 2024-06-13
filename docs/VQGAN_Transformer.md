@@ -33,6 +33,8 @@ The Vector Quantised-Generative Adversarial Network (VQ-GAN) is composed of an V
 | `--num_layers_d`            | Number of layers in discriminator                | `3`        |                                                              |
 | `--num_channels_d`          | Number of channels in discriminator              | `64`       |                                                              |
 | `--sample_and_save_freq`    | Sample and save frequency                        | `5`        |                                                              |
+| `--outlier_detection`       | Outlier detection                                | `False`    |                                                              |
+| `--out_dataset`             | Outlier dataset name                             | `'fashionmnist'`| `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 
