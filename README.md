@@ -113,6 +113,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 #### Flow
 
+- Vanilla Flow [`Paper`](https://arxiv.org/abs/1505.05770)|[`Code`](src/generativezoo/models/Flow/VanillaFlow.py)|[`Script`](src/generativezoo/VanFlow.py)|[`Documentation`](docs/VanillaFlow.md)
 - RealNVP [`Paper`](https://arxiv.org/abs/1605.08803)|[`Code`](src\generativezoo\models\Flow\RealNVP.py)|[`Script`](src/generativezoo/RealNVP.py)|[`Documentation`](docs/RealNVP.md)
 - Glow [`Paper`](https://arxiv.org/abs/1807.03039)|[`Code`](src\generativezoo\models\Flow\Glow.py)|[`Script`](src/generativezoo/GLOW.py)|[`Documentation`](docs/Glow.md)
 - Flow++ [`Paper`](https://arxiv.org/abs/1902.00275)|[`Code`](src\generativezoo\models\Flow\FlowPlusPlus.py)|[`Script`](src\generativezoo\FlowPP.py)|[`Documentation`](docs/FlowPlusPlus.md)
