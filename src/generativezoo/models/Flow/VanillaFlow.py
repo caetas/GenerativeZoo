@@ -11,6 +11,9 @@ from tqdm import tqdm, trange
 from matplotlib import pyplot as plt
 import wandb
 from torchvision.utils import make_grid
+import os
+from config import models_dir
+from sklearn.metrics import roc_auc_score, roc_curve
 
 # Convert images from 0-1 to 0-255 (integers)
 def discretize(sample):
@@ -280,6 +283,12 @@ class SplitFlow(nn.Module):
             z = torch.cat([z, z_split], dim=1)
             ldj -= self.prior.log_prob(z_split).sum(dim=[1,2,3])
         return z, ldj
+    
+def create_checkpoint_dir():
+    if not os.path.exists(models_dir):
+        os.makedirs(models_dir)
+    if not os.path.exists(os.path.join(models_dir, 'VanillaFlow')):
+        os.makedirs(os.path.join(models_dir, 'VanillaFlow'))
 
 class VanillaFlow(nn.Module):
 
@@ -360,25 +369,31 @@ class VanillaFlow(nn.Module):
         return bpd.mean() if not return_ll else log_px
 
     @torch.no_grad()
-    def sample(self, img_shape, z_init=None):
+    def sample(self, z_init=None, train=True):
         """
         Sample a batch of images from the flow.
         """
         # Sample latent representation from prior
         if z_init is None:
-            z = self.prior.sample(sample_shape=img_shape).to(self.device)
+            z = self.prior.sample(sample_shape=self.sample_shape).to(self.device)
         else:
             z = z_init.to(self.device)
 
         # Transform z to x by inverting the flows
-        ldj = torch.zeros(img_shape[0], device=self.device)
+        ldj = torch.zeros(self.sample_shape[0], device=self.device)
         for flow in reversed(self.flows):
             z, ldj = flow(z, ldj, reverse=True)
         
+        z = torch.clamp(z, 0, 1)
+        figure = plt.figure(figsize=(10, 10))
         grid = make_grid(discretize(z.cpu().detach()), nrow=int(z.shape[0]**0.5), normalize=False)
         plt.imshow(grid.permute(1, 2, 0))
         plt.axis('off')
-        plt.show()
+        if train:
+            wandb.log({"Samples": figure})
+        else:
+            plt.show()
+        plt.close(figure)
 
     def configure_optimizers(self, args):
         optimizer = optim.Adam(self.parameters(), lr=args.lr)
@@ -392,6 +407,8 @@ class VanillaFlow(nn.Module):
         return loss
 
     def train_model(self, train_loader, args):
+
+        create_checkpoint_dir()
 
         optimizer, scheduler = self.configure_optimizers(args)
 
@@ -413,6 +430,48 @@ class VanillaFlow(nn.Module):
             scheduler.step()
             epoch_loss /= len(train_loader.dataset)
             epoch_bar.set_postfix(loss=epoch_loss)
+            wandb.log({"Loss": epoch_loss})
 
             if (epoch+1) % args.sample_and_save_freq == 0 or epoch == 0:
-                self.sample(self.sample_shape)
+                self.sample()
+            
+            if epoch_loss < best_loss:
+                best_loss = epoch_loss
+                torch.save(self.flows.state_dict(), os.path.join(models_dir, 'VanillaFlow', f"VanFlow_{args.dataset}.pt"))
+
+    @torch.no_grad()    
+    def outlier_detection(self, in_loader, out_loader):
+        
+        in_scores = []
+        out_scores = []
+
+        self.eval()
+
+        for batch, _ in tqdm(in_loader, desc='Inlier Batches', leave=False):
+            batch = batch.to(self.device)
+            in_scores.append(-self._get_likelihood(batch, return_ll=True).cpu().detach().numpy())
+        
+        for batch, _ in tqdm(out_loader, desc='Outlier Batches', leave=False):
+            batch = batch.to(self.device)
+            out_scores.append(-self._get_likelihood(batch, return_ll=True).cpu().detach().numpy())
+
+        in_scores = np.concatenate(in_scores)
+        out_scores = np.concatenate(out_scores)
+
+        # Calculate ROC AUC
+        scores = np.concatenate([in_scores, out_scores])
+        labels = np.concatenate([np.zeros_like(in_scores), np.ones_like(out_scores)])
+        auc = roc_auc_score(labels, scores)
+        fpr, tpr, _ = roc_curve(labels, scores)
+        fpr95 = fpr[np.argmax(tpr >= 0.95)]
+
+        print(f"ROC AUC: {auc:.4f}, FPR at 95% TPR: {fpr95:.4f}")
+
+        plt.figure(figsize=(10, 5))
+        plt.hist(in_scores, bins=50, alpha=0.5, label='Inliers', color='blue')
+        plt.hist(out_scores, bins=50, alpha=0.5, label='Outliers', color='red')
+        plt.legend()
+        plt.xlabel('Negative Log Likelihood')
+        plt.ylabel('Number of samples')
+        plt.title('Outlier Detection')
+        plt.show()
