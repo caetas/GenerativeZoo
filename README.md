@@ -99,6 +99,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 - Vanilla DDPM [`Paper`](https://arxiv.org/abs/2006.11239)|[`Code`](src/generativezoo/models/DDPM/VanillaDDPM.py)|[`Script`](src/generativezoo/VanDDPM.py)|[`Documentation`](docs/VanillaDDPM.md)
 - Conditional DDPM [`Paper`](https://arxiv.org/abs/2207.12598)|[`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)|[`Script`](src/generativezoo/CondDDPM.py)|[`Documentation`](docs/ConditionalDDPM.md)
 - Diffusion AE [`Paper`](https://arxiv.org/abs/2111.15640)|[`Code`](src/generativezoo/models/DDPM/MONAI_DiffAE.py)|[`Script`](src/generativezoo/DAE.py)|[`Documentation`](docs/DiffusionAE.md)
+- Stable Diffusion + LoRA [`Paper`](https://arxiv.org/abs/2106.09685)|[`Code`](src/generativezoo/models/SD/Text2Img_Lora.py)|[`Script`](src/generativezoo/Text2Img_LoRA.py)|[`Documentation`](docs/Text2Img_Lora.md)
 
 #### SGMs
 
