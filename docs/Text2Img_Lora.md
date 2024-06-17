@@ -4,12 +4,14 @@
 
 If you want to train the model in a custom dataset, two elements must be provided: the `images` and the `prompts`. The images must be provided in a folder organized as follows:
 
+```bash
 ├── dataset
 │   ├── images
 │   │   ├── <name0>.png
 │   │   ├── <name1>.png
 │   │   ├── ...
 │   ├── train.jsonl
+```
 
 The file `train.jsonl` contains the prompts associated to each image and should be structured like the following example:
 
