@@ -171,6 +171,9 @@ dmypy.json
 *.tflite
 # Pytorch models
 *.pt
+*.safetensors
+*.bin
+*.pkl
 # TensorRT models
 *.trt
 # Tensorflow checkpoints
@@ -249,4 +252,5 @@ src/generativezoo/highfreq_cifar.py
 src/generativezoo/tsne.py
 src/generativezoo/corruptions_freq.py
 src/generativezoo/models/VAE/VQVAE.py
+src/generativezoo/models/SD/wandb/
 # EOF
