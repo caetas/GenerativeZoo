@@ -7,8 +7,8 @@ If you want to train the model in a custom dataset, two elements must be provide
 ```bash
 ├── dataset
 │   ├── images
-│   │   ├── <name0>.png
-│   │   ├── <name1>.png
+│   │   ├── <name0>
+│   │   ├── <name1>
 │   │   ├── ...
 │   ├── train.jsonl
 ```
@@ -31,7 +31,7 @@ accelerate config
 
 ## Train the model
 
-A script file is provided with the commands required to train the model on a custom dataset. Several parameters should be configured, mainly:
+A [`script file`](./../scripts/Text2Img_Lora.sh) is provided with the commands required to train the model on a custom dataset. Several parameters should be configured, mainly:
 
 ```sh
 export OUTPUT_DIR="./../../../../models/Text2Img_Lora/pokemons"
@@ -66,4 +66,8 @@ accelerate launch --mixed_precision="fp16"  Text2Img_Lora.py \
 
 ## Inference
 
-A Python script is provided 
+A Python script is provided to use the trained LoRA adapters:
+
+```bash
+python Text2Img_LoRA.py --lora_model_path ./../../models/Text2Img_Lora/pokemons/checkpoint-60 
+```
