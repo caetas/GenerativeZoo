@@ -322,7 +322,7 @@ class VanillaFlow(nn.Module):
                 flow_layers += [CouplingLayer(network=GatedConvNet(c_in=8*channels, c_hidden=args.c_hidden*4),
                                             mask=create_channel_mask(c_in=8*channels, invert=(i%2==1)),
                                             c_in=8*channels)]
-            self.sample_shape = (channels*8, img_size//4, img_size//4)
+            self.sample_shape = (16, channels*8, img_size//4, img_size//4)
         else:
             if args.vardeq:
                 vardeq_layers = [CouplingLayer(network=GatedConvNet(c_in=2*channels, c_out=2*channels, c_hidden=args.c_hidden),
