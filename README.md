@@ -27,6 +27,7 @@ You will need:
 - a `.secrets` file with the required secrets and credentials
 - load environment variables from `.env`
 - `CUDA >= 12.1`
+- `Weights & Biases` account
 
 ## Installation
 
@@ -81,48 +82,48 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 #### VAEs
 
-- Vanilla VAE [`Paper`](https://arxiv.org/abs/1312.6114)|[`Code`](src/generativezoo/models/VAE/VanillaVAE.py)|[`Script`](src/generativezoo/VanVAE.py)|[`Documentation`](docs/VanillaVAE.md)
-- Conditional VAE [`Paper`](https://openreview.net/forum?id=rJWXGDWd-H)|[`Code`](src/generativezoo/models/VAE/ConditionalVAE.py)|[`Script`](src/generativezoo/CondVAE.py)|[`Documentation`](docs/ConditionalVAE.md)
-- Hierarchical VAE [`Paper`](https://arxiv.org/abs/2007.03898)|[`Code`](src/generativezoo/models/VAE/HierarchicalVAE.py)|[`Script`](src/generativezoo/HVAE.py)|[`Documentation`](docs/HierarchicalVAE.md)
+- Vanilla VAE [`Paper`](https://arxiv.org/abs/1312.6114) | [`Code`](src/generativezoo/models/VAE/VanillaVAE.py)<sup>1</sup> | [`Script`](src/generativezoo/VanVAE.py) | [`Documentation`](docs/VanillaVAE.md)
+- Conditional VAE [`Paper`](https://openreview.net/forum?id=rJWXGDWd-H) | [`Code`](src/generativezoo/models/VAE/ConditionalVAE.py)<sup>1</sup> | [`Script`](src/generativezoo/CondVAE.py) | [`Documentation`](docs/ConditionalVAE.md)
+- Hierarchical VAE [`Paper`](https://arxiv.org/abs/2007.03898) | [`Code`](src/generativezoo/models/VAE/HierarchicalVAE.py)<sup>2</sup> | [`Script`](src/generativezoo/HVAE.py) | [`Documentation`](docs/HierarchicalVAE.md)
 
 #### GANs
 
-- Adversarial VAE [`Paper`](https://arxiv.org/abs/1511.05644)|[`Code`](src/generativezoo/models/GAN/AdversarialVAE.py)|[`Script`](src/generativezoo/AdvVAE.py)|[`Documentation`](docs/AdversarialVAE.md)
-- Vanilla GAN [`Paper`](https://arxiv.org/abs/1511.06434)|[`Code`](src/generativezoo/models/GAN/VanillaGAN.py)|[`Script`](src/generativezoo/VanGAN.py)|[`Documentation`](docs/VanillaGAN.md)
-- Conditional GAN [`Paper`](https://arxiv.org/abs/1411.1784)|[`Code`](src/generativezoo/models/GAN/ConditionalGAN.py)|[`Script`](src/generativezoo/CondGAN.py)|[`Documentation`](docs/ConditionalGAN.md)
-- CycleGAN [`Paper`](https://arxiv.org/abs/1703.10593)|[`Code`](src/generativezoo/models/GAN/CycleGAN.py)|[`Script`](src/generativezoo/CycGAN.py)|[`Documentation`](docs/CycleGAN.md)
-- Prescribed GAN [`Paper`](https://arxiv.org/abs/1910.04302)|[`Code`](src/generativezoo/models/GAN/PrescribedGAN.py)|[`Script`](src/generativezoo/PresGAN.py)|[`Documentation`](docs/PrescribedGAN.md)
-- Wasserstein GAN with Gradient Penalty [`Paper`](https://arxiv.org/abs/1704.00028)|[`Code`](src/generativezoo/models/GAN/WGAN.py)|[`Script`](src/generativezoo/WGAN.py)|[`Documentation`](docs/WassersteinGAN.md)
+- Adversarial VAE [`Paper`](https://arxiv.org/abs/1511.05644) | [`Code`](src/generativezoo/models/GAN/AdversarialVAE.py)<sup>1</sup> | [`Script`](src/generativezoo/AdvVAE.py) | [`Documentation`](docs/AdversarialVAE.md)
+- Vanilla GAN [`Paper`](https://arxiv.org/abs/1511.06434) | [`Code`](src/generativezoo/models/GAN/VanillaGAN.py)<sup>3</sup> | [`Script`](src/generativezoo/VanGAN.py) | [`Documentation`](docs/VanillaGAN.md)
+- Conditional GAN [`Paper`](https://arxiv.org/abs/1411.1784) | [`Code`](src/generativezoo/models/GAN/ConditionalGAN.py)<sup>3</sup> | [`Script`](src/generativezoo/CondGAN.py) | [`Documentation`](docs/ConditionalGAN.md)
+- CycleGAN [`Paper`](https://arxiv.org/abs/1703.10593) | [`Code`](src/generativezoo/models/GAN/CycleGAN.py)<sup>4</sup> | [`Script`](src/generativezoo/CycGAN.py) | [`Documentation`](docs/CycleGAN.md)
+- Prescribed GAN [`Paper`](https://arxiv.org/abs/1910.04302) | [`Code`](src/generativezoo/models/GAN/PrescribedGAN.py)<sup>5</sup> | [`Script`](src/generativezoo/PresGAN.py) | [`Documentation`](docs/PrescribedGAN.md)
+- Wasserstein GAN with Gradient Penalty [`Paper`](https://arxiv.org/abs/1704.00028) | [`Code`](src/generativezoo/models/GAN/WGAN.py)<sup>6</sup> | [`Script`](src/generativezoo/WGAN.py) | [`Documentation`](docs/WassersteinGAN.md)
 
 #### DDPMs
 
-- Vanilla DDPM [`Paper`](https://arxiv.org/abs/2006.11239)|[`Code`](src/generativezoo/models/DDPM/VanillaDDPM.py)|[`Script`](src/generativezoo/VanDDPM.py)|[`Documentation`](docs/VanillaDDPM.md)
-- Conditional DDPM [`Paper`](https://arxiv.org/abs/2207.12598)|[`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)|[`Script`](src/generativezoo/CondDDPM.py)|[`Documentation`](docs/ConditionalDDPM.md)
-- Diffusion AE [`Paper`](https://arxiv.org/abs/2111.15640)|[`Code`](src/generativezoo/models/DDPM/MONAI_DiffAE.py)|[`Script`](src/generativezoo/DAE.py)|[`Documentation`](docs/DiffusionAE.md)
+- Vanilla DDPM [`Paper`](https://arxiv.org/abs/2006.11239) | [`Code`](src/generativezoo/models/DDPM/VanillaDDPM.py)<sup>7,8,9</sup> | [`Script`](src/generativezoo/VanDDPM.py) | [`Documentation`](docs/VanillaDDPM.md)
+- Conditional DDPM [`Paper`](https://arxiv.org/abs/2207.12598) | [`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)<sup>10</sup> | [`Script`](src/generativezoo/CondDDPM.py) | [`Documentation`](docs/ConditionalDDPM.md)
+- Diffusion AE [`Paper`](https://arxiv.org/abs/2111.15640) | [`Code`](src/generativezoo/models/DDPM/MONAI_DiffAE.py)<sup>11</sup> | [`Script`](src/generativezoo/DAE.py) | [`Documentation`](docs/DiffusionAE.md)
 
 #### SGMs
 
-- Vanilla SGM [`Paper`](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/VanillaSGM.py)|[`Script`](src/generativezoo/VanSGM.py)|[`Documentation`](docs/VanillaSGM.md)
-- NCSNv2 [`Paper`](https://arxiv.org/abs/2006.09011)|[`Code`](src/generativezoo/models/SGM/NCSNv2.py)|[`Script`](src/generativezoo/NCSNv2.py)|[`Documentation`](docs/NCSNv2.md)
+- Vanilla SGM [`Paper`](https://arxiv.org/abs/2006.09011) | [`Code`](src/generativezoo/models/SGM/VanillaSGM.py)<sup>12</sup> | [`Script`](src/generativezoo/VanSGM.py) | [`Documentation`](docs/VanillaSGM.md)
+- NCSNv2 [`Paper`](https://arxiv.org/abs/2006.09011) | [`Code`](src/generativezoo/models/SGM/NCSNv2.py)<sup>13</sup> | [`Script`](src/generativezoo/NCSNv2.py) | [`Documentation`](docs/NCSNv2.md)
 
 #### Autoregressive
 
-- VQ-VAE + Transformer [`Paper`](https://arxiv.org/abs/1711.00937)|[`Code`](src/generativezoo/models/AR/VQVAE_Transformer.py)|[`Script`](src/generativezoo/VQVAE_T.py)|[`Documentation`](docs/VQVAE_Transformer.md)
-- VQ-GAN + Transformer [`Paper`](https://arxiv.org/abs/2012.09841)|[`Code`](src/generativezoo/models/AR/VQGAN_Transformer.py)|[`Script`](src/generativezoo/VQGAN_T.py)|[`Documentation`](docs/VQGAN_Transformer.md)
-- PixelCNN [`Paper`](https://arxiv.org/abs/1606.05328)|[`Code`](src/generativezoo/models/AR/PixelCNN.py)|[`Script`](src/generativezoo/P-CNN.py)|[`Documentation`](docs/PixelCNN.md)
+- VQ-VAE + Transformer [`Paper`](https://arxiv.org/abs/1711.00937) | [`Code`](src/generativezoo/models/AR/VQVAE_Transformer.py)<sup>11</sup> | [`Script`](src/generativezoo/VQVAE_T.py) | [`Documentation`](docs/VQVAE_Transformer.md)
+- VQ-GAN + Transformer [`Paper`](https://arxiv.org/abs/2012.09841) | [`Code`](src/generativezoo/models/AR/VQGAN_Transformer.py)<sup>11</sup> | [`Script`](src/generativezoo/VQGAN_T.py) | [`Documentation`](docs/VQGAN_Transformer.md)
+- PixelCNN [`Paper`](https://arxiv.org/abs/1606.05328) | [`Code`](src/generativezoo/models/AR/PixelCNN.py)<sup>14</sup> | [`Script`](src/generativezoo/P-CNN.py) | [`Documentation`](docs/PixelCNN.md)
 
 #### Flow
 
-- Vanilla Flow [`Paper`](https://arxiv.org/abs/1505.05770)|[`Code`](src/generativezoo/models/Flow/VanillaFlow.py)|[`Script`](src/generativezoo/VanFlow.py)|[`Documentation`](docs/VanillaFlow.md)
-- RealNVP [`Paper`](https://arxiv.org/abs/1605.08803)|[`Code`](src\generativezoo\models\Flow\RealNVP.py)|[`Script`](src/generativezoo/RealNVP.py)|[`Documentation`](docs/RealNVP.md)
-- Glow [`Paper`](https://arxiv.org/abs/1807.03039)|[`Code`](src\generativezoo\models\Flow\Glow.py)|[`Script`](src/generativezoo/GLOW.py)|[`Documentation`](docs/Glow.md)
-- Flow++ [`Paper`](https://arxiv.org/abs/1902.00275)|[`Code`](src\generativezoo\models\Flow\FlowPlusPlus.py)|[`Script`](src\generativezoo\FlowPP.py)|[`Documentation`](docs/FlowPlusPlus.md)
+- Vanilla Flow [`Paper`](https://arxiv.org/abs/1505.05770) | [`Code`](src/generativezoo/models/Flow/VanillaFlow.py)<sup>14</sup> | [`Script`](src/generativezoo/VanFlow.py) | [`Documentation`](docs/VanillaFlow.md)
+- RealNVP [`Paper`](https://arxiv.org/abs/1605.08803) | [`Code`](src\generativezoo\models\Flow\RealNVP.py)<sup>15</sup> | [`Script`](src/generativezoo/RealNVP.py) | [`Documentation`](docs/RealNVP.md)
+- Glow [`Paper`](https://arxiv.org/abs/1807.03039) | [`Code`](src\generativezoo\models\Flow\Glow.py)<sup>16</sup> | [`Script`](src/generativezoo/GLOW.py) | [`Documentation`](docs/Glow.md)
+- Flow++ [`Paper`](https://arxiv.org/abs/1902.00275) | [`Code`](src\generativezoo\models\Flow\FlowPlusPlus.py)<sup>17</sup> | [`Script`](src\generativezoo\FlowPP.py) | [`Documentation`](docs/FlowPlusPlus.md)
 
 #### Stable Diffusion
 
-- Stable Diffusion + LoRA [`Paper`](https://arxiv.org/abs/2106.09685)|[`Code`](src/generativezoo/models/SD/Text2Img_Lora.py)|[`Script`](src/generativezoo/Text2Img_LoRA.py)|[`Documentation`](docs/Text2Img_LoRA.md)
-- ControlNet [`Paper`](https://arxiv.org/abs/2302.05543)|[`Code`](src/generativezoo/models/SD/Text2Img_Controlnet.py)|[`Script`](src/generativezoo/Text2Img_ControlNet.py)|[`Documentation`](docs/Text2Img_ControlNet.md)
-- InstructPix2Pix [`Paper`](https://arxiv.org/abs/2211.09800)|[`Code`](src/generativezoo/models/SD/InstructPix2Pix.py)|[`Script`](src/generativezoo/InstructPix2Pix.py)|[`Documentation`](docs/InstructPix2Pix.md)
+- Stable Diffusion + LoRA [`Paper`](https://arxiv.org/abs/2106.09685) | [`Code`](src/generativezoo/models/SD/Text2Img_Lora.py)<sup>18</sup> | [`Script`](src/generativezoo/Text2Img_LoRA.py) | [`Documentation`](docs/Text2Img_LoRA.md)
+- ControlNet [`Paper`](https://arxiv.org/abs/2302.05543) | [`Code`](src/generativezoo/models/SD/Text2Img_Controlnet.py)<sup>18</sup> | [`Script`](src/generativezoo/Text2Img_ControlNet.py) | [`Documentation`](docs/Text2Img_ControlNet.md)
+- InstructPix2Pix [`Paper`](https://arxiv.org/abs/2211.09800) | [`Code`](src/generativezoo/models/SD/InstructPix2Pix.py)<sup>18</sup> | [`Script`](src/generativezoo/InstructPix2Pix.py) | [`Documentation`](docs/InstructPix2Pix.md)
 
 ## Datasets
 
@@ -196,26 +197,26 @@ See [LICENSE](LICENSE) for more details.
 
 ## References
 
-All the repositories used to generate this code are mentioned in each of the corresponding files. We would like to list them in no particular order:
+All the repositories used to generate this code are mentioned in each of the corresponding files and referenced in [`Implemented Models`](#implemented-models):
 
-- [PyTorch-VAE](https://github.com/AntixK/PyTorch-VAE)
-- [conditional-GAN](https://github.com/TeeyoHuang/conditional-GAN)
-- [PyTorch-GAN](https://github.com/eriklindernoren/PyTorch-GAN)
-- [wgan-gp](https://github.com/EmilienDupont/wgan-gp)
-- [PresGANs](https://github.com/adjidieng/PresGANs/)
-- [minDiffusion](https://github.com/cloneofsimo/minDiffusion)
-- [DenoisingDiffusionProbabilisticModels](https://github.com/DhruvSrikanth/DenoisingDiffusionProbabilisticModels)
-- [Conditional_Diffusion_MNIST](https://github.com/TeaPearce/Conditional_Diffusion_MNIST)
-- [ddim](https://github.com/ermongroup/ddim)
-- [Generative Models](https://github.com/Project-MONAI/GenerativeModels)
-- [Glow-PyTorch](https://github.com/y0ast/Glow-PyTorch)
-- [flowplusplus](https://github.com/chrischute/flowplusplus)
-- [nvae](https://github.com/GlassyWing/nvae)
-- [uvadlc_notebooks](https://github.com/phlippe/uvadlc_notebooks)
-- [diffusers](https://github.com/huggingface/diffusers)
-- [real-nvp](https://github.com/chrischute/real-nvp)
-- [score_sde_pytorch](https://github.com/yang-song/score_sde_pytorch)
-    - [SGM Tutorial](https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing)
+1. [PyTorch-VAE](https://github.com/AntixK/PyTorch-VAE)
+2. [nvae](https://github.com/GlassyWing/nvae)
+3. [conditional-GAN](https://github.com/TeeyoHuang/conditional-GAN)
+4. [PyTorch-GAN](https://github.com/eriklindernoren/PyTorch-GAN)
+5. [PresGANs](https://github.com/adjidieng/PresGANs/)
+6. [wgan-gp](https://github.com/EmilienDupont/wgan-gp)
+7. [minDiffusion](https://github.com/cloneofsimo/minDiffusion)
+8. [DenoisingDiffusionProbabilisticModels](https://github.com/DhruvSrikanth/DenoisingDiffusionProbabilisticModels)
+9. [ddim](https://github.com/ermongroup/ddim)
+10. [Conditional_Diffusion_MNIST](https://github.com/TeaPearce/Conditional_Diffusion_MNIST)
+11. [Generative Models](https://github.com/Project-MONAI/GenerativeModels)
+12. [SGM Tutorial](https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing)
+13. [score_sde_pytorch](https://github.com/yang-song/score_sde_pytorch)
+14. [uvadlc_notebooks](https://github.com/phlippe/uvadlc_notebooks)
+15. [real-nvp](https://github.com/chrischute/real-nvp)
+16. [Glow-PyTorch](https://github.com/y0ast/Glow-PyTorch)
+17. [flowplusplus](https://github.com/chrischute/flowplusplus)
+18. [diffusers](https://github.com/huggingface/diffusers)
 
 ## Citation
 
