@@ -99,8 +99,6 @@ The listed models are already implemented and fully integrated in the model zoo.
 - Vanilla DDPM [`Paper`](https://arxiv.org/abs/2006.11239)|[`Code`](src/generativezoo/models/DDPM/VanillaDDPM.py)|[`Script`](src/generativezoo/VanDDPM.py)|[`Documentation`](docs/VanillaDDPM.md)
 - Conditional DDPM [`Paper`](https://arxiv.org/abs/2207.12598)|[`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)|[`Script`](src/generativezoo/CondDDPM.py)|[`Documentation`](docs/ConditionalDDPM.md)
 - Diffusion AE [`Paper`](https://arxiv.org/abs/2111.15640)|[`Code`](src/generativezoo/models/DDPM/MONAI_DiffAE.py)|[`Script`](src/generativezoo/DAE.py)|[`Documentation`](docs/DiffusionAE.md)
-- Stable Diffusion + LoRA [`Paper`](https://arxiv.org/abs/2106.09685)|[`Code`](src/generativezoo/models/SD/Text2Img_Lora.py)|[`Script`](src/generativezoo/Text2Img_LoRA.py)|[`Documentation`](docs/Text2Img_LoRA.md)
-- ControlNet [`Paper`](https://arxiv.org/abs/2302.05543)|[`Code`](src/generativezoo/models/SD/Text2Img_Controlnet.py)|[`Script`](src/generativezoo/Text2Img_ControlNet.py)|[`Documentation`](docs/Text2Img_ControlNet.md)
 
 #### SGMs
 
@@ -119,6 +117,12 @@ The listed models are already implemented and fully integrated in the model zoo.
 - RealNVP [`Paper`](https://arxiv.org/abs/1605.08803)|[`Code`](src\generativezoo\models\Flow\RealNVP.py)|[`Script`](src/generativezoo/RealNVP.py)|[`Documentation`](docs/RealNVP.md)
 - Glow [`Paper`](https://arxiv.org/abs/1807.03039)|[`Code`](src\generativezoo\models\Flow\Glow.py)|[`Script`](src/generativezoo/GLOW.py)|[`Documentation`](docs/Glow.md)
 - Flow++ [`Paper`](https://arxiv.org/abs/1902.00275)|[`Code`](src\generativezoo\models\Flow\FlowPlusPlus.py)|[`Script`](src\generativezoo\FlowPP.py)|[`Documentation`](docs/FlowPlusPlus.md)
+
+#### Stable Diffusion
+
+- Stable Diffusion + LoRA [`Paper`](https://arxiv.org/abs/2106.09685)|[`Code`](src/generativezoo/models/SD/Text2Img_Lora.py)|[`Script`](src/generativezoo/Text2Img_LoRA.py)|[`Documentation`](docs/Text2Img_LoRA.md)
+- ControlNet [`Paper`](https://arxiv.org/abs/2302.05543)|[`Code`](src/generativezoo/models/SD/Text2Img_Controlnet.py)|[`Script`](src/generativezoo/Text2Img_ControlNet.py)|[`Documentation`](docs/Text2Img_ControlNet.md)
+- InstructPix2Pix [`Paper`](https://arxiv.org/abs/2211.09800)|[`Code`](src/generativezoo/models/SD/InstructPix2Pix.py)|[`Script`](src/generativezoo/InstructPix2Pix.py)|[`Documentation`](docs/InstructPix2Pix.md)
 
 ## Datasets
 
@@ -208,6 +212,7 @@ All the repositories used to generate this code are mentioned in each of the cor
 - [flowplusplus](https://github.com/chrischute/flowplusplus)
 - [nvae](https://github.com/GlassyWing/nvae)
 - [uvadlc_notebooks](https://github.com/phlippe/uvadlc_notebooks)
+- [diffusers](https://github.com/huggingface/diffusers)
 - [real-nvp](https://github.com/chrischute/real-nvp)
 - [score_sde_pytorch](https://github.com/yang-song/score_sde_pytorch)
     - [SGM Tutorial](https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing)
