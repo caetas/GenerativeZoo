@@ -14,6 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#########################################################################################################################################
+### Code slightly adapted from https://github.com/huggingface/diffusers/blob/main/examples/instruct_pix2pix/train_instruct_pix2pix.py ###
+#########################################################################################################################################
+
 """Script to fine-tune Stable Diffusion for InstructPix2Pix."""
 
 import argparse
@@ -23,6 +27,8 @@ import os
 import shutil
 from contextlib import nullcontext
 from pathlib import Path
+import PIL.Image
+from diffusers.utils import load_image
 
 import accelerate
 import datasets
@@ -81,7 +87,7 @@ def log_validation(
     pipeline.set_progress_bar_config(disable=True)
 
     # run inference
-    original_image = download_image(args.val_image_url)
+    original_image = load_image(args.validation_image) #download_image(args.val_image_url)
     edited_images = []
     if torch.backends.mps.is_available():
         autocast_ctx = nullcontext()
@@ -180,6 +186,12 @@ def parse_args():
         type=str,
         default=None,
         help="URL to the original image that you would like to edit (used during inference for debugging purposes).",
+    )
+    parser.add_argument(
+        "--validation_image",
+        type=str,
+        default=None,
+        help="Path to the original image that you would like to edit (used during inference for debugging purposes).",
     )
     parser.add_argument(
         "--validation_prompt", type=str, default=None, help="A prompt that is sampled during training for inference."
@@ -413,7 +425,7 @@ def parse_args():
 
 
 def convert_to_np(image, resolution):
-    image = image.convert("RGB").resize((resolution, resolution))
+    image = PIL.Image.open(image).convert("RGB").resize((resolution, resolution))
     return np.array(image).transpose(2, 0, 1)
 
 
@@ -630,12 +642,10 @@ def main():
     else:
         data_files = {}
         if args.train_data_dir is not None:
-            data_files["train"] = os.path.join(args.train_data_dir, "**")
-        dataset = load_dataset(
-            "imagefolder",
-            data_files=data_files,
-            cache_dir=args.cache_dir,
-        )
+            dataset = load_dataset(
+                args.train_data_dir,
+                cache_dir=args.cache_dir,
+            )
         # See more about loading custom images at
         # https://huggingface.co/docs/datasets/main/en/image_load#imagefolder
 
@@ -960,7 +970,7 @@ def main():
 
         if accelerator.is_main_process:
             if (
-                (args.val_image_url is not None)
+                (args.val_image_url is not None or args.validation_image is not None)
                 and (args.validation_prompt is not None)
                 and (epoch % args.validation_epochs == 0)
             ):
@@ -1017,7 +1027,7 @@ def main():
                 ignore_patterns=["step_*", "epoch_*"],
             )
 
-        if (args.val_image_url is not None) and (args.validation_prompt is not None):
+        if (args.val_image_url is not None or args.validation_image is not None) and (args.validation_prompt is not None):
             log_validation(
                 pipeline,
                 args,

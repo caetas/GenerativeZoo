@@ -122,6 +122,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 - Stable Diffusion + LoRA [`Paper`](https://arxiv.org/abs/2106.09685)|[`Code`](src/generativezoo/models/SD/Text2Img_Lora.py)|[`Script`](src/generativezoo/Text2Img_LoRA.py)|[`Documentation`](docs/Text2Img_LoRA.md)
 - ControlNet [`Paper`](https://arxiv.org/abs/2302.05543)|[`Code`](src/generativezoo/models/SD/Text2Img_Controlnet.py)|[`Script`](src/generativezoo/Text2Img_ControlNet.py)|[`Documentation`](docs/Text2Img_ControlNet.md)
+- InstructPix2Pix [`Paper`](https://arxiv.org/abs/2211.09800)|[`Code`](src/generativezoo/models/SD/InstructPix2Pix.py)|[`Script`](src/generativezoo/InstructPix2Pix.py)|[`Documentation`](docs/InstructPix2Pix.md)
 
 ## Datasets
 

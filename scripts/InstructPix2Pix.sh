@@ -6,14 +6,18 @@ cd ./../src/generativezoo/models/SD
 
 accelerate launch --mixed_precision="fp16" train_InstructPix2Pix.py \
     --pretrained_model_name_or_path=$MODEL_NAME \
-    --dataset_name=$DATASET_ID \
+    --train_data_dir=$DATASET_PATH \
+    --output_dir=$OUTPUT_DIR \
     --resolution=512 --random_flip \
-    --train_batch_size=4 --gradient_accumulation_steps=4 --gradient_checkpointing \
+    --train_batch_size=4 --gradient_accumulation_steps=1 --gradient_checkpointing \
     --max_train_steps=15000 \
-    --checkpointing_steps=5000 --checkpoints_total_limit=1 \
+    --checkpointing_steps=5000 \
     --learning_rate=5e-05 --max_grad_norm=1 --lr_warmup_steps=0 \
     --conditioning_dropout_prob=0.05 \
-    --val_image_url="https://hf.co/datasets/diffusers/diffusers-images-docs/resolve/main/mountain.png" \
-    --validation_prompt="make the mountains snowy" \
+    --validation_image "./../../../../data/processed/pokemons/conditioning_images/0003_mask.png" \
+    --validation_prompt "red circle pokemon with white dots" \
     --seed=42 \
     --report_to=wandb \
+    --original_image_colum="original_image" \
+    --edited_image_column="edited_image" \
+    --edit_prompt_column="edit_prompt"

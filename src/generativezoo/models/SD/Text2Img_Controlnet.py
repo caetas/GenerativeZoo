@@ -13,6 +13,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+#############################################################################################################################
+### Code slightly adapted from https://github.com/huggingface/diffusers/blob/main/examples/controlnet/train_controlnet.py ###
+#############################################################################################################################
+
 import argparse
 import contextlib
 import gc
