@@ -523,6 +523,7 @@ class FlowMatching(nn.Module):
 
         return nll.numpy()
     
+    @torch.no_grad()
     def outlier_detection(self, in_loader, out_loader):
         '''
         Outlier detection
@@ -532,15 +533,21 @@ class FlowMatching(nn.Module):
 
         in_scores = []
         out_scores = []
-
+        self.model.eval()
         for x, _ in tqdm(in_loader, desc='In-distribution', leave=False):
             x = x.to(self.device)
-            nll = self.get_nll(x)
+            #nll = self.get_nll(x)
+            nll = self.model(x, torch.full(x.shape[:1], 1, device=self.device)).cpu().abs().numpy()#mean(dim=(1, 2, 3)).numpy()
+            # get maximum on dims 1,2,3
+            nll = np.max(nll, axis=(1,2,3))
             in_scores.append(nll)
 
         for x, _ in tqdm(out_loader, desc='Out-of-distribution', leave=False):
             x = x.to(self.device)
-            nll = self.get_nll(x)
+            #nll = self.get_nll(x)
+            nll = self.model(x, torch.full(x.shape[:1], 1, device=self.device)).cpu().abs().numpy()#.mean(dim=(1, 2, 3)).numpy()
+            # get maximum on dims 1,2,3
+            nll = np.max(nll, axis=(1,2,3))
             out_scores.append(nll)
 
         in_scores = np.concatenate(in_scores)
