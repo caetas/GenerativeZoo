@@ -489,7 +489,6 @@ class FlowMatching(nn.Module):
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
                 self.model.eval()
                 self.sample(16)
-                self.reverse_flow(x[:16])
             
             if train_loss < best_loss:
                 best_loss = train_loss
