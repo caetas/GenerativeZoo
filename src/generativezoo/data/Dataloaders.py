@@ -465,8 +465,10 @@ class TinyImageNetDataset(Dataset):
             self.label = []
             if train:
                 # to get self.imgs iterate over all class folders and all images in each class
+                classes = os.listdir(os.path.join(root, 'tiny-imagenet-200', 'train'))
+                classes.sort()
                 for i in range(200):
-                    class_folder = os.path.join(root, 'tiny-imagenet-200', 'train', str(i), 'images')
+                    class_folder = os.path.join(root, 'tiny-imagenet-200', 'train', classes[i], 'images')
                     for img in os.listdir(class_folder):
                         self.imgs.append(os.path.join(class_folder, img))
                         self.label.append(i)
