@@ -126,6 +126,7 @@ def parse_args_FlowMatching():
     argparser.add_argument('--num_samples', type=int, default=16, help='number of samples')
     argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet'])
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
+    argparser.add_argument('--interpolation', action='store_true', default=False, help='interpolation')
     args = argparser.parse_args()
     args.channel_scale_factors = tuple(args.channel_scale_factors)
     return args

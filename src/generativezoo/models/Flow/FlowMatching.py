@@ -559,4 +559,48 @@ class FlowMatching(nn.Module):
         plt.legend()
         plt.show()
 
+    @torch.no_grad()
+    def interpolate(self, data_loader, n_steps=10):
+        '''
+        Interpolate between two images
+        :param data_loader: data loader
+        :param n_steps: number of steps
+        '''
+        self.model.eval()
+        # get two images from the data loader
+        x1, _ = next(iter(data_loader))
+        x1 = x1[0].to(self.device)
+        x2, _ = next(iter(data_loader))
+        x2 = x2[0].to(self.device)
+
+        x = torch.stack([x1, x2])
+        # reverse the flow
+        def f(t: float, x):
+            return self.forward(x, torch.full(x.shape[:1], t, device=self.device))
+        z = odeint(f, x, 1, 0, phi=self.model.parameters()).cpu()
+        z1 = z[0]
+        z2 = z[1]
+
+        distance = z2 - z1
+        interpolations = []
+        interpolations.append(z1)
+        for i in range(1,n_steps):
+            interpolation = z1 + distance * (i / (n_steps))
+            interpolations.append(interpolation)
+        interpolations.append(z2)
+        
+        interpolations = torch.stack(interpolations)
+
+        # sample from the interpolations
+        samples = odeint(f, interpolations.to(self.device), 0, 1, phi=self.model.parameters()).cpu()
+        samples = samples*0.5 + 0.5
+        samples = samples.clamp(0, 1)
+        fig = plt.figure(figsize=(20, 5))
+        grid = make_grid(samples, nrow=n_steps+1)
+        plt.imshow(grid.permute(1, 2, 0).cpu().detach().numpy())
+        plt.axis('off')
+        plt.show()
+
+
+
 
