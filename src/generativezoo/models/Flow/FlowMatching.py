@@ -4,7 +4,7 @@ import pandas as pd
 import torch
 from torch import nn
 from tqdm import tqdm
-from zuko.utils import odeint
+import zuko
 from data.Dataloaders import mnist_train_loader, mnist_val_loader
 from generative.networks.nets import DiffusionModelUNet
 from torchvision.utils import make_grid
@@ -16,6 +16,7 @@ import math
 import wandb
 from config import models_dir
 import os
+from torchdiffeq import odeint
 
 def exists(x):
     return x is not None
@@ -411,6 +412,9 @@ class FlowMatching(nn.Module):
         self.channels = in_channels
         self.sample_and_save_freq = args.sample_and_save_freq
         self.dataset = args.dataset
+        self.solver = args.solver
+        self.step_size = args.step_size
+        self.solver_lib = args.solver_lib
 
     def forward(self, x, t):
         '''
@@ -444,8 +448,16 @@ class FlowMatching(nn.Module):
         x_0 = torch.randn(n_samples, self.channels, self.img_size, self.img_size, device=self.device)
         def f(t: float, x):
             return self.forward(x, torch.full(x.shape[:1], t, device=self.device))
+        
+        if self.solver_lib == 'torchdiffeq':
+            if self.solver == 'euler' or self.solver == 'rk4' or self.solver == 'midpoint' or self.solver == 'explicit_adams' or self.solver == 'implicit_adams':
+                samples = odeint(f, x_0, t=torch.linspace(0, 1, 2).to(self.device), options={'step_size': self.step_size}, method=self.solver, rtol=1e-5, atol=1e-5)
+            else:
+                samples = odeint(f, x_0, t=torch.linspace(0, 1, 2).to(self.device), method=self.solver, options={'max_num_steps': 1//self.step_size}, rtol=1e-5, atol=1e-5)
+            samples = samples[1]
+        else:
+            samples = zuko.utils.odeint(f, x_0, 0, 1, phi=self.model.parameters(), atol=1e-5, rtol=1e-5)
 
-        samples = odeint(f, x_0, 0, 1, phi=self.model.parameters())
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
         fig = plt.figure(figsize=(10, 10))
@@ -512,8 +524,15 @@ class FlowMatching(nn.Module):
         self.model.eval()
         def f(t: float, x):
             return self.forward(x, torch.full(x.shape[:1], t, device=self.device))
-        z = odeint(f, x, 1, 0, phi=self.model.parameters()).cpu()
-
+        
+        if self.solver_lib == 'torchdiffeq':
+            if self.solver == 'euler' or self.solver == 'rk4' or self.solver == 'midpoint' or self.solver == 'explicit_adams' or self.solver == 'implicit_adams':
+                z = odeint(f, x, t=torch.linspace(1, 0, 2).to(self.device), options={'step_size': self.step_size}, method=self.solver, rtol=1e-5, atol=1e-5)
+            else:
+                z = odeint(f, x, t=torch.linspace(1, 0, 2).to(self.device), method=self.solver, options={'max_num_steps': 1//self.step_size}, rtol=1e-5, atol=1e-5)
+            z = z[1]
+        else:
+            z = zuko.utils.odeint(f, x, 1, 0, phi=self.model.parameters(), atol=1e-5, rtol=1e-5)
         k = 256
         prior_ll = -0.5 * (z ** 2 + np.log(2 * np.pi))
         prior_ll = prior_ll.view(z.size(0), -1).sum(-1) \
@@ -577,7 +596,7 @@ class FlowMatching(nn.Module):
         # reverse the flow
         def f(t: float, x):
             return self.forward(x, torch.full(x.shape[:1], t, device=self.device))
-        z = odeint(f, x, 1, 0, phi=self.model.parameters()).cpu()
+        z = zuko.utils.odeint(f, x, 1, 0, phi=self.model.parameters(), atol=1e-5, rtol=1e-5).cpu()
         z1 = z[0]
         z2 = z[1]
 
@@ -592,7 +611,7 @@ class FlowMatching(nn.Module):
         interpolations = torch.stack(interpolations)
 
         # sample from the interpolations
-        samples = odeint(f, interpolations.to(self.device), 0, 1, phi=self.model.parameters()).cpu()
+        samples = odeint(f, interpolations.to(self.device), 0, 1, phi=self.model.parameters(), atol=1e-5, rtol=1e-5).cpu()
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
         fig = plt.figure(figsize=(20, 5))

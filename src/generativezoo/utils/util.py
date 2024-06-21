@@ -127,6 +127,9 @@ def parse_args_FlowMatching():
     argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet'])
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--interpolation', action='store_true', default=False, help='interpolation')
+    argparser.add_argument('--solver_lib', type=str, default='torchdiffeq', help='solver library', choices=['torchdiffeq', 'zuko'])
+    argparser.add_argument('--step_size', type=float, default=0.1, help='step size for ODE solver')
+    argparser.add_argument('--solver', type=str, default='dopri5', help='solver for ODE', choices=['dopri5', 'rk4', 'dopri8', 'euler', 'bosh3', 'adaptive_heun', 'midpoint', 'explicit_adams', 'implicit_adams'])
     args = argparser.parse_args()
     args.channel_scale_factors = tuple(args.channel_scale_factors)
     return args
