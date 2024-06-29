@@ -712,7 +712,7 @@ class ImageNetDataset(Dataset):
             with open(os.path.join(root, 'imagenet', 'train_images.txt'), 'r') as f:
                 self.imgs = f.readlines()
             self.imgs = [i.strip() for i in self.imgs]
-            self.imgs = self.imgs[:1000]
+            self.imgs = self.imgs
             self.tar_files = os.listdir(os.path.join(root, 'imagenet', 'train'))
             self.tar_files = {f"{i[:-4]}": tarfile.open(os.path.join(root, 'imagenet', 'train', i)) for i in self.tar_files}
         else:
