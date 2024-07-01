@@ -164,6 +164,31 @@ def parse_args_CondFlowMatching():
     args.channel_scale_factors = tuple(args.channel_scale_factors)
     return args
 
+def parse_args_RectifiedFlows():
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--train', action='store_true', default=False, help='train model')
+    argparser.add_argument('--sample', action='store_true', default=False, help='sample model')
+    argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
+    argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet'])
+    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet'])
+    argparser.add_argument('--batch_size', type=int, default=128, help='batch size')
+    argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
+    argparser.add_argument('--lr', type=float, default=5e-4, help='learning rate')
+    argparser.add_argument('--patch_size', type=int, default=2, help='patch size')
+    argparser.add_argument('--dim', type=int, default=64, help='dimension')
+    argparser.add_argument('--n_layers', type=int, default=6, help='number of layers')
+    argparser.add_argument('--n_heads', type=int, default=4, help='number of heads')
+    argparser.add_argument('--multiple_of', type=int, default=256, help='multiple of')
+    argparser.add_argument('--ffn_dim_multiplier', type=int, default=None, help='ffn dim multiplier')
+    argparser.add_argument('--norm_eps', type=float, default=1e-5, help='norm eps')
+    argparser.add_argument('--class_dropout_prob', type=float, default=0.1, help='class dropout probability')
+    argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
+    argparser.add_argument('--num_classes', type=int, default=10, help='number of classes')
+    argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
+    argparser.add_argument('--cfg', type=float, default=1.0, help='label guidance')
+    argparser.add_argument('--sample_steps', type=int, default=50, help='number of steps for sampling')
+    return argparser.parse_args()
+
 def parse_args_VanillaFlow():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--train', action='store_true', default=False, help='train model')

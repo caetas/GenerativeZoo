@@ -36,7 +36,7 @@ You can train this model with the following command:
 
 To sample, please provide the checkpoint:
 
-    python FM.py --sample --dataset fashionmnist --checkpoint ./../../models/FlowMatching/FM_mnist.pt
+    python FM.py --sample --dataset mnist --checkpoint ./../../models/FlowMatching/FM_mnist.pt
 
 ## Outlier Detection
 

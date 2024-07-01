@@ -402,7 +402,7 @@ def create_checkpoint_dir():
     if not os.path.exists(os.path.join(models_dir, 'CondFlowMatching')):
         os.makedirs(os.path.join(models_dir, 'CondFlowMatching'))
 
-class FlowMatching(nn.Module):
+class CondFlowMatching(nn.Module):
 
     def __init__(self, args, img_size=32, in_channels=3):
         '''
