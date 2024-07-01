@@ -118,12 +118,15 @@ The listed models are already implemented and fully integrated in the model zoo.
 - RealNVP [`Paper`](https://arxiv.org/abs/1605.08803) | [`Code`](src\generativezoo\models\Flow\RealNVP.py)<sup>15</sup> | [`Script`](src/generativezoo/RealNVP.py) | [`Documentation`](docs/RealNVP.md)
 - Glow [`Paper`](https://arxiv.org/abs/1807.03039) | [`Code`](src\generativezoo\models\Flow\Glow.py)<sup>16</sup> | [`Script`](src/generativezoo/GLOW.py) | [`Documentation`](docs/Glow.md)
 - Flow++ [`Paper`](https://arxiv.org/abs/1902.00275) | [`Code`](src\generativezoo\models\Flow\FlowPlusPlus.py)<sup>17</sup> | [`Script`](src\generativezoo\FlowPP.py) | [`Documentation`](docs/FlowPlusPlus.md)
+- Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src\generativezoo\models\Flow/FlowMatching.py)<sup>8,18</sup> | [`Script`](src\generativezoo\FM.py) | [`Documentation`](docs/FlowMatching.md)
+- Conditional Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src\generativezoo\models\Flow/CondFlowMatching.py)<sup>8,18</sup> | [`Script`](src\generativezoo\CondFM.py) | [`Documentation`](docs/ConditionalFlowMatching.md)
+- Rectified Flows [`Paper`](https://arxiv.org/abs/2403.03206) | [`Code`](src/generativezoo/models/Flow/RectifiedFlows.py)<sup>19</sup> | [`Script`](src/generativezoo/RF.py) | [`Documentation`](docs/RectifiedFlows.md)
 
 #### Stable Diffusion
 
-- Stable Diffusion + LoRA [`Paper`](https://arxiv.org/abs/2106.09685) | [`Code`](src/generativezoo/models/SD/Text2Img_Lora.py)<sup>18</sup> | [`Script`](src/generativezoo/Text2Img_LoRA.py) | [`Documentation`](docs/Text2Img_LoRA.md)
-- ControlNet [`Paper`](https://arxiv.org/abs/2302.05543) | [`Code`](src/generativezoo/models/SD/Text2Img_Controlnet.py)<sup>18</sup> | [`Script`](src/generativezoo/Text2Img_ControlNet.py) | [`Documentation`](docs/Text2Img_ControlNet.md)
-- InstructPix2Pix [`Paper`](https://arxiv.org/abs/2211.09800) | [`Code`](src/generativezoo/models/SD/InstructPix2Pix.py)<sup>18</sup> | [`Script`](src/generativezoo/InstructPix2Pix.py) | [`Documentation`](docs/InstructPix2Pix.md)
+- Stable Diffusion + LoRA [`Paper`](https://arxiv.org/abs/2106.09685) | [`Code`](src/generativezoo/models/SD/Text2Img_Lora.py)<sup>20</sup> | [`Script`](src/generativezoo/Text2Img_LoRA.py) | [`Documentation`](docs/Text2Img_LoRA.md)
+- ControlNet [`Paper`](https://arxiv.org/abs/2302.05543) | [`Code`](src/generativezoo/models/SD/Text2Img_Controlnet.py)<sup>20</sup> | [`Script`](src/generativezoo/Text2Img_ControlNet.py) | [`Documentation`](docs/Text2Img_ControlNet.md)
+- InstructPix2Pix [`Paper`](https://arxiv.org/abs/2211.09800) | [`Code`](src/generativezoo/models/SD/InstructPix2Pix.py)<sup>20</sup> | [`Script`](src/generativezoo/InstructPix2Pix.py) | [`Documentation`](docs/InstructPix2Pix.md)
 
 ## Datasets
 
@@ -216,7 +219,9 @@ All the repositories used to generate this code are mentioned in each of the cor
 15. [real-nvp](https://github.com/chrischute/real-nvp)
 16. [Glow-PyTorch](https://github.com/y0ast/Glow-PyTorch)
 17. [flowplusplus](https://github.com/chrischute/flowplusplus)
-18. [diffusers](https://github.com/huggingface/diffusers)
+18. [conditional-flow-matching](https://bm371613.github.io/conditional-flow-matching/)
+19. [minRF](https://github.com/cloneofsimo/minRF)
+20. [diffusers](https://github.com/huggingface/diffusers)
 
 ## Citation
 

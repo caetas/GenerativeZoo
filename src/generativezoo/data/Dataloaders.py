@@ -8,6 +8,9 @@ from glob import glob
 from PIL import Image
 import numpy as np
 import torch
+import tarfile
+import io
+
 
 def cifar_train_loader(batch_size, normalize = False, input_shape = None):
 
@@ -465,8 +468,10 @@ class TinyImageNetDataset(Dataset):
             self.label = []
             if train:
                 # to get self.imgs iterate over all class folders and all images in each class
+                classes = os.listdir(os.path.join(root, 'tiny-imagenet-200', 'train'))
+                classes.sort()
                 for i in range(200):
-                    class_folder = os.path.join(root, 'tiny-imagenet-200', 'train', str(i), 'images')
+                    class_folder = os.path.join(root, 'tiny-imagenet-200', 'train', classes[i], 'images')
                     for img in os.listdir(class_folder):
                         self.imgs.append(os.path.join(class_folder, img))
                         self.label.append(i)
@@ -704,15 +709,27 @@ class ImageNetDataset(Dataset):
         self.train = train
         self.imgs = []
         if train:
-            self.imgs = glob(os.path.join(root, 'imagenet', 'train', '*', '*.JPEG'))
+            with open(os.path.join(root, 'imagenet', 'train_images.txt'), 'r') as f:
+                self.imgs = f.readlines()
+            self.imgs = [i.strip() for i in self.imgs]
+            self.imgs = self.imgs
+            self.tar_files = os.listdir(os.path.join(root, 'imagenet', 'train'))
+            self.tar_files = {f"{i[:-4]}": tarfile.open(os.path.join(root, 'imagenet', 'train', i)) for i in self.tar_files}
         else:
-            self.imgs = glob(os.path.join(root, 'imagenet', 'test', '*.JPEG'))
+            with open(os.path.join(root, 'imagenet', 'test_images.txt'), 'r') as f:
+                self.imgs = f.readlines()
+            self.imgs = [i.strip() for i in self.imgs]
+            self.tar_files = tarfile.open(os.path.join(root, 'imagenet', 'test.tar'))
 
     def __len__(self):
         return len(self.imgs)
     
     def __getitem__(self, idx):
-        img = Image.open(self.imgs[idx]).convert('RGB')
+        if self.train:
+            tar_file = self.imgs[idx].split('/')[-2]
+            img = Image.open(io.BytesIO(self.tar_files[tar_file].extractfile(f'Data/{self.imgs[idx]}').read())).convert('RGB')
+        else:
+            img = Image.open(io.BytesIO(self.tar_files.extractfile(f'Data/{self.imgs[idx]}').read())).convert('RGB')
         if self.transform:
             img = self.transform(img)
         return img, 0
