@@ -411,7 +411,7 @@ class CondFlowMatching(nn.Module):
         :param img_size: size of the image
         :param in_channels: number of input channels
         '''
-        super(FlowMatching, self).__init__()
+        super(CondFlowMatching, self).__init__()
         self.args = args
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = UNet(n_features=args.n_features, init_channels=args.init_channels, channel_scale_factors=args.channel_scale_factors, in_channels=in_channels, resnet_block_groups=args.resnet_block_groups, use_convnext=args.use_convnext, convnext_scale_factor=args.convnext_scale_factor)
@@ -475,8 +475,18 @@ class CondFlowMatching(nn.Module):
             else:
                 samples = odeint(f, x_0, t=torch.linspace(0, 1, 2).to(self.device), method=self.solver, options={'max_num_steps': 1//self.step_size}, rtol=1e-5, atol=1e-5)
             samples = samples[1]
-        else:
+        elif self.solver_lib == 'zuko':
             samples = zuko.utils.odeint(f, x_0, 0, 1, phi=self.model.parameters(), atol=1e-5, rtol=1e-5)
+        else:
+            c = torch.arange(0, self.num_classes, device=self.device)
+            c = nn.functional.one_hot(c, num_classes=self.num_classes).float()
+            no_c = torch.zeros_like(c)
+            t=0
+            for i in tqdm(range(int(1/self.step_size)), desc='Sampling', leave=False):
+                v = (1+guidance_scale)*self.forward(x_0, torch.full(x_0.shape[:1], t, device=self.device), c) - guidance_scale*self.forward(x_0, torch.full(x_0.shape[:1], t, device=self.device), no_c)
+                x_0 = x_0 + self.step_size * v
+                t += self.step_size
+            samples = x_0
 
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
