@@ -21,6 +21,10 @@
 | `--num_samples`              | Number of samples                 | `16`              |                                                                                                              |
 | `--out_dataset`              | Outlier dataset name              | `'fashionmnist'`  | `'mnist'`, `'cifar10'`, `'cifar100'`, `'places365'`, `'dtd'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'tinyimagenet'`  |
 | `--outlier_detection`        | Outlier detection                 | `False`           |                                                                                                              |
+| `--interpolation`            | Interpolation                      | `False`           |                                                                                                              |
+| `--solver_lib`               | Solver library                     | `'none'`          | `'torchdiffeq'`, `'zuko'`, `'none'`                                                                          |
+| `--step_size`                | Step size for ODE solver           | `0.1`             |                                                                                                              |
+| `--solver`                   | Solver for ODE                     | `'dopri5'`        | `'dopri5'`, `'rk4'`, `'dopri8'`, `'euler'`, `'bosh3'`, `'adaptive_heun'`, `'midpoint'`, `'explicit_adams'`, `'implicit_adams'` |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

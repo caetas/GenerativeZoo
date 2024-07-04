@@ -720,7 +720,6 @@ class ImageNetDataset(Dataset):
                 self.imgs = f.readlines()
             self.imgs = [i.strip() for i in self.imgs]
             self.tar_files = tarfile.open(os.path.join(root, 'imagenet', 'test.tar'))
-
     def __len__(self):
         return len(self.imgs)
     
@@ -738,13 +737,13 @@ def imagenet_train_loader(batch_size, normalize = False, input_shape = None):
         
         if normalize:
             transform = transforms.Compose([
-                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
             ])
         else:
             transform = transforms.Compose([
-                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
                 transforms.ToTensor(),
             ])
         
@@ -758,19 +757,19 @@ def imagenet_train_loader(batch_size, normalize = False, input_shape = None):
         if input_shape is not None:
             return training_loader, input_shape, 3
         else:
-            return training_loader, 256, 3
+            return training_loader, 128, 3
         
 def imagenet_val_loader(batch_size, normalize = False, input_shape = None):
                     
         if normalize:
             transform = transforms.Compose([
-                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
             ])
         else:
             transform = transforms.Compose([
-                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
                 transforms.ToTensor(),
             ])
         
@@ -784,7 +783,7 @@ def imagenet_val_loader(batch_size, normalize = False, input_shape = None):
         if input_shape is not None:
             return validation_loader, input_shape, 3
         else:
-            return validation_loader, 256, 3    
+            return validation_loader, 128, 3    
 
 def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None, num_workers = 0):
     if dataset_name == 'mnist':

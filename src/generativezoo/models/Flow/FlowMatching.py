@@ -460,8 +460,15 @@ class FlowMatching(nn.Module):
             else:
                 samples = odeint(f, x_0, t=torch.linspace(0, 1, 2).to(self.device), method=self.solver, options={'max_num_steps': 1//self.step_size}, rtol=1e-5, atol=1e-5)
             samples = samples[1]
-        else:
+        elif self.solver_lib == 'zuko':
             samples = zuko.utils.odeint(f, x_0, 0, 1, phi=self.model.parameters(), atol=1e-5, rtol=1e-5)
+        else:
+            t=0
+            for i in tqdm(range(int(1/self.step_size)), desc='Sampling', leave=False):
+                v = self.forward(x_0, torch.full(x_0.shape[:1], t, device=self.device))
+                x_0 = x_0 + self.step_size * v
+                t += self.step_size
+            samples = x_0
 
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
@@ -536,8 +543,15 @@ class FlowMatching(nn.Module):
             else:
                 z = odeint(f, x, t=torch.linspace(1, 0, 2).to(self.device), method=self.solver, options={'max_num_steps': 1//self.step_size}, rtol=1e-5, atol=1e-5)
             z = z[1]
-        else:
+        elif self.solver_lib == 'zuko':
             z = zuko.utils.odeint(f, x, 1, 0, phi=self.model.parameters(), atol=1e-5, rtol=1e-5)
+        else:
+            t=1
+            for i in tqdm(range(int(1/self.step_size)), desc='Reverse Flow', leave=False):
+                v = self.forward(x, torch.full(x.shape[:1], t, device=self.device))
+                x = x - self.step_size * v
+                t -= self.step_size
+            z = x
         k = 256
         prior_ll = -0.5 * (z ** 2 + np.log(2 * np.pi))
         prior_ll = prior_ll.view(z.size(0), -1).sum(-1) \
