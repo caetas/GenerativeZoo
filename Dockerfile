@@ -6,6 +6,8 @@ WORKDIR /app/
 
 COPY requirements/requirements.txt /app/requirements/
 RUN pip install -r /app/requirements/requirements.txt
+RUN mkdir /app/data
+RUN mkdir /app/data/raw
 
 # copy code and models
 #ADD models /app/models

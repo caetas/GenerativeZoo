@@ -38,7 +38,7 @@ Clone this repository (requires git ssh keys)
 
 ### Using Docker
 
-Create the image using the provided docker file and then run the container:
+Create the image using the provided [`Dockerfile`](Dockerfile) and then run the container:
 
     docker build --tag generativezoo .
     docker create --gpus all --shm-size=1g -i --name generativezoo_container generativezoo
