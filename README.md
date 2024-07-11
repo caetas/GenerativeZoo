@@ -36,17 +36,26 @@ Clone this repository (requires git ssh keys)
     git clone --recursive git@github.com:caetas/GenerativeZoo.git
     cd generativezoo
 
-Install dependencies
+### Using Docker
 
-    conda create -y -n python3.9 python=3.9
-    conda activate python3.9
+Create the image using the provided [`Dockerfile`](Dockerfile) and then run the container:
+
+    docker build --tag generativezoo .
+    docker create --gpus all --shm-size=1g -i --name generativezoo_container generativezoo
+    docker start generativezoo_container
+
+To access the shell, please run:
+
+    docker exec -it generativezoo_container /bin/bash
+
+### Normal Installation
 
 or if environment already exists
 
     conda env create -f environment.yml
     conda activate python3.9
 
-### On Linux
+#### On Linux
 
 And then setup all virtualenv using make file recipe
 
@@ -58,7 +67,7 @@ You might be required to run the following command once to setup the automatic a
 
 Feel free to edit the [`.envrc`](.envrc) file if you prefer to activate the environments manually.
 
-### On Windows
+#### On Windows
 
 You can setup the virtualenv by running the following commands:
 
