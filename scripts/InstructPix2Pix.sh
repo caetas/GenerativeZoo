@@ -4,7 +4,7 @@ export DATASET_PATH="./../../../../data/processed/pokemons"
 
 cd ./../src/generativezoo/models/SD
 
-accelerate launch --mixed_precision="fp16" train_InstructPix2Pix.py \
+accelerate launch --mixed_precision="fp16" InstructPix2Pix.py \
     --pretrained_model_name_or_path=$MODEL_NAME \
     --train_data_dir=$DATASET_PATH \
     --output_dir=$OUTPUT_DIR \
