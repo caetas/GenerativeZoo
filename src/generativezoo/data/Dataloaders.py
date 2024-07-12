@@ -608,7 +608,13 @@ def places365_train_loader(batch_size, normalize = False, input_shape = None, nu
             transforms.ToTensor(),
         ])
     
-    training_data = datasets.Places365(root=data_raw_dir, split='train-standard', transform=transform, download=True, small=True)
+    data_list = os.listdir(data_raw_dir)
+    if 'data_256_standard' in data_list:
+        download = False
+    else:
+        download = True
+
+    training_data = datasets.Places365(root=data_raw_dir, split='train-standard', transform=transform, download=download, small=True)
 
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
@@ -635,7 +641,13 @@ def places365_test_loader(batch_size, normalize = False, input_shape = None, num
             transforms.ToTensor(),
         ])
     
-    validation_data = datasets.Places365(root=data_raw_dir, split='val', transform=transform, small=True)
+    data_list = os.listdir(data_raw_dir)
+    if 'val_256' in data_list:
+        download = False
+    else:
+        download = True
+
+    validation_data = datasets.Places365(root=data_raw_dir, split='val', transform=transform, small=True, download=download)
 
     validation_loader = DataLoader(validation_data,
                                 batch_size=batch_size,
