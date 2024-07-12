@@ -26,7 +26,7 @@ You will need:
 - `Make`
 - a `.secrets` file with the required secrets and credentials
 - load environment variables from `.env`
-- `CUDA >= 12.1`
+- `NVIDIA Drivers`(mandatory) and `CUDA >= 12.1` (mandatory if Docker is not used)
 - `Weights & Biases` account
 
 ## Installation
@@ -47,6 +47,8 @@ Create the image using the provided [`Dockerfile`](Dockerfile) and then run the 
 To access the shell, please run:
 
     docker exec -it generativezoo_container /bin/bash
+
+**Note: Edit the [`Dockerfile`](Dockerfile) if you want to include data or model checkpoints in your image.**
 
 ### Normal Installation
 
