@@ -379,6 +379,7 @@ class RF:
         print(f"Number of parameters: {model_size}, {model_size / 1e6}M")
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
+        self.no_wandb = args.no_wandb
 
     def forward(self, x, cond):
         b = x.size(0)
@@ -421,7 +422,8 @@ class RF:
         fig = plt.figure(figsize=(10, 10))
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
         if train:
-            wandb.log({"samples": fig})
+            if not self.no_wandb:
+                wandb.log({"samples": fig})
         else:   
             plt.show()
         plt.close(fig)
@@ -448,7 +450,8 @@ class RF:
                 optimizer.step()
                 train_loss += loss.item()*x.shape[0]
             epoch_bar.set_postfix(loss=train_loss / len(train_loader.dataset))
-            wandb.log({"train_loss": train_loss / len(train_loader.dataset)})
+            if not self.no_wandb:
+                wandb.log({"train_loss": train_loss / len(train_loader.dataset)})
 
             if train_loss/len(train_loader.dataset) < best_loss:
                 best_loss = train_loss/len(train_loader.dataset)

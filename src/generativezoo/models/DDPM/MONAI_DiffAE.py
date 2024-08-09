@@ -31,6 +31,7 @@ class DiffAE(nn.Module):
             in_channels (int): the number of input channels
         '''
         super(DiffAE, self).__init__()
+        self.no_wandb = args.no_wandb
         self.embedding_dimension = args.embedding_dimension
         self.encoder = torchvision.models.resnet18()
         self.encoder.fc = nn.Linear(512, self.embedding_dimension)
@@ -95,7 +96,8 @@ class DiffAE(nn.Module):
         plt.imshow(grid.detach().cpu().numpy().transpose(1,2,0))
         plt.axis('off')
         if train:
-            wandb.log({"Samples": fig})
+            if not self.no_wandb:
+                wandb.log({"Samples": fig})
         else:
             plt.show()
         plt.close(fig)
@@ -149,13 +151,15 @@ class DiffAE(nn.Module):
                 train_loss += loss.item()
             train_loss /= len(train_loader)
             epoch_bar.set_description(f"Train Loss: {train_loss}")
-            wandb.log({"Train Loss": train_loss}, step = epoch)
+            if not self.no_wandb:
+                wandb.log({"Train Loss": train_loss}, step = epoch)
 
             if val_loader and ((epoch + 1) % self.sample_and_save_freq == 0 or epoch == 0):
                 val_loss = self.evaluate(val_loader)
                 epoch_bar.set_description(f"Train Loss: {train_loss} - Val Loss: {val_loss}")
                 self.generate_samples(val_loader, name = f"epoch_{str(epoch)}", train = True)
-                wandb.log({"Val Loss": val_loss}, step = epoch)
+                if not self.no_wandb:
+                    wandb.log({"Val Loss": val_loss}, step = epoch)
 
             # save model if it has the best val loss
             if train_loss < best_loss:

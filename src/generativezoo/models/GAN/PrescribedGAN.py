@@ -319,6 +319,7 @@ class PresGAN(nn.Module):
         self.hmc_opt_accept = args.hmc_opt_accept
         self.dataset = args.dataset
         self.sample_and_save_freq = args.sample_and_save_freq
+        self.no_wandb = args.no_wandb
     
     def forward(self, input):
         '''
@@ -426,7 +427,8 @@ class PresGAN(nn.Module):
             epoch_bar.set_description("Loss_D: {:.4f}, Loss_G: {:.4f}".format(errD.item(), g_error_gan.item()))
             epoch_bar.refresh()
             # Log the losses
-            wandb.log({"Loss_D": errD.item(), "Loss_G": g_error.item(), "Loss_G_GAN": g_error_gan.item(), "Loss_G_Entropy": g_error_entropy.item()})
+            if not self.no_wandb:
+                wandb.log({"Loss_D": errD.item(), "Loss_G": g_error.item(), "Loss_G_GAN": g_error_gan.item(), "Loss_G_Entropy": g_error_entropy.item()})
 
             if g_error_gan.item() < best_loss:
                 best_loss = g_error_gan.item()
@@ -448,7 +450,8 @@ class PresGAN(nn.Module):
                     plt.imshow(np.transpose(img_grid, (1,2,0)))
                     plt.axis('off')
                     #plt.savefig(f"PresGAN_{self.dataset}_epoch_{epoch}.png")
-                    wandb.log({"Samples": fig})
+                    if not self.no_wandb:
+                        wandb.log({"Samples": fig})
                     plt.close(fig)
 
     def load_checkpoints(self,generator_checkpoint=None, discriminator_checkpoint=None, sigma_checkpoint=None):

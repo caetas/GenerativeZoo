@@ -12,24 +12,25 @@ size = None
 
 if args.train:
     train_dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize, size=size)
-    wandb.init(project='CDDPM',
-                config={
-                    'dataset': args.dataset,
-                    'batch_size': args.batch_size,
-                    'n_epochs': args.n_epochs,
-                    'lr': args.lr,
-                    'n_features': args.n_features,
-                    'n_classes': args.n_classes,
-                    'drop_prob': args.drop_prob,
-                    'timesteps': args.timesteps,
-                    'beta_start': args.beta_start,
-                    'beta_end': args.beta_end,
-                    'ddpm': args.ddpm,
-                    'input_size': input_size,
-                    'channels': channels,
-                },
+    if not args.no_wandb:
+        wandb.init(project='CDDPM',
+                    config={
+                        'dataset': args.dataset,
+                        'batch_size': args.batch_size,
+                        'n_epochs': args.n_epochs,
+                        'lr': args.lr,
+                        'n_features': args.n_features,
+                        'n_classes': args.n_classes,
+                        'drop_prob': args.drop_prob,
+                        'timesteps': args.timesteps,
+                        'beta_start': args.beta_start,
+                        'beta_end': args.beta_end,
+                        'ddpm': args.ddpm,
+                        'input_size': input_size,
+                        'channels': channels,
+                    },
 
-                name = 'CDDPM_{}'.format(args.dataset))
+                    name = 'CDDPM_{}'.format(args.dataset))
     model = ConditionalDDPM(in_channels=channels, input_size=input_size, args=args)
     model.train_model(train_dataloader)
 

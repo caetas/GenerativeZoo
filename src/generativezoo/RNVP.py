@@ -10,19 +10,21 @@ size = None
 if args.train:
     dataloader, img_size, channels = pick_dataset(args.dataset, batch_size=args.batch_size, normalize = False, size=size)
     model = RealNVP(img_size=img_size, in_channels=channels, args=args)
-    wandb.init(project='RealNVP',
-               
-               config = {"dataset": args.dataset,
-                         "num_scales": args.num_scales,
-                         "mid_channels": args.mid_channels,
-                         "num_blocks": args.num_blocks,
-                         "batch_size": args.batch_size,
-                         "lr": args.lr,
-                         "n_epochs": args.n_epochs,
-                         "img_size": img_size,
-                         "channels": channels},
-                         
-                         name=f"RealNVP_{args.dataset}")
+    
+    if not args.no_wandb:
+        wandb.init(project='RealNVP',
+                
+                config = {"dataset": args.dataset,
+                            "num_scales": args.num_scales,
+                            "mid_channels": args.mid_channels,
+                            "num_blocks": args.num_blocks,
+                            "batch_size": args.batch_size,
+                            "lr": args.lr,
+                            "n_epochs": args.n_epochs,
+                            "img_size": img_size,
+                            "channels": channels},
+                            
+                            name=f"RealNVP_{args.dataset}")
     
     model.train_model(dataloader, args)
     wandb.finish()

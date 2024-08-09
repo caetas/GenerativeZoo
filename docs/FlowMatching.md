@@ -16,15 +16,16 @@
 | `--use_convnext`             | Use convnext (default: True)      | `True`            |                                                                                                              |
 | `--convnext_scale_factor`    | Convnext scale factor (default: 2)| `2`               |                                                                                                              |
 | `--sample_and_save_freq`     | Sample and save frequency         | `5`               |                                                                                                              |
-| `--dataset`                  | Dataset name                      | `'mnist'`         | `'mnist'`, `'cifar10'`, `'cifar100'`, `'places365'`, `'dtd'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'tinyimagenet'` |
+| `--dataset`               | Dataset name                                       | `mnist`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet`            |
+| `--no_wandb`              | Disable Wandb                                      | `False`  |                                                                                                                                                                              |
 | `--checkpoint`               | Checkpoint path                   | `None`            |                                                                                                              |
 | `--num_samples`              | Number of samples                 | `16`              |                                                                                                              |
-| `--out_dataset`              | Outlier dataset name              | `'fashionmnist'`  | `'mnist'`, `'cifar10'`, `'cifar100'`, `'places365'`, `'dtd'`, `'fashionmnist'`, `'chestmnist'`, `'octmnist'`, `'tissuemnist'`, `'pneumoniamnist'`, `'svhn'`, `'tinyimagenet'`  |
+| `--out_dataset`              | Outlier dataset name              | `fashionmnist`  | `mnist`, `cifar10`, `cifar100`, `places365`, `dtd`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `imagenet`  |
 | `--outlier_detection`        | Outlier detection                 | `False`           |                                                                                                              |
 | `--interpolation`            | Interpolation                      | `False`           |                                                                                                              |
-| `--solver_lib`               | Solver library                     | `'none'`          | `'torchdiffeq'`, `'zuko'`, `'none'`                                                                          |
+| `--solver_lib`               | Solver library                     | `none`          | `torchdiffeq`, `zuko`, `none`                                                                          |
 | `--step_size`                | Step size for ODE solver           | `0.1`             |                                                                                                              |
-| `--solver`                   | Solver for ODE                     | `'dopri5'`        | `'dopri5'`, `'rk4'`, `'dopri8'`, `'euler'`, `'bosh3'`, `'adaptive_heun'`, `'midpoint'`, `'explicit_adams'`, `'implicit_adams'` |
+| `--solver`                   | Solver for ODE                     | `dopri5`        | `dopri5`, `rk4`, `dopri8`, `euler`, `bosh3`, `adaptive_heun`, `midpoint`, `explicit_adams`, `implicit_adams` |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

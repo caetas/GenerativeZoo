@@ -12,17 +12,18 @@ normalize = True
 size = None
 
 if args.train:
-    wandb.init(project='VanillaSGM',
-                config={
-                    'dataset': args.dataset,
-                    'batch_size': args.batch_size,
-                    'n_epochs': args.n_epochs,
-                    'lr': args.lr,
-                    'sigma': args.sigma,
-                    'model_channels': args.model_channels,
-                    'embed_dim': args.embed_dim
-                },
-                name = 'VanillaSGM_{}'.format(args.dataset))
+    if not args.no_wandb:
+        wandb.init(project='VanillaSGM',
+                    config={
+                        'dataset': args.dataset,
+                        'batch_size': args.batch_size,
+                        'n_epochs': args.n_epochs,
+                        'lr': args.lr,
+                        'sigma': args.sigma,
+                        'model_channels': args.model_channels,
+                        'embed_dim': args.embed_dim
+                    },
+                    name = 'VanillaSGM_{}'.format(args.dataset))
     dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize, size=size)
     model = VanillaSGM(args, channels, input_size)
     model.train_model(dataloader)

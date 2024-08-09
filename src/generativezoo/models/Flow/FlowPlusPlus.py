@@ -77,6 +77,7 @@ class FlowPlusPlus(nn.Module):
         self.img_size = img_size
         self.flows.to(self.device)
         self.dequant_flows.to(self.device)
+        self.no_wandb = args.no_wandb
 
     def forward(self, x, reverse=False):
         sldj = torch.zeros(x.size(0), device=x.device)
@@ -174,7 +175,8 @@ class FlowPlusPlus(nn.Module):
                 torch.save(self.dequant_flows.state_dict(), os.path.join(models_dir, 'FlowPP', f'DequantFlowPP_{args.dataset}.pt'))
 
             tbar.set_postfix(loss=total_loss/len(train_loader))
-            wandb.log({'train_loss': total_loss/len(train_loader)})
+            if not self.no_wandb:
+                wandb.log({'train_loss': total_loss/len(train_loader)})
 
             if (epoch+1) % args.sample_and_save_freq == 0 or epoch == 0:
                 self.sample(16)
@@ -198,7 +200,8 @@ class FlowPlusPlus(nn.Module):
         plt.imshow(samples)
         plt.axis('off')
         if train:
-            wandb.log({'samples': fig})
+            if not self.no_wandb:
+                wandb.log({'samples': fig})
         else:
             plt.show()
         plt.close(fig)

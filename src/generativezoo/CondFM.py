@@ -7,24 +7,25 @@ args = parse_args_CondFlowMatching()
 
 if args.train:
     train_loader, input_size, channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True)
-    wandb.init(project='CondFlowMatching',
-                config={
-                    "dataset": args.dataset,
-                    "batch_size": args.batch_size,
-                    "n_epochs": args.n_epochs,
-                    "lr": args.lr,
-                    "channels": channels,
-                    "input_size": input_size,
-                    "n_features": args.n_features,
-                    "init_channels": args.init_channels,
-                    "channel_scale_factors": args.channel_scale_factors,
-                    "resnet_block_groups": args.resnet_block_groups,
-                    "use_convnext": args.use_convnext,
-                    "convnext_scale_factor": args.convnext_scale_factor,
-                    "prob": args.prob,
-                },
+    if not args.no_wandb:
+        wandb.init(project='CondFlowMatching',
+                    config={
+                        "dataset": args.dataset,
+                        "batch_size": args.batch_size,
+                        "n_epochs": args.n_epochs,
+                        "lr": args.lr,
+                        "channels": channels,
+                        "input_size": input_size,
+                        "n_features": args.n_features,
+                        "init_channels": args.init_channels,
+                        "channel_scale_factors": args.channel_scale_factors,
+                        "resnet_block_groups": args.resnet_block_groups,
+                        "use_convnext": args.use_convnext,
+                        "convnext_scale_factor": args.convnext_scale_factor,
+                        "prob": args.prob,
+                    },
 
-                name=f"CondFlowMatching_{args.dataset}")    
+                    name=f"CondFlowMatching_{args.dataset}")    
     model = CondFlowMatching(args, input_size, channels)
     model.train_model(train_loader)
     wandb.finish()

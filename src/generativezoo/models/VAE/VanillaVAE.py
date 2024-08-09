@@ -30,7 +30,7 @@ class VanillaVAE(nn.Module):
         args: Namespace, arguments for the model
         '''
         super(VanillaVAE, self).__init__()
-
+        self.no_wandb = args.no_wandb
         self.input_shape = input_shape
         self.input_channels = input_channels
         self.final_channels = input_channels
@@ -233,8 +233,8 @@ class VanillaVAE(nn.Module):
         if title:
             plt.title(title)
         if train:
-            wandb.log({'Samples': fig})
-            #plt.savefig(f'Samples_{title}.png')
+            if not self.no_wandb:
+                wandb.log({'Samples': fig})
         else:
             plt.show()
         plt.close(fig)
@@ -265,8 +265,8 @@ class VanillaVAE(nn.Module):
         if title:
             plt.title(title)
         if train:
-            wandb.log({f"Reconstruction": fig})
-            #plt.savefig(f'Reconstruction_{title}.png')
+            if not self.no_wandb:
+                wandb.log({f"Reconstruction": fig})
         else:
             plt.show()
         plt.close(fig)
@@ -300,7 +300,8 @@ class VanillaVAE(nn.Module):
             #write below the bar
             epochs_bar.set_description("Loss: {:.8f}".format(acc_loss/len(data_loader.dataset)))
             epochs_bar.refresh()
-            wandb.log({"loss": acc_loss/len(data_loader.dataset)})
+            if not self.no_wandb:
+                wandb.log({"loss": acc_loss/len(data_loader.dataset)})
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
                 self.create_grid(title=f"Epoch_{epoch}", train = True)
                 self.create_validation_grid(data_loader, train = True, title=f"Epoch_{epoch}")

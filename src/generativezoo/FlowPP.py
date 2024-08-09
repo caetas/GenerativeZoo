@@ -9,22 +9,23 @@ size = None
 
 if args.train:
     train_loader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=False, size=size)
-    wandb.init(project='FlowPlusPlus',
-               config={
-                   'dataset': args.dataset,
-                   'batch_size': args.batch_size,
-                   'n_epochs': args.n_epochs,
-                   'warm_up': args.warm_up,
-                   'lr': args.lr,
-                   'grad_clip': args.grad_clip,
-                   'num_blocks': args.num_blocks,
-                   'num_components': args.num_components,
-                   'num_channels': args.num_channels,
-                   'use_attn': args.use_attn,
-                   'num_dequant_blocks': args.num_dequant_blocks,
-                   'drop_prob': args.drop_prob,
-                },
-                name = 'FlowPlusPlus_{}'.format(args.dataset))
+    if not args.no_wandb:
+        wandb.init(project='FlowPlusPlus',
+                config={
+                    'dataset': args.dataset,
+                    'batch_size': args.batch_size,
+                    'n_epochs': args.n_epochs,
+                    'warm_up': args.warm_up,
+                    'lr': args.lr,
+                    'grad_clip': args.grad_clip,
+                    'num_blocks': args.num_blocks,
+                    'num_components': args.num_components,
+                    'num_channels': args.num_channels,
+                    'use_attn': args.use_attn,
+                    'num_dequant_blocks': args.num_dequant_blocks,
+                    'drop_prob': args.drop_prob,
+                    },
+                    name = 'FlowPlusPlus_{}'.format(args.dataset))
     model = FlowPlusPlus(args, channels=channels, img_size=input_size)
     model.train_model(args, train_loader)
     wandb.finish()

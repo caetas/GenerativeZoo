@@ -13,21 +13,22 @@ args = parse_args_WassersteinGAN()
 size = None
 
 if args.train:
-    wandb.init(project="WGAN",
-            config={
-                "dataset": args.dataset,
-                "batch_size": args.batch_size,
-                "n_epochs": args.n_epochs,
-                "latent_dim": args.latent_dim,
-                "d": args.d,
-                "lrg": args.lrg,
-                "lrd": args.lrd,
-                "beta1": args.beta1,
-                "beta2": args.beta2,
-                "n_critic": args.n_critic,
-                "gp_weight": args.gp_weight
-            },
-            name=f"WGAN_{args.dataset}")
+    if not args.no_wandb:
+        wandb.init(project="WGAN",
+                config={
+                    "dataset": args.dataset,
+                    "batch_size": args.batch_size,
+                    "n_epochs": args.n_epochs,
+                    "latent_dim": args.latent_dim,
+                    "d": args.d,
+                    "lrg": args.lrg,
+                    "lrd": args.lrd,
+                    "beta1": args.beta1,
+                    "beta2": args.beta2,
+                    "n_critic": args.n_critic,
+                    "gp_weight": args.gp_weight
+                },
+                name=f"WGAN_{args.dataset}")
     
     train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=size)
     model = WGAN(args=args, imgSize=input_size, channels=channels)

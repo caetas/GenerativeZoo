@@ -309,6 +309,7 @@ class NCSNv2(nn.Module):
         self.sigma_max = args.sigma_max
         self.num_scales = args.num_scales
         self.channels = channels
+        self.no_wandb = args.no_wandb
 
     def train_model(self, train_loader, args):
         '''
@@ -344,7 +345,8 @@ class NCSNv2(nn.Module):
                 loss_acc += loss.item()
             self.ema.copy_to(self.model.parameters())
             epoch_bar.set_postfix(loss=loss_acc / len(train_loader))
-            wandb.log({'loss': loss_acc / len(train_loader)})
+            if not self.no_wandb:
+              wandb.log({'loss': loss_acc / len(train_loader)})
             if loss_acc < best_loss:
                 best_loss = loss_acc
                 torch.save(self.model.state_dict(), os.path.join(models_dir, 'NCSNv2', f'NCSNv2_{args.dataset}.pt'))
@@ -373,7 +375,8 @@ class NCSNv2(nn.Module):
         plt.imshow(grid.permute(1, 2, 0))
         plt.axis('off')
         if train:
-          wandb.log({"Samples": fig})
+          if not self.no_wandb:
+            wandb.log({"Samples": fig})
         else:
            plt.show()
         plt.close(fig)

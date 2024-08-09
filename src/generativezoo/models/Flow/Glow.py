@@ -640,6 +640,7 @@ class Glow(nn.Module):
         self.dataset = args.dataset
         self.learn_top = args.learn_top
         self.y_condition = args.y_condition
+        self.no_wandb = args.no_wandb
 
         # learned prior
         if self.learn_top:
@@ -765,7 +766,8 @@ class Glow(nn.Module):
                 total_loss += losses["total_loss"].item()
 
             epoch_bar.set_postfix(loss=total_loss/len(dataloader))
-            wandb.log({'Loss': total_loss/len(dataloader)})
+            if self.no_wandb:
+                wandb.log({'Loss': total_loss/len(dataloader)})
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
                 self.sample()
@@ -787,7 +789,8 @@ class Glow(nn.Module):
         plt.imshow(grid.permute(1, 2, 0).cpu().detach().numpy())
         plt.axis("off")
         if train:
-            wandb.log({'Samples': fig})
+            if self.no_wandb:
+                wandb.log({'Samples': fig})
         else:
             plt.show()
         plt.close(fig)

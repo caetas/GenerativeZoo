@@ -7,23 +7,24 @@ args = parse_args_FlowMatching()
 
 if args.train:
     train_loader, input_size, channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True)
-    wandb.init(project='FlowMatching',
-                config={
-                    "dataset": args.dataset,
-                    "batch_size": args.batch_size,
-                    "n_epochs": args.n_epochs,
-                    "lr": args.lr,
-                    "channels": channels,
-                    "input_size": input_size,
-                    "n_features": args.n_features,
-                    "init_channels": args.init_channels,
-                    "channel_scale_factors": args.channel_scale_factors,
-                    "resnet_block_groups": args.resnet_block_groups,
-                    "use_convnext": args.use_convnext,
-                    "convnext_scale_factor": args.convnext_scale_factor,
-                },
+    if not args.no_wandb:
+        wandb.init(project='FlowMatching',
+                    config={
+                        "dataset": args.dataset,
+                        "batch_size": args.batch_size,
+                        "n_epochs": args.n_epochs,
+                        "lr": args.lr,
+                        "channels": channels,
+                        "input_size": input_size,
+                        "n_features": args.n_features,
+                        "init_channels": args.init_channels,
+                        "channel_scale_factors": args.channel_scale_factors,
+                        "resnet_block_groups": args.resnet_block_groups,
+                        "use_convnext": args.use_convnext,
+                        "convnext_scale_factor": args.convnext_scale_factor,
+                    },
 
-                name=f"FlowMatching_{args.dataset}")    
+                    name=f"FlowMatching_{args.dataset}")    
     model = FlowMatching(args, input_size, channels)
     model.train_model(train_loader)
     wandb.finish()

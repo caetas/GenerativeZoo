@@ -8,8 +8,9 @@
 | `--train`                | Train model                             | `False`         |                                                                                          |
 | `--sample`               | Sample from model                       | `False`         |                                                                                          |
 | `--outlier_detection`    | Outlier detection                       | `False`         |                                                                                          |
-| `--dataset`              | Dataset name                            | `'mnist'`       | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
-| `--out_dataset`          | Outlier dataset name                    | `'fashionmnist'`| `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
+| `--dataset`               | Dataset name                                       | `mnist`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet`            |
+| `--no_wandb`              | Disable Wandb                                      | `False`  |                                                                                                                                                                              |
+| `--out_dataset`          | Outlier dataset name                    | `fashionmnist`| `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`,`imagenet` |
 | `--batch_size`           | Batch size                              | `128`           |                                                                                          |
 | `--n_epochs`             | Number of epochs                        | `100`           |                                                                                          |
 | `--lr`                   | Learning rate                           | `1e-3`          |                                                                                          |
@@ -21,7 +22,7 @@
 
 ## Training
 
-The PixelCNNcan be trained with:
+The PixelCNN can be trained with:
 
     python P-CNN.py --train
 

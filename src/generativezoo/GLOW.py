@@ -9,27 +9,27 @@ normalize = False
 size = None
 
 if args.train:
-    wandb.init(project='GLOW',
-               
-               config={
-                    "batch_size": args.batch_size,
-                    "lr": args.lr,
-                    "n_epochs": args.n_epochs,
-                    "dataset": args.dataset,
-                    "hidden_channels": args.hidden_channels,
-                    "K": args.K,
-                    "L": args.L,
-                    "actnorm_scale": args.actnorm_scale,
-                    "flow_permutation": args.flow_permutation,
-                    "flow_coupling": args.flow_coupling,
-                    "LU_decomposed": args.LU_decomposed,
-                    "learn_top": args.learn_top,
-                    "y_condition": args.y_condition,
-                    "num_classes": args.num_classes,
-                    "n_bits": args.n_bits,  
-               },
+    if not args.no_wandb:
+        wandb.init(project='GLOW',
+                config={
+                        "batch_size": args.batch_size,
+                        "lr": args.lr,
+                        "n_epochs": args.n_epochs,
+                        "dataset": args.dataset,
+                        "hidden_channels": args.hidden_channels,
+                        "K": args.K,
+                        "L": args.L,
+                        "actnorm_scale": args.actnorm_scale,
+                        "flow_permutation": args.flow_permutation,
+                        "flow_coupling": args.flow_coupling,
+                        "LU_decomposed": args.LU_decomposed,
+                        "learn_top": args.learn_top,
+                        "y_condition": args.y_condition,
+                        "num_classes": args.num_classes,
+                        "n_bits": args.n_bits,  
+                },
 
-                name = 'GLOW_{}'.format(args.dataset))
+                    name = 'GLOW_{}'.format(args.dataset))
     
     train_loader, input_shape, channels = pick_dataset(args.dataset, batch_size=args.batch_size, normalize=normalize, size=size, num_workers=0)
     model = Glow(image_shape        =   (input_shape,input_shape,channels), hidden_channels    =   args.hidden_channels, args=args)

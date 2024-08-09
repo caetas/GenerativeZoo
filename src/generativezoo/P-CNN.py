@@ -9,22 +9,22 @@ size = None
 
 if args.train:
     dataloader, img_size, channels = pick_dataset(args.dataset, normalize=False, batch_size=args.batch_size, size=size)
+    if not args.no_wandb:
+        wandb.init(project="PixelCNN",
+                config = {
+                        "batch_size": args.batch_size,
+                        "hidden_channels": args.hidden_channels,
+                        "n_epochs": args.n_epochs,
+                        "lr": args.lr,
+                        "gamma": args.gamma,
+                        "image_size": img_size,
+                        "dataset": args.dataset,
+                        "channels": channels
+                },
+                name=f"PixelCNN_{args.dataset}"
+                )
 
-    wandb.init(project="PixelCNN",
-               config = {
-                     "batch_size": args.batch_size,
-                     "hidden_channels": args.hidden_channels,
-                     "n_epochs": args.n_epochs,
-                     "lr": args.lr,
-                     "gamma": args.gamma,
-                     "image_size": img_size,
-                     "dataset": args.dataset,
-                     "channels": channels
-               },
-               name=f"PixelCNN_{args.dataset}"
-               )
-
-    model = PixelCNN(channels, args.hidden_channels)
+    model = PixelCNN(channels, args.hidden_channels, args.no_wandb)
     model.train_model(dataloader, args, img_size)
     wandb.finish()
 

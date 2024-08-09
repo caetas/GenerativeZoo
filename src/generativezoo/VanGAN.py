@@ -10,20 +10,21 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 size = None
 
 if args.train:
-    wandb.init(project='VanillaGAN',
-               config={
-                   'dataset': args.dataset,
-                   'batch_size': args.batch_size,
-                   'n_epochs': args.n_epochs,
-                   'latent_dim': args.latent_dim,
-                   'd': args.d,
-                   'lrg': args.lrg,
-                   'lrd': args.lrd,
-                   'beta1': args.beta1,
-                   'beta2': args.beta2,
-                   'sample_and_save_freq': args.sample_and_save_freq
-               },
-               name = 'VanillaGAN_{}'.format(args.dataset))
+    if not args.no_wandb:
+        wandb.init(project='VanillaGAN',
+                config={
+                    'dataset': args.dataset,
+                    'batch_size': args.batch_size,
+                    'n_epochs': args.n_epochs,
+                    'latent_dim': args.latent_dim,
+                    'd': args.d,
+                    'lrg': args.lrg,
+                    'lrd': args.lrd,
+                    'beta1': args.beta1,
+                    'beta2': args.beta2,
+                    'sample_and_save_freq': args.sample_and_save_freq
+                },
+                name = 'VanillaGAN_{}'.format(args.dataset))
     train_dataloader, input_size, channels = pick_dataset(dataset_name = args.dataset, batch_size=args.batch_size, normalize = True, size = size)
     model = VanillaGAN(args, channels, input_size)
     model.train_model(train_dataloader)

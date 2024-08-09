@@ -354,6 +354,7 @@ class ConditionalDDPM(nn.Module):
         self.dataset = args.dataset
         self.sample_and_save_freq = args.sample_and_save_freq
         self.ws_test = ws_test
+        self.no_wandb = args.no_wandb
 
     def forward(self, x, c):
         """
@@ -465,7 +466,8 @@ class ConditionalDDPM(nn.Module):
                 self.optim.step()
 
             epoch_bar.set_description(f"loss: {acc_loss/len(dataloader.dataset):.4f}")
-            wandb.log({"CDDPM Loss": acc_loss/len(dataloader.dataset)})
+            if not self.no_wandb:
+                wandb.log({"CDDPM Loss": acc_loss/len(dataloader.dataset)})
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
@@ -497,7 +499,8 @@ class ConditionalDDPM(nn.Module):
                     fig = plt.figure(figsize=(10, 5))
                     plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
                     plt.axis('off')
-                    wandb.log({"CDDPM Samples": fig})
+                    if not self.no_wandb:
+                        wandb.log({"CDDPM Samples": fig})
                     plt.close(fig)
 
     def sample(self, guide_w = 0.0):

@@ -73,6 +73,7 @@ class VQGANTransformer(nn.Module):
         self.inferer = VQVAETransformerInferer()
         self.channels = channels
         self.img_size = img_size
+        self.no_wandb = args.no_wandb
     
     def train_VQGAN(self, args, train_loader):
         '''
@@ -128,7 +129,8 @@ class VQGANTransformer(nn.Module):
             acc_loss /= len(train_loader.dataset)
             acc_loss_d /= len(train_loader.dataset)
 
-            wandb.log({'loss_vqvae': acc_loss, 'loss_discriminator': acc_loss_d})
+            if not self.no_wandb:
+                wandb.log({'loss_vqvae': acc_loss, 'loss_discriminator': acc_loss_d})
 
             if acc_loss < best_loss:
                 best_loss = acc_loss
@@ -165,7 +167,8 @@ class VQGANTransformer(nn.Module):
                 acc_loss += loss.item()*x.shape[0]
 
             acc_loss /= len(train_loader.dataset)
-            wandb.log({'loss_transformer': acc_loss})
+            if not self.no_wandb:
+                wandb.log({'loss_transformer': acc_loss})
             epoch_bar.set_postfix(loss=acc_loss)
             if acc_loss < best_loss:
                 best_loss = acc_loss
@@ -210,7 +213,8 @@ class VQGANTransformer(nn.Module):
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
         plt.axis('off')
         if train:
-            wandb.log({'reconstruction': fig})
+            if not self.no_wandb:
+                wandb.log({'reconstruction': fig})
         else:
             plt.show()
         plt.close(fig)
@@ -235,7 +239,8 @@ class VQGANTransformer(nn.Module):
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
         plt.axis('off')
         if train:
-            wandb.log({'samples': fig})
+            if not self.no_wandb:
+                wandb.log({'samples': fig})
         else:
             plt.show()
 

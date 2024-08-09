@@ -109,7 +109,7 @@ def create_checkpoint_dir():
 
 class PixelCNN(nn.Module):
     
-    def __init__(self, c_in, c_hidden):
+    def __init__(self, c_in, c_hidden, no_wandb=False):
         """
         PixelCNN model with gated convolutions.
         Inputs:
@@ -143,6 +143,7 @@ class PixelCNN(nn.Module):
         self.conv_out = nn.Conv2d(c_hidden, c_in * 256, kernel_size=1, padding=0)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to(self.device)
+        self.no_wandb = no_wandb
         
     def forward(self, x):
         """
@@ -222,7 +223,8 @@ class PixelCNN(nn.Module):
         plt.axis('off')
 
         if train:
-            wandb.log({"Samples": fig})
+            if not self.no_wandb:
+                wandb.log({"Samples": fig})
         else:
             plt.show()
         
@@ -276,7 +278,8 @@ class PixelCNN(nn.Module):
                 loss.backward()
                 optimizer.step()
                 loss_acc += loss.item()*batch.shape[0]
-                wandb.log({"BPD Loss": loss.item()})
+                if not self.no_wandb:
+                    wandb.log({"BPD Loss": loss.item()})
 
             scheduler.step()
             epoch_bar.set_postfix({"Loss": loss_acc/len(dataloader.dataset)})

@@ -484,6 +484,7 @@ class RealNVP(nn.Module):
         self.flows.to(self.device)
         self.img_size = img_size
         self.channels = in_channels
+        self.no_wandb = args.no_wandb
 
     def forward(self, x, reverse=False):
         sldj = None
@@ -558,7 +559,8 @@ class RealNVP(nn.Module):
 
             loss_epoch /= len(dataloader.dataset)
             epoch_bar.set_postfix(loss=loss_epoch)
-            wandb.log({"train_loss": loss_epoch})
+            if not self.no_wandb:
+                wandb.log({"train_loss": loss_epoch})
 
             if loss_epoch < best_loss:
                 best_loss = loss_epoch
@@ -586,7 +588,8 @@ class RealNVP(nn.Module):
         plt.imshow(grid.permute(1, 2, 0))
         plt.axis('off')
         if train:
-            wandb.log({"train_samples": fig})
+            if not self.no_wandb:
+                wandb.log({"train_samples": fig})
         else:
             plt.show()
         plt.close(fig)

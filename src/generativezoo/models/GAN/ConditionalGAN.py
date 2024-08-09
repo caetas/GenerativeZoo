@@ -148,6 +148,7 @@ class ConditionalGAN(nn.Module):
         self.generator.apply(weights_init_normal)
         self.discriminator.apply(weights_init_normal)
         self.dataset = args.dataset
+        self.no_wandb = args.no_wandb
 
     def train_model(self, dataloader):
         '''
@@ -228,7 +229,8 @@ class ConditionalGAN(nn.Module):
                 d_loss.backward()
                 optimizer_D.step()
 
-            wandb.log({"Generator Loss": acc_g_loss/len(dataloader.dataset), "Discriminator Loss": acc_d_loss/len(dataloader.dataset)})
+            if not self.no_wandb:
+                wandb.log({"Generator Loss": acc_g_loss/len(dataloader.dataset), "Discriminator Loss": acc_d_loss/len(dataloader.dataset)})
             epoch_bar.set_description("Generator Loss: {:.4f}, Discriminator Loss: {:.4f}".format(acc_g_loss/len(dataloader.dataset), acc_d_loss/len(dataloader.dataset)))
 
             if acc_g_loss/len(dataloader.dataset) < best_loss:
@@ -252,5 +254,6 @@ class ConditionalGAN(nn.Module):
                 grid = torchvision.utils.make_grid(gen_imgs, nrow=self.n_classes, normalize=True)
                 plt.imshow(grid.permute(1, 2, 0))
                 plt.axis("off")
-                wandb.log({"images": fig})
+                if not self.no_wandb:
+                    wandb.log({"images": fig})
                 plt.close(fig)

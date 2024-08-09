@@ -8,17 +8,18 @@ This work provides a new theoretical analysis of learning and sampling from scor
 |-----------------------------|--------------------------------------------------|-------------|--------------------------------------------------------------|
 | `--train`                   | Train model                                      | `False`     |                                                              |
 | `--sample`                  | Sample from model                                | `False`     |                                                              |
-| `--dataset`                 | Dataset name                                     | `'mnist'`   | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
+| `--dataset`               | Dataset name                                       | `mnist`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet`            |
+| `--no_wandb`              | Disable Wandb                                      | `False`  |                                                                                                                                                                              |
 | `--batch_size`              | Batch size                                       | `128`       |                                                              |
 | `--n_epochs`                | Number of epochs                                 | `100`       |                                                              |
 | `--lr`                      | Learning rate                                    | `0.0002`    |                                                              |
 | `--nf`                      | Number of filters                                | `128`       |                                                              |
-| `--act`                     | Activation                                       | `'elu'`     | `'relu'`, `'elu'`, `'swish'`                                 |
+| `--act`                     | Activation                                       | `elu`     | `relu`, `elu`, `swish`                                 |
 | `--centered`                | Centered                                         | `False`     |                                                              |
 | `--sigma_min`               | Min value for sigma                              | `0.01`      |                                                              |
 | `--sigma_max`               | Max value for sigma                              | `50`        |                                                              |
 | `--num_scales`              | Number of scales                                 | `232`       |                                                              |
-| `--normalization`           | Normalization                                    | `'InstanceNorm++'` | `'InstanceNorm'`, `'GroupNorm'`, `'VarianceNorm'`, `'InstanceNorm++'` |
+| `--normalization`           | Normalization                                    | `InstanceNorm++` | `InstanceNorm`, `GroupNorm`, `VarianceNorm`, `InstanceNorm++` |
 | `--num_classes`             | Number of classes                                | `10`        |                                                              |
 | `--ema_decay`               | EMA decay                                        | `0.999`     |                                                              |
 | `--continuous`              | Continuous                                       | `False`     |                                                              |
@@ -30,9 +31,9 @@ This work provides a new theoretical analysis of learning and sampling from scor
 | `--warmup`                  | Warmup                                           | `0`         |                                                              |
 | `--grad_clip`               | Grad clip                                        | `-1.0`      |                                                              |
 | `--sample_and_save_freq`    | Sample and save frequency                        | `5`         |                                                              |
-| `--sampler`                 | Sampler name                                     | `'pc'`      | `'pc'`, `'ode'`                                              |
-| `--predictor`               | Predictor                                        | `'none'`    | `'none'`, `'em'`, `'rd'`, `'as'`                             |
-| `--corrector`               | Corrector                                        | `'ald'`     | `'none'`, `'l'`, `'ald'`                                     |
+| `--sampler`                 | Sampler name                                     | `pc`      | `pc`, `ode`                                              |
+| `--predictor`               | Predictor                                        | `none`    | `none`, `em`, `rd`, `as`                             |
+| `--corrector`               | Corrector                                        | `ald`     | `none`, `l`, `ald`                                     |
 | `--snr`                     | Signal to noise ratio                            | `0.176`     |                                                              |
 | `--n_steps`                 | Number of steps                                  | `5`         |                                                              |
 | `--probability_flow`        | Probability flow                                 | `False`     |                                                              |

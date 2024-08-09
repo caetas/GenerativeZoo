@@ -420,6 +420,7 @@ class FlowMatching(nn.Module):
         self.solver = args.solver
         self.step_size = args.step_size
         self.solver_lib = args.solver_lib
+        self.no_wandb = args.no_wandb
 
     def forward(self, x, t):
         '''
@@ -478,7 +479,8 @@ class FlowMatching(nn.Module):
         plt.axis('off')
 
         if train:
-            wandb.log({"samples": fig})
+            if not self.no_wandb:
+                wandb.log({"samples": fig})
         else:
             plt.show()
 
@@ -508,7 +510,8 @@ class FlowMatching(nn.Module):
                 optimizer.step()
                 train_loss += loss.item()*x.size(0)
             epoch_bar.set_postfix({'Loss': train_loss / len(train_loader.dataset)})
-            wandb.log({"Train Loss": train_loss / len(train_loader.dataset)})
+            if not self.no_wandb:
+                wandb.log({"Train Loss": train_loss / len(train_loader.dataset)})
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
                 self.model.eval()
