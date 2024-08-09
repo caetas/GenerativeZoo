@@ -14,13 +14,13 @@ def find_requirements(filename):
 
 
 runtime_requires = find_requirements("requirements.txt")
-dev_requires = find_requirements("requirements-dev.txt")
-docs_require = find_requirements("requirements-docs.txt")
+#dev_requires = find_requirements("requirements-dev.txt")
+#docs_require = find_requirements("requirements-docs.txt")
 
 
 setup(
     name="GenerativeZoo",
-    version="0.20.0",
+    version="1.1.0",
     author="Francisco Caetano",
     description="A Model Zoo for Generative Models.",
     long_description=long_description,
@@ -29,8 +29,8 @@ setup(
     package_dir={"": "src"},
     python_requires=">=3.9.0",
     install_requires=runtime_requires,
-    extras_require={
-        "dev": dev_requires,
-        "docs": docs_require,
-    },
+    #extras_require={
+    #    "dev": dev_requires,
+    #    "docs": docs_require,
+    #},
 )

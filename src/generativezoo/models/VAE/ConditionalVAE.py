@@ -28,7 +28,7 @@ class ConditionalVAE(nn.Module):
         args: argparse.ArgumentParser, arguments for the model
         '''
         super(ConditionalVAE, self).__init__()
-
+        self.no_wandb = args.no_wandb
         self.num_classes = args.num_classes
         self.input_shape = input_shape
         self.input_channels = input_channels
@@ -239,7 +239,8 @@ class ConditionalVAE(nn.Module):
         if title:
             plt.title(title)
         if train:
-            wandb.log({'Samples': fig})
+            if not self.no_wandb:
+                wandb.log({'Samples': fig})
         else:
             plt.show()
         plt.close(fig)
@@ -276,7 +277,8 @@ class ConditionalVAE(nn.Module):
                 acc_loss += loss.item()
             epochs_bar.set_description(f"Loss: {acc_loss/len(train_loader.dataset):.8f}")
             epochs_bar.refresh()
-            wandb.log({"loss": acc_loss/len(train_loader.dataset)})
+            if not self.no_wandb:
+                wandb.log({"loss": acc_loss/len(train_loader.dataset)})
             if epoch % self.sample_and_save_freq == 0:
                 self.create_grid(title=f"Epoch_{epoch}", train = True)
             

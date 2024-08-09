@@ -8,7 +8,8 @@ A Normalizing Flow model is designed to learn the underlying probability distrib
 |-----------------------------|---------------------------------------------------|-------------|---------------------------------------------------------------|
 | `--train`                   | Train model                                       | `False`     |                                                               |
 | `--sample`                  | Sample model                                      | `False`     |                                                               |
-| `--dataset`                 | Dataset name                                      | `mnist`     | `mnist`, `cifar10`, `cifar100`, `places365`, `dtd`, `fashionmnist`, `chestmnist`, `pneumoniamnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet` |
+| `--dataset`               | Dataset name                                       | `mnist`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet`            |
+| `--no_wandb`              | Disable Wandb                                      | `False`  |                                                                                                                                                                              |
 | `--batch_size`              | Batch size                                        | `128`       |                                                               |
 | `--n_epochs`                | Number of epochs                                  | `100`       |                                                               |
 | `--lr`                      | Learning rate                                     | `1e-3`      |                                                               |
@@ -18,7 +19,7 @@ A Normalizing Flow model is designed to learn the underlying probability distrib
 | `--sample_and_save_freq`    | Sample and save frequency                         | `5`         |                                                               |
 | `--checkpoint`              | Checkpoint path                                   | `None`      |                                                               |
 | `--outlier_detection`       | Outlier detection                                 | `False`     |                                                               |
-| `--out_dataset`             | Outlier dataset name                              | `fashionmnist` | `mnist`, `cifar10`, `cifar100`, `places365`, `dtd`, `fashionmnist`, `chestmnist`, `pneumoniamnist`, `tissuemnist`, `pneumoniamnist`, `svhn`,`tinyimagenet` |
+| `--out_dataset`             | Outlier dataset name                              | `fashionmnist` | `mnist`, `cifar10`, `cifar100`, `places365`, `dtd`, `fashionmnist`, `chestmnist`, `pneumoniamnist`, `tissuemnist`, `pneumoniamnist`, `svhn`,`tinyimagenet`, `imagenet` |
 | `--n_layers`                | Number of layers                                  | `8`         |                                                               |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:

@@ -12,36 +12,37 @@ size = None
 
 if args.train:
     train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=False, size=size)
-    wandb.init(project="NCSNv2",
-               
-                config = {
-                        "dataset": args.dataset,
-                        "batch_size": args.batch_size,
-                        "n_steps": args.n_steps,
-                        "lr": args.lr,
-                        "n_epochs": args.n_epochs,
-                        "beta1": args.beta1,
-                        "beta2": args.beta2,
-                        "weight_decay": args.weight_decay,
-                        "nf": args.nf,
-                        "snr": args.snr,
-                        "probability_flow": args.probability_flow,
-                        "predictor": args.predictor,
-                        "corrector": args.corrector,
-                        "noise_removal": args.noise_removal,
-                        "sigma_max": args.sigma_max,
-                        "sigma_min": args.sigma_min,
-                        "num_scales": args.num_scales,
-                        "normalization": args.normalization,
-                        "continuous": args.continuous,
-                        "reduce_mean": args.reduce_mean,
-                        "likelihood_weighting": args.likelihood_weighting,
-                        "act": args.act,
-                    },
+    if not args.no_wandb:
+        wandb.init(project="NCSNv2",
+                
+                    config = {
+                            "dataset": args.dataset,
+                            "batch_size": args.batch_size,
+                            "n_steps": args.n_steps,
+                            "lr": args.lr,
+                            "n_epochs": args.n_epochs,
+                            "beta1": args.beta1,
+                            "beta2": args.beta2,
+                            "weight_decay": args.weight_decay,
+                            "nf": args.nf,
+                            "snr": args.snr,
+                            "probability_flow": args.probability_flow,
+                            "predictor": args.predictor,
+                            "corrector": args.corrector,
+                            "noise_removal": args.noise_removal,
+                            "sigma_max": args.sigma_max,
+                            "sigma_min": args.sigma_min,
+                            "num_scales": args.num_scales,
+                            "normalization": args.normalization,
+                            "continuous": args.continuous,
+                            "reduce_mean": args.reduce_mean,
+                            "likelihood_weighting": args.likelihood_weighting,
+                            "act": args.act,
+                        },
 
-                name=f"NCSNv2_{args.dataset}"
-                    
-                    )
+                    name=f"NCSNv2_{args.dataset}"
+                        
+                        )
 
     model = NCSNv2(input_size, channels, args)
     model.train_model(train_loader, args)

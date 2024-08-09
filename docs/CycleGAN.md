@@ -19,6 +19,7 @@ CycleGAN is a type of GAN designed for unsupervised image-to-image translation. 
 | `--input_size`        | input size                                      | `128`   |         |
 | `--in_channels`       | in channels                                     | `3`     |         |
 | `--out_channels`      | out channels                                    | `3`     |         |
+| `--no_wandb`              | Disable Wandb                                      | `False`  |                                                                                                                                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

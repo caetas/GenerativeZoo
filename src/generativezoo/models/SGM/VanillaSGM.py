@@ -380,6 +380,7 @@ class VanillaSGM(nn.Module):
     self.atol = args.atol
     self.rtol = args.rtol
     self.eps = args.eps
+    self.no_wandb = args.no_wandb
 
   def train_model(self, dataloader):
     '''
@@ -407,7 +408,8 @@ class VanillaSGM(nn.Module):
         avg_loss += loss.item()*x.shape[0]
 
       epoch_bar.set_description('Average Loss: {:5f}'.format(avg_loss / len(dataloader.dataset)))
-      wandb.log({'loss': avg_loss / len(dataloader.dataset)}, step = epoch)
+      if not self.no_wandb:
+        wandb.log({'loss': avg_loss / len(dataloader.dataset)}, step = epoch)
 
       if avg_loss < best_loss:
         best_loss = avg_loss
@@ -432,7 +434,8 @@ class VanillaSGM(nn.Module):
         fig = plt.figure(figsize=(10, 10))
         plt.imshow(sample_grid.permute(1, 2, 0).cpu().numpy(), vmin=0.0, vmax=1.0)
         plt.axis('off')
-        wandb.log({'samples': fig}, step = epoch)
+        if not self.no_wandb:
+          wandb.log({'samples': fig}, step = epoch)
         plt.close(fig)
   
   @torch.no_grad()

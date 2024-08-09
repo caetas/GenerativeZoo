@@ -13,23 +13,24 @@ size = None
 if args.train:
     # train dataloader
     train_loader, in_shape, in_channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, size=size)
-    wandb.init(project='CVAE',
-                
-                config={
-                    'dataset': args.dataset,
-                    'batch_size': args.batch_size,
-                    'n_epochs': args.n_epochs,
-                    'lr': args.lr,
-                    'latent_dim': args.latent_dim,
-                    'hidden_dims': args.hidden_dims,
-                    'input_size': in_shape,
-                    'channels': in_channels,
-                    'num_classes': args.num_classes,
-                    'loss_type': args.loss_type,
-                    'kld_weight': args.kld_weight
-                },
+    if not args.no_wandb:
+        wandb.init(project='CVAE',
+                    
+                    config={
+                        'dataset': args.dataset,
+                        'batch_size': args.batch_size,
+                        'n_epochs': args.n_epochs,
+                        'lr': args.lr,
+                        'latent_dim': args.latent_dim,
+                        'hidden_dims': args.hidden_dims,
+                        'input_size': in_shape,
+                        'channels': in_channels,
+                        'num_classes': args.num_classes,
+                        'loss_type': args.loss_type,
+                        'kld_weight': args.kld_weight
+                    },
 
-                name = 'CVAE_{}'.format(args.dataset))
+                    name = 'CVAE_{}'.format(args.dataset))
     # create model
     model = ConditionalVAE(input_shape=in_shape, input_channels=in_channels, args=args)
     # train model

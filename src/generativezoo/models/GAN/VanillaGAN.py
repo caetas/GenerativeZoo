@@ -314,6 +314,7 @@ class VanillaGAN(nn.Module):
         self.generator.apply(weights_init_normal)
         self.discriminator.apply(weights_init_normal)
         self.dataset = args.dataset
+        self.no_wandb = args.no_wandb
     
     def train_model(self, dataloader):
         '''
@@ -386,8 +387,9 @@ class VanillaGAN(nn.Module):
 
                 d_loss.backward()
                 optimizer_D.step()
-            
-            wandb.log({"Generator Loss": acc_g_loss/len(dataloader.dataset), "Discriminator Loss": acc_d_loss/len(dataloader.dataset)})
+
+            if not self.no_wandb:
+                wandb.log({"Generator Loss": acc_g_loss/len(dataloader.dataset), "Discriminator Loss": acc_d_loss/len(dataloader.dataset)})
             epochs_bar.set_description("Generator Loss: {:.4f}, Discriminator Loss: {:.4f}".format(acc_g_loss/len(dataloader.dataset), acc_d_loss/len(dataloader.dataset)))
             
             if acc_g_loss/len(dataloader.dataset) < best_loss and epoch >= 20:
@@ -408,6 +410,7 @@ class VanillaGAN(nn.Module):
                 # make an image from the grid
                 plt.imshow(grid.permute(1, 2, 0))
                 plt.axis('off')
-                wandb.log({"Generated Images": fig})
+                if not self.no_wandb:
+                    wandb.log({"Generated Images": fig})
                 plt.close(fig)
                 torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'VanillaGAN', f"VanDisc_{self.dataset}_{epoch}.pt"))

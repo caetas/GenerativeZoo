@@ -8,7 +8,8 @@ The Vector Quantised-Variational AutoEncoder (VQ-VAE), differs from VAEs in two 
 |-----------------------------|--------------------------------------------------|------------|--------------------------------------------------------------|
 | `--train`                   | Train model                                      | `False`    |                                                              |
 | `--sample`                  | Sample model                                     | `False`    |                                                              |
-| `--dataset`                 | Dataset name                                     | `'mnist'`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
+| `--dataset`               | Dataset name                                       | `mnist`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet`            |
+| `--no_wandb`              | Disable Wandb                                      | `False`  |                                                                                                                                                                              |
 | `--batch_size`              | Batch size                                       | `128`      |                                                              |
 | `--n_epochs`                | Number of epochs for VQVAE                       | `100`      |                                                              |
 | `--lr`                      | Learning rate VQVAE                              | `0.0002`   |                                                              |

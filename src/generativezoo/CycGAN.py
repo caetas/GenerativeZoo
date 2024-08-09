@@ -10,19 +10,20 @@ args = parse_args_CycleGAN()
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 if args.train:
-    wandb.init(project='CycleGAN',
-               config={
-                   'dataset': args.dataset,
-                   'batch_size': args.batch_size,
-                   'n_epochs': args.n_epochs,
-                   'lr': args.lr,
-                   'decay': args.decay,
-                   'input_size': args.input_size,
-                   'in_channels': args.in_channels,
-                   'out_channels': args.out_channels,
-                   'sample_and_save_freq': args.sample_and_save_freq
-               },
-               name = 'CycleGAN_{}'.format(args.dataset))
+    if not args.no_wandb:
+        wandb.init(project='CycleGAN',
+                config={
+                    'dataset': args.dataset,
+                    'batch_size': args.batch_size,
+                    'n_epochs': args.n_epochs,
+                    'lr': args.lr,
+                    'decay': args.decay,
+                    'input_size': args.input_size,
+                    'in_channels': args.in_channels,
+                    'out_channels': args.out_channels,
+                    'sample_and_save_freq': args.sample_and_save_freq
+                },
+                name = 'CycleGAN_{}'.format(args.dataset))
     
     train_dataloader_A = get_horse2zebra_dataloader(data_raw_dir, args.dataset, args.batch_size, True, 'A', args.input_size)
     train_dataloader_B = get_horse2zebra_dataloader(data_raw_dir, args.dataset, args.batch_size, True, 'B', args.input_size)

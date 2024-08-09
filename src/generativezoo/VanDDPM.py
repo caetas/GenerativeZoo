@@ -14,26 +14,27 @@ if args.train:
      dataloader, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize, size=size)
      model = VanillaDDPM(args, channels=channels, image_size=input_size)
      
-     wandb.init(project='DDPM',
-                
-                config={
-                    'dataset': args.dataset,
-                    'batch_size': args.batch_size,
-                    'n_epochs': args.n_epochs,
-                    'lr': args.lr,
-                    'timesteps': args.timesteps,
-                    'beta_start': args.beta_start,
-                    'beta_end': args.beta_end,
-                    'ddpm': args.ddpm,
-                    'input_size': input_size,
-                    'channels': channels,
-                    'loss_type': args.loss_type,
-                    'channel_scale_factors': args.channel_scale_factors,
-                    'init_channels': args.init_channels,
-                    'n_features': args.n_features
-                },
+     if not args.no_wandb:
+          wandb.init(project='DDPM',
+                    
+                    config={
+                         'dataset': args.dataset,
+                         'batch_size': args.batch_size,
+                         'n_epochs': args.n_epochs,
+                         'lr': args.lr,
+                         'timesteps': args.timesteps,
+                         'beta_start': args.beta_start,
+                         'beta_end': args.beta_end,
+                         'ddpm': args.ddpm,
+                         'input_size': input_size,
+                         'channels': channels,
+                         'loss_type': args.loss_type,
+                         'channel_scale_factors': args.channel_scale_factors,
+                         'init_channels': args.init_channels,
+                         'n_features': args.n_features
+                    },
 
-                name = 'DDPM_{}'.format(args.dataset))
+                    name = 'DDPM_{}'.format(args.dataset))
      
      model.train_model(dataloader)
      wandb.finish()

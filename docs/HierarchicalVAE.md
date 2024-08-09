@@ -8,7 +8,8 @@ NVAE introduced a deep hierarchical VAE designed for image generation through de
 |--------------------------|-----------------------------------------|-----------------|------------------------------------------------------------------------------------------|
 | `--train`                | Train model                             | `False`         |                                                                                          |
 | `--sample`               | Sample model                            | `False`         |                                                                                          |
-| `--dataset`              | Dataset name                            | `'mnist'`       | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`  |
+| `--dataset`               | Dataset name                                       | `mnist`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet`            |
+| `--no_wandb`              | Disable Wandb                                      | `False`  |                                                                                                                                                                              |
 | `--batch_size`           | Batch size                              | `256`           |                                                                                          |
 | `--n_epochs`             | Number of epochs                        | `100`           |                                                                                          |
 | `--lr`                   | Learning rate                           | `0.01`          |                                                                                          |

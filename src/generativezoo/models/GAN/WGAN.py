@@ -126,7 +126,8 @@ class Generator(nn.Module):
         if not train:
             plt.show()
         else:
-            wandb.log({"Generated Images": fig})
+            if not self.no_wandb:
+                wandb.log({"Generated Images": fig})
         plt.close(fig)
 
 class Discriminator(nn.Module):
@@ -226,6 +227,7 @@ class WGAN(nn.Module):
         self.lrg = args.lrg
         self.beta1 = args.beta1
         self.beta2 = args.beta2
+        self.no_wandb = args.no_wandb
 
     def _gradient_penalty(self, real, fake):
         '''
@@ -330,7 +332,8 @@ class WGAN(nn.Module):
                     cnt =+ batch_size
 
             epoch_bar.set_postfix({'Generator Loss': acc_loss/cnt})
-            wandb.log({"Generator Loss": acc_loss/cnt, "Discriminator Loss": acc_loss_d/cnt_d})
+            if not self.no_wandb:
+                wandb.log({"Generator Loss": acc_loss/cnt, "Discriminator Loss": acc_loss_d/cnt_d})
             if acc_loss/cnt < best_loss:
                 torch.save(self.G.state_dict(), os.path.join(models_dir, 'WassersteinGAN', f'WGAN_{self.dataset}.pt'))
                 torch.save(self.D.state_dict(), os.path.join(models_dir, 'WassersteinGAN', f'WGAN_{self.dataset}_D.pt'))

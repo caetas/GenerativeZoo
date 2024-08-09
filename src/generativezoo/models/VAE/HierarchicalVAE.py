@@ -582,7 +582,7 @@ def create_checkpoint_dir():
     
 class HierarchicalVAE(nn.Module):
 
-    def __init__(self, z_dim, img_dim, channels=3):
+    def __init__(self, z_dim, img_dim, channels=3, no_wandb=False):
         '''
         Hierarchical VAE
         :param z_dim: int. Dimension of latent space
@@ -598,6 +598,7 @@ class HierarchicalVAE(nn.Module):
         self.img_dim = img_dim[0]
         self.channels = channels
         self.z_dim = z_dim
+        self.no_wandb = no_wandb
 
         self.adaptive_loss = robust_loss_pytorch.adaptive.AdaptiveLossFunction(
             num_dims=1, float_dtype=np.float32, device='cuda:0')
@@ -678,7 +679,8 @@ class HierarchicalVAE(nn.Module):
             epoch_recon_loss /= len(data_loader.dataset)
             epoch_kl_loss /= len(data_loader.dataset)
 
-            wandb.log({"loss": epoch_loss, "recon_loss": epoch_recon_loss, "kl_loss": epoch_kl_loss})
+            if not self.no_wandb:
+                wandb.log({"loss": epoch_loss, "recon_loss": epoch_recon_loss, "kl_loss": epoch_kl_loss})
 
             if epoch_loss < best_loss:
                 best_loss = epoch_loss
@@ -706,7 +708,8 @@ class HierarchicalVAE(nn.Module):
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
         plt.axis("off")
         if train:
-            wandb.log({"train_samples": fig})
+            if not self.no_wandb:
+                wandb.log({"train_samples": fig})
         else:
             plt.show()
         

@@ -8,7 +8,8 @@ The Vector Quantised-Generative Adversarial Network (VQ-GAN) is composed of an V
 |-----------------------------|--------------------------------------------------|------------|--------------------------------------------------------------|
 | `--train`                   | Train model                                      | `False`    |                                                              |
 | `--sample`                  | Sample model                                     | `False`    |                                                              |
-| `--dataset`                 | Dataset name                                     | `'mnist'`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
+| `--dataset`               | Dataset name                                       | `mnist`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet`            |
+| `--no_wandb`              | Disable Wandb                                      | `False`  |                                                                                                                                                                              |
 | `--batch_size`              | Batch size                                       | `128`      |                                                              |
 | `--n_epochs`                | Number of epochs for VQGAN                       | `100`      |                                                              |
 | `--lr`                      | Learning rate VQGAN                              | `0.0002`   |                                                              |
@@ -34,7 +35,7 @@ The Vector Quantised-Generative Adversarial Network (VQ-GAN) is composed of an V
 | `--num_channels_d`          | Number of channels in discriminator              | `64`       |                                                              |
 | `--sample_and_save_freq`    | Sample and save frequency                        | `5`        |                                                              |
 | `--outlier_detection`       | Outlier detection                                | `False`    |                                                              |
-| `--out_dataset`             | Outlier dataset name                             | `'fashionmnist'`| `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
+| `--out_dataset`             | Outlier dataset name                             | `fashionmnist`| `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet` |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

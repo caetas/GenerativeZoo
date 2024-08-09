@@ -1,7 +1,7 @@
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
-from config import data_raw_dir
+from config import data_raw_dir, data_dir
 from medmnist import ChestMNIST, TissueMNIST, OCTMNIST, PneumoniaMNIST
 import os
 from glob import glob
@@ -721,26 +721,29 @@ class ImageNetDataset(Dataset):
         self.train = train
         self.imgs = []
         if train:
-            with open(os.path.join(root, 'imagenet', 'train_images.txt'), 'r') as f:
+            with open(os.path.join(data_dir,'splits', 'train_images.txt'), 'r') as f:
                 self.imgs = f.readlines()
             self.imgs = [i.strip() for i in self.imgs]
             self.imgs = self.imgs
             self.tar_files = os.listdir(os.path.join(root, 'imagenet', 'train'))
             self.tar_files = {f"{i[:-4]}": tarfile.open(os.path.join(root, 'imagenet', 'train', i)) for i in self.tar_files}
+            self.prefix = self.tar_files[self.imgs[0].split('/')[-2]].getnames()[0].split('/')[:-1]
+            self.prefix = '/'.join(self.prefix)
         else:
-            with open(os.path.join(root, 'imagenet', 'test_images.txt'), 'r') as f:
+            with open(os.path.join(data_dir,'splits', 'test_images.txt'), 'r') as f:
                 self.imgs = f.readlines()
             self.imgs = [i.strip() for i in self.imgs]
             self.tar_files = tarfile.open(os.path.join(root, 'imagenet', 'test.tar'))
+            self.prefix = self.tar_files.getnames()[0]
     def __len__(self):
         return len(self.imgs)
     
     def __getitem__(self, idx):
         if self.train:
             tar_file = self.imgs[idx].split('/')[-2]
-            img = Image.open(io.BytesIO(self.tar_files[tar_file].extractfile(f'Data/{self.imgs[idx]}').read())).convert('RGB')
+            img = Image.open(io.BytesIO(self.tar_files[tar_file].extractfile(f'{self.prefix}/{self.imgs[idx]}').read())).convert('RGB')
         else:
-            img = Image.open(io.BytesIO(self.tar_files.extractfile(f'Data/{self.imgs[idx]}').read())).convert('RGB')
+            img = Image.open(io.BytesIO(self.tar_files.extractfile(f'{self.prefix}/{self.imgs[idx]}').read())).convert('RGB')
         if self.transform:
             img = self.transform(img)
         return img, 0

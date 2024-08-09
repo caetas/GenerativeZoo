@@ -342,6 +342,7 @@ class VanillaFlow(nn.Module):
         # Create prior distribution for final latent space
         self.prior = torch.distributions.normal.Normal(loc=0.0, scale=1.0)
         # Example input for visualizing the graph
+        self.no_wandb = args.no_wandb
 
     def forward(self, imgs):
         # The forward function is only used for visualizing the graph
@@ -390,7 +391,8 @@ class VanillaFlow(nn.Module):
         plt.imshow(grid.permute(1, 2, 0))
         plt.axis('off')
         if train:
-            wandb.log({"Samples": figure})
+            if not self.no_wandb:
+                wandb.log({"Samples": figure})
         else:
             plt.show()
         plt.close(figure)
@@ -430,7 +432,8 @@ class VanillaFlow(nn.Module):
             scheduler.step()
             epoch_loss /= len(train_loader.dataset)
             epoch_bar.set_postfix(loss=epoch_loss)
-            wandb.log({"Loss": epoch_loss})
+            if not self.no_wandb:
+                wandb.log({"Loss": epoch_loss})
 
             if (epoch+1) % args.sample_and_save_freq == 0 or epoch == 0:
                 self.sample()

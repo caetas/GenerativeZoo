@@ -267,6 +267,7 @@ class AdversarialVAE(nn.Module):
         self.dataset = args.dataset
         self.loss_type = args.loss_type
         self.kld_weight = args.kld_weight
+        self.no_wandb = args.no_wandb
 
     def forward(self, x):
         '''
@@ -300,7 +301,8 @@ class AdversarialVAE(nn.Module):
         if title:
             plt.title(title)
         if train:
-            wandb.log({f"Samples": fig})
+            if not self.no_wandb:
+                wandb.log({f"Samples": fig})
         else:
             plt.show()
         plt.close(fig)
@@ -332,7 +334,8 @@ class AdversarialVAE(nn.Module):
         if title:
             plt.title(title)
         if train:
-            wandb.log({f"Reconstruction": fig})
+            if not self.no_wandb:
+                wandb.log({f"Reconstruction": fig})
         else:
             plt.show()
         plt.close(fig)
@@ -425,7 +428,8 @@ class AdversarialVAE(nn.Module):
                 optimizer_D.step()
 
             epochs_bar.set_description(f"Loss: {acc_g_loss/len(data_loader.dataset):.4f} - D Loss: {acc_d_loss/len(data_loader.dataset):.4f}")
-            wandb.log({"Generator Loss": acc_g_loss/len(data_loader.dataset), "Discriminator Loss": acc_d_loss/len(data_loader.dataset)})
+            if not self.no_wandb:
+                wandb.log({"Generator Loss": acc_g_loss/len(data_loader.dataset), "Discriminator Loss": acc_d_loss/len(data_loader.dataset)})
 
 
             if (epoch+1) % self.sample_and_save_frequency == 0 or epoch == 0:

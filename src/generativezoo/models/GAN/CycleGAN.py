@@ -179,6 +179,7 @@ class CycleGAN(nn.Module):
         :param name: name
         '''
         super(CycleGAN, self).__init__()
+        self.no_wandb = args.no_wandb
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.n_epochs = args.n_epochs
@@ -319,10 +320,11 @@ class CycleGAN(nn.Module):
                 acc_loss_G_identity += loss_identity.item() * real_A.size(0)
                 elements += real_A.size(0)
 
-                # --------------
+            # --------------
             #  Log Progress
             # --------------
-            wandb.log({'loss_G': acc_loss_G/elements, 'loss_G_GAN': acc_loss_G_GAN/elements, 'loss_G_cycle': acc_loss_G_cycle/elements, 'loss_G_identity': acc_loss_G_identity/elements, 'loss_D_A': acc_loss_D_A/elements, 'loss_D_B': acc_loss_D_B/elements, 'epoch': epoch})
+            if not self.no_wandb:
+                wandb.log({'loss_G': acc_loss_G/elements, 'loss_G_GAN': acc_loss_G_GAN/elements, 'loss_G_cycle': acc_loss_G_cycle/elements, 'loss_G_identity': acc_loss_G_identity/elements, 'loss_D_A': acc_loss_D_A/elements, 'loss_D_B': acc_loss_D_B/elements, 'epoch': epoch})
             # Update learning rates
             lr_scheduler_G.step()
             lr_scheduler_D_A.step()
@@ -359,5 +361,6 @@ class CycleGAN(nn.Module):
                 fig = plt.figure(figsize=(5*real_A.size(0)/4,5))
                 plt.imshow(np.transpose(grid, (1, 2, 0)))
                 plt.axis('off')
-                wandb.log({'samples': fig})
+                if not self.no_wandb:
+                    wandb.log({'samples': fig})
                 plt.close(fig)

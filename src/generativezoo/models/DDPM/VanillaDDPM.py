@@ -441,6 +441,7 @@ class VanillaDDPM(nn.Module):
         self.image_size = image_size
         self.num_channels = channels
         self.dataset = args.dataset
+        self.no_wandb = args.no_wandb
 
 
     def train_model(self, dataloader):
@@ -484,13 +485,15 @@ class VanillaDDPM(nn.Module):
                             plt.imshow(all_images[i].transpose(1,2,0))
                         plt.axis('off')
                     #save figure wandb
-                    wandb.log({"DDPM Samples": fig})
+                    if not self.no_wandb:
+                        wandb.log({"DDPM Samples": fig})
                     plt.close(fig)
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
                 torch.save(self.denoising_model.state_dict(), os.path.join(models_dir,'VanillaDDPM',f'VanDDPM_{self.dataset}.pt'))
-            wandb.log({"DDPM Loss": acc_loss/len(dataloader.dataset)})
+            if not self.no_wandb:
+                wandb.log({"DDPM Loss": acc_loss/len(dataloader.dataset)})
     
     def outlier_score(self, x_start, t):
         '''

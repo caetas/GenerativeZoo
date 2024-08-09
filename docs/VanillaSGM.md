@@ -6,8 +6,9 @@ Score-based Generative Models (SGMs) model the diffusion process using a Stochas
 
 | Parameter             | Description                            | Default | Choices                                                      |
 |-----------------------|----------------------------------------|---------|--------------------------------------------------------------|
-| `--dataset`           | dataset name                           | `'mnist'` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
-| `--out_dataset`       | outlier dataset name                   | `'fashionmnist'` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd` |
+| `--dataset`               | Dataset name                       | `mnist`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet`            |
+| `--no_wandb`              | Disable Wandb                      | `False`  |                                                                                                                                                                              |
+| `--out_dataset`       | outlier dataset name                   | `fashionmnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet` |
 | `--batch_size`        | batch size                             | `128`   |                                                              |
 | `--n_epochs`          | number of epochs                       | `100`   |                                                              |
 | `--train`             | train model                            | `False` |                                                              |
@@ -25,7 +26,7 @@ Score-based Generative Models (SGMs) model the diffusion process using a Stochas
 | `--checkpoint`        | checkpoint path                        | `None`  |                                                              |
 | `--num_samples`       | number of samples                      | `16`    |                                                              |
 | `--num_steps`         | number of steps                        | `500`   |                                                              |
-| `--sampler_type`      | sampler type                           | `'EM'`  | `'EM'`, `'PC'`, `'ODE'`                                     |
+| `--sampler_type`      | sampler type                           | `EM`  | `EM`, `PC`, `ODE`                                     |
 | `--sample_and_save_freq` | sample and save frequency           | `10`    |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
