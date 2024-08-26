@@ -126,11 +126,11 @@ The listed models are already implemented and fully integrated in the model zoo.
 #### Flow
 
 - Vanilla Flow [`Paper`](https://arxiv.org/abs/1505.05770) | [`Code`](src/generativezoo/models/Flow/VanillaFlow.py)<sup>14</sup> | [`Script`](src/generativezoo/VanFlow.py) | [`Documentation`](docs/VanillaFlow.md)
-- RealNVP [`Paper`](https://arxiv.org/abs/1605.08803) | [`Code`](src\generativezoo\models\Flow\RealNVP.py)<sup>15</sup> | [`Script`](src/generativezoo/RealNVP.py) | [`Documentation`](docs/RealNVP.md)
-- Glow [`Paper`](https://arxiv.org/abs/1807.03039) | [`Code`](src\generativezoo\models\Flow\Glow.py)<sup>16</sup> | [`Script`](src/generativezoo/GLOW.py) | [`Documentation`](docs/Glow.md)
-- Flow++ [`Paper`](https://arxiv.org/abs/1902.00275) | [`Code`](src\generativezoo\models\Flow\FlowPlusPlus.py)<sup>17</sup> | [`Script`](src\generativezoo\FlowPP.py) | [`Documentation`](docs/FlowPlusPlus.md)
-- Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src\generativezoo\models\Flow\FlowMatching.py)<sup>8,18</sup> | [`Script`](src\generativezoo\FM.py) | [`Documentation`](docs/FlowMatching.md)
-- Conditional Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src\generativezoo\models\Flow\CondFlowMatching.py)<sup>8,18</sup> | [`Script`](src\generativezoo\CondFM.py) | [`Documentation`](docs/ConditionalFlowMatching.md)
+- RealNVP [`Paper`](https://arxiv.org/abs/1605.08803) | [`Code`](src/generativezoo/models/Flow/RealNVP.py)<sup>15</sup> | [`Script`](src/generativezoo/RealNVP.py) | [`Documentation`](docs/RealNVP.md)
+- Glow [`Paper`](https://arxiv.org/abs/1807.03039) | [`Code`](src/generativezoo/models/Flow/Glow.py)<sup>16</sup> | [`Script`](src/generativezoo/GLOW.py) | [`Documentation`](docs/Glow.md)
+- Flow++ [`Paper`](https://arxiv.org/abs/1902.00275) | [`Code`](src/generativezoo/models/Flow/FlowPlusPlus.py)<sup>17</sup> | [`Script`](src/generativezoo/FlowPP.py) | [`Documentation`](docs/FlowPlusPlus.md)
+- Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/Flow/FlowMatching.py)<sup>8,18</sup> | [`Script`](src/generativezoo/FM.py) | [`Documentation`](docs/FlowMatching.md)
+- Conditional Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/Flow/CondFlowMatching.py)<sup>8,18</sup> | [`Script`](src/generativezoo/CondFM.py) | [`Documentation`](docs/ConditionalFlowMatching.md)
 - Rectified Flows [`Paper`](https://arxiv.org/abs/2403.03206) | [`Code`](src/generativezoo/models/Flow/RectifiedFlows.py)<sup>19</sup> | [`Script`](src/generativezoo/RF.py) | [`Documentation`](docs/RectifiedFlows.md)
 
 #### Stable Diffusion
