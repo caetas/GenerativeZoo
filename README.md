@@ -55,13 +55,13 @@ To access the shell, please run:
 or if environment already exists
 
     conda env create -f environment.yml
-    conda activate python3.9
+    conda activate python3.10
 
 #### On Linux
 
 And then setup all virtualenv using make file recipe
 
-    (python3.9) $ make setup-all
+    (python3.10) $ make setup-all
 
 You might be required to run the following command once to setup the automatic activation of the conda environment and the virtualenv:
 
@@ -82,7 +82,7 @@ You can setup the virtualenv by running the following commands:
 
 To run the code please remember to always activate both environments:
 
-    conda activate python3.9
+    conda activate python3.10
     .venv-dev/Scripts/Activate.ps1
 
 ## Models
@@ -129,8 +129,8 @@ The listed models are already implemented and fully integrated in the model zoo.
 - RealNVP [`Paper`](https://arxiv.org/abs/1605.08803) | [`Code`](src\generativezoo\models\Flow\RealNVP.py)<sup>15</sup> | [`Script`](src/generativezoo/RealNVP.py) | [`Documentation`](docs/RealNVP.md)
 - Glow [`Paper`](https://arxiv.org/abs/1807.03039) | [`Code`](src\generativezoo\models\Flow\Glow.py)<sup>16</sup> | [`Script`](src/generativezoo/GLOW.py) | [`Documentation`](docs/Glow.md)
 - Flow++ [`Paper`](https://arxiv.org/abs/1902.00275) | [`Code`](src\generativezoo\models\Flow\FlowPlusPlus.py)<sup>17</sup> | [`Script`](src\generativezoo\FlowPP.py) | [`Documentation`](docs/FlowPlusPlus.md)
-- Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src\generativezoo\models\Flow/FlowMatching.py)<sup>8,18</sup> | [`Script`](src\generativezoo\FM.py) | [`Documentation`](docs/FlowMatching.md)
-- Conditional Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src\generativezoo\models\Flow/CondFlowMatching.py)<sup>8,18</sup> | [`Script`](src\generativezoo\CondFM.py) | [`Documentation`](docs/ConditionalFlowMatching.md)
+- Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src\generativezoo\models\Flow\FlowMatching.py)<sup>8,18</sup> | [`Script`](src\generativezoo\FM.py) | [`Documentation`](docs/FlowMatching.md)
+- Conditional Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src\generativezoo\models\Flow\CondFlowMatching.py)<sup>8,18</sup> | [`Script`](src\generativezoo\CondFM.py) | [`Documentation`](docs/ConditionalFlowMatching.md)
 - Rectified Flows [`Paper`](https://arxiv.org/abs/2403.03206) | [`Code`](src/generativezoo/models/Flow/RectifiedFlows.py)<sup>19</sup> | [`Script`](src/generativezoo/RF.py) | [`Documentation`](docs/RectifiedFlows.md)
 
 #### Stable Diffusion
@@ -191,9 +191,9 @@ The code examples are setup to use [Weights & Biases](https://wandb.ai/home) as 
 
 **If you want to turn off syncing with the server but want to retain the local copy, run:**
 
-    ```bash
-    wandb offline
-    ```
+```bash
+wandb offline 
+```
 
 ## Repository Information
 

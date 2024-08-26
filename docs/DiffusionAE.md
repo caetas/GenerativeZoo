@@ -21,6 +21,7 @@ The Diffusion Autoencoder (DiffAE) is a model that learns to encode images into 
 | `--attention_levels`  | attention levels                       | `[False, True, True]` |                                           |
 | `--num_res_blocks`    | number of res blocks                   | `1`     |                                                              |
 | `--sample_and_save_freq` | sample and save frequency           | `10`    |                                                              |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

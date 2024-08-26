@@ -18,6 +18,7 @@
 | `--sample_and_save_freq` | Sample and save frequency               | `5`             |                                                                                          |
 | `--hidden_channels`      | Number of channels for the convolutional layers | `64`     |                                                                                          |
 | `--checkpoint`           | Checkpoint path                         | `None`          |                                                                                          |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 
 ## Training

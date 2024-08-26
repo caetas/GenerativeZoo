@@ -30,6 +30,7 @@ Denoising Diffusion Probabilistic Models (DDPMs) rely on a diffusion process whe
 | `--out_dataset`             | outlier dataset name                            | `fashionmnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet` |
 | `--loss_type`               | loss type                                       | `huber` | `huber`, `l2`, `l1`                                  |
 | `--sample_timesteps`        | number of timesteps for sampling                | `300`   |                                                              |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

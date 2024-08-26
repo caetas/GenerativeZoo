@@ -22,6 +22,7 @@ This work implements the Real-valued Non-Volume Preserving (RealNVP) transformat
 | `--mid_channels`            | Mid channels                                      | `64`        |                                                               |
 | `--num_blocks`              | Number of blocks                                  | `8`         |                                                               |
 | `--checkpoint`              | Checkpoint path                                   | `None`      |                                                               |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

@@ -39,6 +39,7 @@ This work provides a new theoretical analysis of learning and sampling from scor
 | `--probability_flow`        | Probability flow                                 | `False`     |                                                              |
 | `--noise_removal`           | Noise removal                                    | `False`     |                                                              |
 | `--checkpoint`              | Checkpoint path to VQVAE                         | `None`     |                                                              |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

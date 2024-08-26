@@ -12,7 +12,7 @@ import tarfile
 import io
 
 
-def cifar_train_loader(batch_size, normalize = False, input_shape = None):
+def cifar_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
 
     if normalize:
         transform = transforms.Compose([
@@ -31,7 +31,8 @@ def cifar_train_loader(batch_size, normalize = False, input_shape = None):
     training_loader = DataLoader(training_data, 
                                  batch_size=batch_size, 
                                  shuffle=True,
-                                 pin_memory=True)
+                                 pin_memory=True,
+                                 num_workers = num_workers)
     
     if input_shape is not None:
         return training_loader, input_shape, 3
@@ -64,7 +65,7 @@ def cifar_val_loader(batch_size, normalize = False, input_shape = None):
     else:
         return validation_loader, 32, 3
 
-def mnist_train_loader(batch_size, normalize = False, input_shape = None):
+def mnist_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
 
     if normalize:
         transform = transforms.Compose([
@@ -83,7 +84,8 @@ def mnist_train_loader(batch_size, normalize = False, input_shape = None):
     training_loader = DataLoader(training_data, 
                                  batch_size=batch_size, 
                                  shuffle=True,
-                                 pin_memory=True)
+                                 pin_memory=True,
+                                 num_workers = num_workers)
     if input_shape is not None:
         return training_loader, input_shape, 1
     else:
@@ -115,7 +117,7 @@ def mnist_val_loader(batch_size, normalize = False, input_shape = None):
     else:
         return validation_loader, 32, 1
 
-def chestmnist_train_loader(batch_size, normalize = False, input_shape = None):
+def chestmnist_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
 
     if normalize:
         transform = transforms.Compose([
@@ -138,7 +140,8 @@ def chestmnist_train_loader(batch_size, normalize = False, input_shape = None):
     training_loader = DataLoader(training_data, 
                                  batch_size=batch_size, 
                                  shuffle=True,
-                                 pin_memory=True)
+                                 pin_memory=True,
+                                 num_workers = num_workers)
     
     if input_shape is not None:
         return training_loader, input_shape, 1
@@ -174,7 +177,7 @@ def chestmnist_val_loader(batch_size, normalize = False, input_shape = None):
     else:
         return validation_loader, 32, 1
 
-def octmnist_train_loader(batch_size, normalize = False, input_shape = None):
+def octmnist_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
     
     if normalize:
         transform = transforms.Compose([
@@ -197,7 +200,8 @@ def octmnist_train_loader(batch_size, normalize = False, input_shape = None):
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
                                 shuffle=True,
-                                pin_memory=True)
+                                pin_memory=True,
+                                num_workers = num_workers)
     
     if input_shape is not None:
         return training_loader, input_shape, 1
@@ -233,7 +237,7 @@ def octmnist_val_loader(batch_size, normalize = False, input_shape = None):
     else:
         return validation_loader, 32, 1
 
-def tissuemnist_train_loader(batch_size, normalize = False, input_shape = None):
+def tissuemnist_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
             
     if normalize:
         transform = transforms.Compose([
@@ -256,7 +260,8 @@ def tissuemnist_train_loader(batch_size, normalize = False, input_shape = None):
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
                                 shuffle=True,
-                                pin_memory=True)
+                                pin_memory=True,
+                                num_workers = num_workers)
     
     if input_shape is not None:
         return training_loader, input_shape, 1
@@ -293,7 +298,7 @@ def tissuemnist_val_loader(batch_size, normalize = False, input_shape = None):
     else:
         return validation_loader, 32, 1
 
-def pneumoniamnist_train_loader(batch_size, normalize = False, input_shape = None):
+def pneumoniamnist_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
                             
     if normalize:
         transform = transforms.Compose([
@@ -316,7 +321,8 @@ def pneumoniamnist_train_loader(batch_size, normalize = False, input_shape = Non
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
                                 shuffle=True,
-                                pin_memory=True)
+                                pin_memory=True,
+                                num_workers = num_workers)
 
     if input_shape is not None:
         return training_loader, input_shape, 1
@@ -353,7 +359,7 @@ def pneumoniamnist_val_loader(batch_size, normalize = False, input_shape = None)
     else:
         return validation_loader, 32, 1
 
-def fashion_mnist_train_loader(batch_size, normalize = False, input_shape = None):
+def fashion_mnist_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
     
     if normalize:
         transform = transforms.Compose([
@@ -372,7 +378,8 @@ def fashion_mnist_train_loader(batch_size, normalize = False, input_shape = None
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
                                 shuffle=True,
-                                pin_memory=True)
+                                pin_memory=True,
+                                num_workers = num_workers)
     
     if input_shape is not None:
         return training_loader, input_shape, 1
@@ -406,7 +413,7 @@ def fashion_mnist_val_loader(batch_size, normalize = False, input_shape = None):
         return validation_loader, 32, 1
 
 
-def svhn_train_loader(batch_size, normalize = False, input_shape = None):
+def svhn_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
         
     if normalize:
         transform = transforms.Compose([
@@ -425,7 +432,8 @@ def svhn_train_loader(batch_size, normalize = False, input_shape = None):
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
                                 shuffle=True,
-                                pin_memory=True)
+                                pin_memory=True,
+                                num_workers = num_workers)
     
     if input_shape is not None:
         return training_loader, input_shape, 3
@@ -490,7 +498,7 @@ class TinyImageNetDataset(Dataset):
             return img, self.label[idx]
 
 
-def tinyimagenet_train_loader(batch_size, normalize = False, input_shape = None):
+def tinyimagenet_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
         
     if normalize:
         transform = transforms.Compose([
@@ -509,7 +517,8 @@ def tinyimagenet_train_loader(batch_size, normalize = False, input_shape = None)
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
                                 shuffle=True,
-                                pin_memory=True)
+                                pin_memory=True,
+                                num_workers = num_workers)
     
     if input_shape is not None:
         return training_loader, input_shape, 3
@@ -542,7 +551,7 @@ def tinyimagenet_test_loader(batch_size, normalize = False, input_shape = None):
     else:
         return test_loader, 64, 3
     
-def cifar100_train_loader(batch_size, normalize = False, input_shape = None):
+def cifar100_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
             
     if normalize:
         transform = transforms.Compose([
@@ -561,7 +570,8 @@ def cifar100_train_loader(batch_size, normalize = False, input_shape = None):
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
                                 shuffle=True,
-                                pin_memory=True)
+                                pin_memory=True,
+                                num_workers = num_workers)
     
     if input_shape is not None:
         return training_loader, input_shape, 3
@@ -748,7 +758,7 @@ class ImageNetDataset(Dataset):
             img = self.transform(img)
         return img, 0
     
-def imagenet_train_loader(batch_size, normalize = False, input_shape = None):
+def imagenet_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
         
         if normalize:
             transform = transforms.Compose([
@@ -767,7 +777,8 @@ def imagenet_train_loader(batch_size, normalize = False, input_shape = None):
         training_loader = DataLoader(training_data, 
                                     batch_size=batch_size, 
                                     shuffle=True,
-                                    pin_memory=True)
+                                    pin_memory=True,
+                                    num_workers = num_workers)
         
         if input_shape is not None:
             return training_loader, input_shape, 3
@@ -803,52 +814,52 @@ def imagenet_val_loader(batch_size, normalize = False, input_shape = None):
 def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None, num_workers = 0):
     if dataset_name == 'mnist':
         if mode == 'train':
-            return mnist_train_loader(batch_size, normalize, size)
+            return mnist_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
             return mnist_val_loader(batch_size, normalize, size)
     elif dataset_name == 'chestmnist':
         if mode == 'train':
-            return chestmnist_train_loader(batch_size, normalize, size)
+            return chestmnist_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
             return chestmnist_val_loader(batch_size, normalize, size)
     elif dataset_name == 'octmnist':
         if mode == 'train':
-            return octmnist_train_loader(batch_size, normalize, size)
+            return octmnist_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
-            return octmnist_val_loader(batch_size, normalize, size)
+            return octmnist_val_loader(batch_size, normalize, size, num_workers)
     elif dataset_name == 'tissuemnist':
         if mode == 'train':
-            return tissuemnist_train_loader(batch_size, normalize, size)
+            return tissuemnist_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
             return tissuemnist_val_loader(batch_size, normalize, size)
     elif dataset_name == 'pneumoniamnist':
         if mode == 'train':
-            return pneumoniamnist_train_loader(batch_size, normalize, size)
+            return pneumoniamnist_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
             return pneumoniamnist_val_loader(batch_size, normalize, size)
     elif dataset_name == 'fashionmnist':
         if mode == 'train':
-            return fashion_mnist_train_loader(batch_size, normalize, size)
+            return fashion_mnist_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
-            return fashion_mnist_val_loader(batch_size, normalize, size)
+            return fashion_mnist_val_loader(batch_size, normalize, size, num_workers)
     elif dataset_name == 'svhn':
         if mode == 'train':
-            return svhn_train_loader(batch_size, normalize, size)
+            return svhn_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
             return svhn_val_loader(batch_size, normalize, size)
     elif dataset_name == 'cifar10':
         if mode == 'train':
-            return cifar_train_loader(batch_size, normalize, size)
+            return cifar_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
             return cifar_val_loader(batch_size, normalize, size)
     elif dataset_name == 'cifar100':
         if mode == 'train':
-            return cifar100_train_loader(batch_size, normalize, size)
+            return cifar100_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
             return cifar100_val_loader(batch_size, normalize, size)
     elif dataset_name == 'tinyimagenet':
         if mode == 'train':
-            return tinyimagenet_train_loader(batch_size, normalize, size)
+            return tinyimagenet_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
             return tinyimagenet_test_loader(batch_size, normalize, size)
     elif dataset_name == 'places365':
@@ -863,7 +874,7 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return dtd_test_loader(batch_size, normalize, size, num_workers = num_workers)
     if dataset_name == 'imagenet':
         if mode == 'train':
-            return imagenet_train_loader(batch_size, normalize, size)
+            return imagenet_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
             return imagenet_val_loader(batch_size, normalize, size)
     else:

@@ -29,6 +29,7 @@ The Vector Quantised-Variational AutoEncoder (VQ-VAE), differs from VAEs in two 
 | `--checkpoint_t`            | Checkpoint path to Transformer                   | `None`     |                                                              |
 | `--num_samples`             | Number of samples                                | `16`       |                                                              |
 | `--sample_and_save_freq`    | Sample and save frequency                        | `5`        |                                                              |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

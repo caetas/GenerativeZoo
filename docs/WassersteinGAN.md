@@ -26,6 +26,7 @@ WGAN-GP presents an alternative to clipping weights in typical WGANs: penalize t
 | `--gp_weight`             | Gradient penalty weight                | `10.0`   |                                                                         |
 | `--n_critic`              | Number of critic updates per generator update | `5`  |                                                                         |
 | `--n_samples`             | Number of samples                      | `9`      |                                                                         |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

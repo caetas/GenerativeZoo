@@ -21,6 +21,7 @@ The Conditional Variational Autoencoder (Conditional VAE) is an extension of the
 | `--sample_and_save_frequency`| sample and save frequency | `5`    |                                                    |
 | `--loss_type`             | Type of loss to evaluate reconstruction            | `mse`    |  `mse`, `ssim`             |
 | `--kld_weight`            | KL-Divergence weight                               | `1e-4`   |                            |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 
