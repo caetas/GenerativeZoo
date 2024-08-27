@@ -286,7 +286,7 @@ class VanillaVAE(nn.Module):
 
         for epoch in epochs_bar:
             acc_loss = 0.0
-            for data,_ in tqdm(data_loader, leave = False, desc='Batches', verbose = verbose):
+            for data,_ in tqdm(data_loader, leave = False, desc='Batches', disable = not(verbose)):
                 x = data.to(self.device)
                 recon_x, mu, logvar = self(x)
                 if self.loss_type == 'mse':
