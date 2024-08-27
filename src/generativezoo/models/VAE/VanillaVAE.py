@@ -271,7 +271,7 @@ class VanillaVAE(nn.Module):
             plt.show()
         plt.close(fig)
     
-    def train_model(self, data_loader, epochs):
+    def train_model(self, data_loader, epochs, verbose = True):
         '''Train the model
         Args:
         data_loader: torch.utils.data.DataLoader, data loader for the training
@@ -286,7 +286,7 @@ class VanillaVAE(nn.Module):
 
         for epoch in epochs_bar:
             acc_loss = 0.0
-            for data,_ in tqdm(data_loader, leave = False, desc='Batches'):
+            for data,_ in tqdm(data_loader, leave = False, desc='Batches', verbose = verbose):
                 x = data.to(self.device)
                 recon_x, mu, logvar = self(x)
                 if self.loss_type == 'mse':
