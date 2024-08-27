@@ -29,6 +29,7 @@ def parse_args_HierarchicalVAE():
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_RealNVP():
@@ -49,6 +50,7 @@ def parse_args_RealNVP():
     argparser.add_argument('--num_blocks', type=int, default=8, help='number of blocks')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 
@@ -67,6 +69,7 @@ def parse_args_PixelCNN():
     argparser.add_argument('--hidden_channels', type=int, default=64, help='number of channels for the convolutional layers')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_VQGAN_Transformer():
@@ -101,6 +104,7 @@ def parse_args_VQGAN_Transformer():
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet','imagenet'])
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     args = argparser.parse_args()
     args.num_channels = tuple(args.num_channels)
     args.num_res_channels = tuple(args.num_res_channels)
@@ -132,6 +136,7 @@ def parse_args_FlowMatching():
     argparser.add_argument('--step_size', type=float, default=0.1, help='step size for ODE solver')
     argparser.add_argument('--solver', type=str, default='dopri5', help='solver for ODE', choices=['dopri5', 'rk4', 'dopri8', 'euler', 'bosh3', 'adaptive_heun', 'midpoint', 'explicit_adams', 'implicit_adams'])
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     args = argparser.parse_args()
     args.channel_scale_factors = tuple(args.channel_scale_factors)
     return args
@@ -163,6 +168,7 @@ def parse_args_CondFlowMatching():
     argparser.add_argument('--prob', type=float, default=0.5, help='probability of conditioning during training')
     argparser.add_argument('--guidance_scale', type=float, default=2.0, help='guidance scale')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     args = argparser.parse_args()
     args.channel_scale_factors = tuple(args.channel_scale_factors)
     return args
@@ -191,6 +197,7 @@ def parse_args_RectifiedFlows():
     argparser.add_argument('--cfg', type=float, default=1.0, help='label guidance')
     argparser.add_argument('--sample_steps', type=int, default=50, help='number of steps for sampling')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_VanillaFlow():
@@ -210,6 +217,7 @@ def parse_args_VanillaFlow():
     argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet','imagenet'])
     argparser.add_argument('--n_layers', type=int, default=8, help='number of layers')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_VQVAE_Transformer():
@@ -237,6 +245,7 @@ def parse_args_VQVAE_Transformer():
     argparser.add_argument('--num_samples', type=int, default=16, help='number of samples')
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     args = argparser.parse_args()
     args.num_channels = tuple(args.num_channels)
     args.num_res_channels = tuple(args.num_res_channels)
@@ -265,6 +274,7 @@ def parse_args_FlowPP():
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample interval')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_VanillaVAE():
@@ -285,6 +295,7 @@ def parse_args_VanillaVAE():
     argparser.add_argument('--kld_weight', type=float, default=1e-4, help='kl weight')
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_ConditionalVAE():
@@ -304,6 +315,7 @@ def parse_args_ConditionalVAE():
     argparser.add_argument('--loss_type', type=str, default='mse', help='loss type', choices=['mse', 'ssim'])
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_AdversarialVAE():
@@ -328,6 +340,7 @@ def parse_args_AdversarialVAE():
     argparser.add_argument('--kld_weight', type=float, default=1e-4, help='kl weight')
     argparser.add_argument('--loss_type', type=str, default='mse', help='loss type', choices=['mse', 'ssim'])
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_VanillaSGM():
@@ -355,6 +368,7 @@ def parse_args_VanillaSGM():
     argparser.add_argument('--sampler_type', type=str, default='EM', help='sampler type', choices=['EM', 'PC', 'ODE'])
     argparser.add_argument('--sample_and_save_freq', type=int, default=10, help='sample and save frequency')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_DDPM():
@@ -383,6 +397,7 @@ def parse_args_DDPM():
     argparser.add_argument('--loss_type', type=str, default='huber', help='loss type', choices=['huber','l2', 'l1'])
     argparser.add_argument('--sample_timesteps', type=int, default=300, help='number of timesteps')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     args = argparser.parse_args()
     args.channel_scale_factors = tuple(args.channel_scale_factors)
 
@@ -411,6 +426,7 @@ def parse_args_CDDPM():
     argparser.add_argument('--guide_w', type=float, default=0.5, help='guide weight')
     argparser.add_argument('--ws_test', type = float, nargs='+', default = [0.0, 0.5, 2.0], help='guidance weights for test')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_DiffAE():
@@ -430,6 +446,7 @@ def parse_args_DiffAE():
     argparser.add_argument('--num_res_blocks', type=int, default=1, help='number of res blocks')
     argparser.add_argument('--sample_and_save_freq', type=int, default=10, help='sample and save frequency')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     args = argparser.parse_args()
     args.model_channels = tuple(args.model_channels)
     args.attention_levels = tuple(args.attention_levels)
@@ -451,6 +468,7 @@ def parse_args_CycleGAN():
     argparser.add_argument('--in_channels', type=int, default=3, help='in channels')
     argparser.add_argument('--out_channels', type=int, default=3, help='out channels')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_CondGAN():
@@ -472,6 +490,7 @@ def parse_args_CondGAN():
     argparser.add_argument('--n_samples', type=int, default=9, help='number of samples')
     argparser.add_argument('--d', type=int, default=128, help='d')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_VanillaGAN():
@@ -496,6 +515,7 @@ def parse_args_VanillaGAN():
     argparser.add_argument('--n_samples', type=int, default=9, help='number of samples')
     argparser.add_argument('--d', type=int, default=128, help='d')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_WassersteinGAN():
@@ -520,6 +540,7 @@ def parse_args_WassersteinGAN():
     argparser.add_argument('--n_critic', type=int, default=5, help='number of critic updates per generator update')
     argparser.add_argument('--n_samples', type=int, default=9, help='number of samples')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
 
     return argparser.parse_args()
 
@@ -566,6 +587,7 @@ def parse_args_PresGAN():
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet','imagenet'])
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_Glow():
@@ -595,6 +617,7 @@ def parse_args_Glow():
     argparser.add_argument('--max_grad_clip', type=float, default=0.0, help='max grad clip')
     argparser.add_argument('--max_grad_norm', type=float, default=0.0, help='max grad norm')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 def parse_args_NCSNv2():
@@ -632,6 +655,7 @@ def parse_args_NCSNv2():
     argparser.add_argument('--noise_removal', action='store_true', default=False, help='noise removal')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
 # EOF

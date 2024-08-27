@@ -16,6 +16,7 @@ NVAE introduced a deep hierarchical VAE designed for image generation through de
 | `--latent_dim`           | Latent dimension                        | `512`           |                                                                                          |
 | `--checkpoint`           | Checkpoint path                         | `None`          |                                                                                          |
 | `--sample_and_save_freq` | Sample and save frequency               | `5`             |                                                                                          |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

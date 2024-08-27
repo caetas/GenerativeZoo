@@ -36,6 +36,7 @@ The Vector Quantised-Generative Adversarial Network (VQ-GAN) is composed of an V
 | `--sample_and_save_freq`    | Sample and save frequency                        | `5`        |                                                              |
 | `--outlier_detection`       | Outlier detection                                | `False`    |                                                              |
 | `--out_dataset`             | Outlier dataset name                             | `fashionmnist`| `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet` |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

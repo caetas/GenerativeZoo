@@ -31,6 +31,7 @@ Glow is a simple type of generative flow using an invertible 1x1 convolution. Al
 | `--n_bits`           | Number of bits                        | `8`     |                                                      |
 | `--max_grad_clip`    | Max Grad clip                         | `0.0`   |                                                      |
 | `--max_grad_norm`    | Max Grad Norm                         | `0.0`   |                                                      |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

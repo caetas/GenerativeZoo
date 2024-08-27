@@ -24,6 +24,7 @@
 | `--sample_and_save_freq`     | Sample and save frequency          | `5`               |                                                                                                              |
 | `--num_classes`              | Number of classes                  | `10`              |                                                                                                              |
 | `--checkpoint`               | Checkpoint path                    | `None`            |                                                                                                              |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

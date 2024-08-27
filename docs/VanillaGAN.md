@@ -26,6 +26,7 @@ A Generative Adversarial Network (GAN) comprises two neural networks: a **Genera
 | `--discriminator_checkpoint` | Discriminator checkpoint path                   | `None`   |                                                                                                                                                                              |
 | `--n_samples`             | Number of samples                                  | `9`      |                                                                                                                                                                              |
 | `--d`                     | d                                                  | `128`    |                                                                                                                                                                              |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

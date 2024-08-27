@@ -28,6 +28,7 @@ Score-based Generative Models (SGMs) model the diffusion process using a Stochas
 | `--num_steps`         | number of steps                        | `500`   |                                                              |
 | `--sampler_type`      | sampler type                           | `EM`  | `EM`, `PC`, `ODE`                                     |
 | `--sample_and_save_freq` | sample and save frequency           | `10`    |                                                              |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

@@ -27,6 +27,7 @@ The Conditional Denoising Diffusion Probabilistic Model (CDDPM) is akin to the s
 | `--drop_prob`          | dropout probability                       | `0.1`   |                                                              |
 | `--guide_w`            | guide weight                              | `0.5`   |                                                              |
 | `--ws_test`            | guidance weights for test                 | `[0.0, 0.5, 2.0]` |                                                |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

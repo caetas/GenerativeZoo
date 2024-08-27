@@ -26,6 +26,7 @@ The Adversarial Variational Autoencoder (Adversarial VAE) is a generative model 
 | `--out_dataset`           | Outlier dataset name                               | `fashionmnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet`      |
 | `--loss_type`             | Type of loss to evaluate reconstruction            | `mse`    |  `mse`, `ssim`                                                                                                                                                               |
 | `--kld_weight`            | KL-Divergence weight                               | `1e-4`   |                                                                                                                                                                              |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

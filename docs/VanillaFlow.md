@@ -21,6 +21,7 @@ A Normalizing Flow model is designed to learn the underlying probability distrib
 | `--outlier_detection`       | Outlier detection                                 | `False`     |                                                               |
 | `--out_dataset`             | Outlier dataset name                              | `fashionmnist` | `mnist`, `cifar10`, `cifar100`, `places365`, `dtd`, `fashionmnist`, `chestmnist`, `pneumoniamnist`, `tissuemnist`, `pneumoniamnist`, `svhn`,`tinyimagenet`, `imagenet` |
 | `--n_layers`                | Number of layers                                  | `8`         |                                                               |
+| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 
