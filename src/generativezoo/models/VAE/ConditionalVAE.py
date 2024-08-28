@@ -215,7 +215,7 @@ class ConditionalVAE(nn.Module):
         y_onehot.scatter_(1, y.unsqueeze(1), 1)
         return y_onehot
     
-    def create_grid(self, figsize=(10, 10), title=None, train = False):
+    def sample(self, figsize=(10, 10), title=None, train = False):
         '''Create a grid of samples from the latent space
         Args:
         device: torch.device to run the model
@@ -280,7 +280,7 @@ class ConditionalVAE(nn.Module):
             if not self.no_wandb:
                 wandb.log({"loss": acc_loss/len(train_loader.dataset)})
             if epoch % self.sample_and_save_freq == 0:
-                self.create_grid(title=f"Epoch_{epoch}", train = True)
+                self.sample(title=f"Epoch_{epoch}", train = True)
             
             if acc_loss<best_loss:
                 best_loss = acc_loss

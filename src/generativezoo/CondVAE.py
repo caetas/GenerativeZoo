@@ -42,6 +42,6 @@ if __name__ == '__main__':
         _, in_shape, in_channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, size=size)
         model = ConditionalVAE(input_shape=in_shape, input_channels=in_channels, args=args)
         model.load_state_dict(torch.load(args.checkpoint))
-        model.create_grid(title="Sample", train = False)
+        model.sample(title="Sample", train = False)
     else:
         raise ValueError("Invalid mode. Please specify train or sample")
