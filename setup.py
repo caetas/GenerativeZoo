@@ -20,7 +20,7 @@ runtime_requires = find_requirements("requirements.txt")
 
 setup(
     name="GenerativeZoo",
-    version="1.1.0",
+    version="1.2.0",
     author="Francisco Caetano",
     description="A Model Zoo for Generative Models.",
     long_description=long_description,
