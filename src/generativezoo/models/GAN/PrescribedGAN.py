@@ -328,7 +328,7 @@ class PresGAN(nn.Module):
         '''
         return self.netG(input)
     
-    def train_model(self, dataloader):
+    def train_model(self, dataloader, verbose=True):
         '''
         Train the model
         dataloader: dataloader for the dataset
@@ -354,7 +354,7 @@ class PresGAN(nn.Module):
         create_checkpoint_dir()
 
         for epoch in epoch_bar:
-            for x,_ in tqdm(dataloader, desc='Batches', leave=False):
+            for x,_ in tqdm(dataloader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
                 sigma_x = F.softplus(self.log_sigma).view(1, 1, self.imgSize, self.imgSize)
 

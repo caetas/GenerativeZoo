@@ -421,6 +421,8 @@ class FlowMatching(nn.Module):
         self.step_size = args.step_size
         self.solver_lib = args.solver_lib
         self.no_wandb = args.no_wandb
+        self.warmup = args.warmup
+        self.decay = args.decay
 
     def forward(self, x, t):
         '''
@@ -487,7 +489,7 @@ class FlowMatching(nn.Module):
         plt.close(fig)
 
     
-    def train_model(self, train_loader):
+    def train_model(self, train_loader, verbose=True):
         '''
         Train the model
         :param train_loader: training data loader
@@ -499,16 +501,21 @@ class FlowMatching(nn.Module):
 
         best_loss = float('inf')
 
+        lr_lambda = lambda epoch: min(1.0, (epoch + 1) / self.warmup)  # noqa
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
+
         for epoch in epoch_bar:
             self.model.train()
             train_loss = 0.0
-            for x, _ in tqdm(train_loader, desc='Batches', leave=False):
+            for x, _ in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
                 optimizer.zero_grad()
                 loss = self.conditional_flow_matching_loss(x)
                 loss.backward()
                 optimizer.step()
                 train_loss += loss.item()*x.size(0)
+            
+            scheduler.step()
             epoch_bar.set_postfix({'Loss': train_loss / len(train_loader.dataset)})
             if not self.no_wandb:
                 wandb.log({"Train Loss": train_loss / len(train_loader.dataset)})

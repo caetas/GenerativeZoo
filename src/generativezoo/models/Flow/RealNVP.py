@@ -526,7 +526,7 @@ class RealNVP(nn.Module):
 
         return y, sldj
     
-    def train_model(self, dataloader, args):
+    def train_model(self, dataloader, args, verbose=True):
         """Train the RealNVP model.
 
         Args:
@@ -545,7 +545,7 @@ class RealNVP(nn.Module):
         for epoch in epoch_bar:
             self.train()
             loss_epoch = 0.
-            for x,_ in tqdm(dataloader, desc='Batches', leave=False):
+            for x,_ in tqdm(dataloader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
 
                 optimizer.zero_grad()

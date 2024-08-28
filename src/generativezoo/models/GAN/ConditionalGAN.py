@@ -150,7 +150,7 @@ class ConditionalGAN(nn.Module):
         self.dataset = args.dataset
         self.no_wandb = args.no_wandb
 
-    def train_model(self, dataloader):
+    def train_model(self, dataloader, verbose = True):
         '''
         Train the Conditional GAN model
         :param dataloader: data loader
@@ -173,7 +173,7 @@ class ConditionalGAN(nn.Module):
             acc_g_loss = 0.0
             acc_d_loss = 0.0
 
-            for (imgs, labels) in tqdm(dataloader, leave=False):
+            for (imgs, labels) in tqdm(dataloader, leave=False, desc="Batches", disable=not verbose):
 
                 # Adversarial ground truths
                 valid = torch.ones(imgs.size(0), 1).to(self.device)

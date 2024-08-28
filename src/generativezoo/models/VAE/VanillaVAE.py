@@ -215,7 +215,8 @@ class VanillaVAE(nn.Module):
             kld = -0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1)
             return ssim + kld*self.kld_weight
     
-    def create_grid(self, figsize=(10, 10), title=None, train = False):
+    @torch.no_grad()
+    def sample(self, figsize=(10, 10), title=None, train = False):
         '''Create a grid of samples from the latent space
         Args:
         figsize: tuple, size of the figure
@@ -303,7 +304,7 @@ class VanillaVAE(nn.Module):
             if not self.no_wandb:
                 wandb.log({"loss": acc_loss/len(data_loader.dataset)})
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
-                self.create_grid(title=f"Epoch_{epoch}", train = True)
+                self.sample(title=f"Epoch_{epoch}", train = True)
                 self.create_validation_grid(data_loader, train = True, title=f"Epoch_{epoch}")
             
             if acc_loss<best_loss:

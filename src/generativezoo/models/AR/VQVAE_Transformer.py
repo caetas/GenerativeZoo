@@ -63,7 +63,7 @@ class VQVAETransformer(nn.Module):
         self.img_size = img_size
         self.no_wandb = args.no_wandb
     
-    def train_VQVAE(self, args, train_loader):
+    def train_VQVAE(self, args, train_loader, verbose=True):
         '''
         Train the VQVAE model
         :param args: arguments
@@ -79,7 +79,7 @@ class VQVAETransformer(nn.Module):
         for epoch in epoch_bar:
             self.vqvae.train()
             acc_loss = 0
-            for x,_ in tqdm(train_loader, desc='Batches', leave=False):
+            for x,_ in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
                 optimizer.zero_grad()
                 x_recon, quant_l, = self.vqvae(x)
@@ -101,7 +101,7 @@ class VQVAETransformer(nn.Module):
             if (epoch+1) % args.sample_and_save_freq == 0 or epoch == 0:
                 self.reconstruct(x[:8])
 
-    def train_Transformer(self, args, train_loader):
+    def train_Transformer(self, args, train_loader, verbose=True):
         '''
         Train the Transformer model
         :param args: arguments
@@ -117,7 +117,7 @@ class VQVAETransformer(nn.Module):
         for epoch in epoch_bar:
             self.transformer.train()
             acc_loss = 0
-            for x,_ in tqdm(train_loader, desc='Batches', leave=False):
+            for x,_ in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
                 optimizer.zero_grad()
                 logits, targets, _ = self.inferer(x, self.vqvae, self.transformer, self.ordering, return_latent=True)
@@ -139,7 +139,7 @@ class VQVAETransformer(nn.Module):
             if (epoch+1) % args.sample_and_save_freq == 0 or epoch == 0:
                 self.sample(16)
     
-    def train_model(self, args, train_loader_a, train_loader_b):
+    def train_model(self, args, train_loader_a, train_loader_b, verbose=True):
         '''
         Train the VQVAE and Transformer models
         :param args: arguments
@@ -148,11 +148,11 @@ class VQVAETransformer(nn.Module):
         '''
         create_checkpoint_dir()
         print('Training VQVAE...')
-        self.train_VQVAE(args, train_loader_a)
+        self.train_VQVAE(args, train_loader_a, verbose)
         # load the best VQVAE model
         self.vqvae.load_state_dict(torch.load(os.path.join(models_dir, 'VQVAE_Transformer', f'VQVAE_{args.dataset}.pt')))
         print('Training Transformer...')
-        self.train_Transformer(args, train_loader_b)
+        self.train_Transformer(args, train_loader_b, verbose)
 
     @torch.no_grad()
     def reconstruct(self, x, train=True):

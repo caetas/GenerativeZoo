@@ -341,7 +341,7 @@ class AdversarialVAE(nn.Module):
         plt.close(fig)
         
 
-    def train_model(self, data_loader):
+    def train_model(self, data_loader, verbose = True):
         '''
         Function to train the model
         Args:
@@ -368,7 +368,7 @@ class AdversarialVAE(nn.Module):
             acc_g_loss = 0.0
             acc_d_loss = 0.0
 
-            for (imgs, _) in tqdm(data_loader, desc = 'Batches', leave=False):
+            for (imgs, _) in tqdm(data_loader, desc = 'Batches', leave=False, disable=not verbose):
 
                 # Adversarial ground truths
                 valid = torch.ones(imgs.size(0), 1).to(self.device)

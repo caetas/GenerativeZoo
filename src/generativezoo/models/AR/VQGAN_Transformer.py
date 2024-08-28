@@ -75,7 +75,7 @@ class VQGANTransformer(nn.Module):
         self.img_size = img_size
         self.no_wandb = args.no_wandb
     
-    def train_VQGAN(self, args, train_loader):
+    def train_VQGAN(self, args, train_loader, verbose=True):
         '''
         Train the VQGAN model
         :param args: arguments for training the model
@@ -94,7 +94,7 @@ class VQGANTransformer(nn.Module):
             self.vqvae.train()
             acc_loss = 0
             acc_loss_d = 0
-            for x,_ in tqdm(train_loader, desc='Batches', leave=False):
+            for x,_ in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
 
                 ### Train the VQVAE ###
@@ -138,7 +138,7 @@ class VQGANTransformer(nn.Module):
             if (epoch+1) % args.sample_and_save_freq == 0 or epoch == 0:
                 self.reconstruct(x[:8])
 
-    def train_Transformer(self, args, train_loader):
+    def train_Transformer(self, args, train_loader, verbose=True):
         '''
         Train the Transformer model
         :param args: arguments for training the model
@@ -154,7 +154,7 @@ class VQGANTransformer(nn.Module):
         for epoch in epoch_bar:
             self.transformer.train()
             acc_loss = 0
-            for x,_ in tqdm(train_loader, desc='Batches', leave=False):
+            for x,_ in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
                 optimizer.zero_grad()
                 logits, targets, _ = self.inferer(x, self.vqvae, self.transformer, self.ordering, return_latent=True)
@@ -176,7 +176,7 @@ class VQGANTransformer(nn.Module):
             if (epoch+1) % args.sample_and_save_freq == 0 or epoch == 0:
                 self.sample(16)
     
-    def train_model(self, args, train_loader_a, train_loader_b):
+    def train_model(self, args, train_loader_a, train_loader_b, verbose=True):
         '''
         Train the VQGAN-Transformer model
         :param args: arguments for training the model
@@ -185,14 +185,14 @@ class VQGANTransformer(nn.Module):
         '''
         create_checkpoint_dir()
         print('Training VQGAN...')
-        self.train_VQGAN(args, train_loader_a)
+        self.train_VQGAN(args, train_loader_a, verbose)
         # load the best VQVAE model
         self.vqvae.load_state_dict(torch.load(os.path.join(models_dir, 'VQGAN_Transformer', f'VQGAN_{args.dataset}.pt')))
         # remove discriminator and perceptual loss from memory
         del self.discriminator
         del self.perceptual_loss
         print('Training Transformer...')
-        self.train_Transformer(args, train_loader_b)
+        self.train_Transformer(args, train_loader_b, verbose)
 
     @torch.no_grad()
     def reconstruct(self, x, train=True):

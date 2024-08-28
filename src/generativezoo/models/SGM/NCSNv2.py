@@ -311,7 +311,7 @@ class NCSNv2(nn.Module):
         self.channels = channels
         self.no_wandb = args.no_wandb
 
-    def train_model(self, train_loader, args):
+    def train_model(self, train_loader, args, verbose=True):
         '''
         Train the NCSNv2 model
         Args:
@@ -339,7 +339,7 @@ class NCSNv2(nn.Module):
         for epoch in epoch_bar:
             self.model.train()
             loss_acc = 0.0
-            for (x, _) in tqdm(train_loader, desc='Batches', leave=False):
+            for (x, _) in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
                 loss = train_step_fn({'model': self.model, 'optimizer': optimizer, 'ema': self.ema, 'step': epoch}, x)
                 loss_acc += loss.item()

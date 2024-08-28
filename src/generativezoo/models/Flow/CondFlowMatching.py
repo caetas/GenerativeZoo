@@ -1,12 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import torch
 from torch import nn
 from tqdm import tqdm
 import zuko
-from data.Dataloaders import mnist_train_loader, mnist_val_loader
-from generative.networks.nets import DiffusionModelUNet
 from torchvision.utils import make_grid
 import torch.nn.functional as F
 from functools import partial
@@ -429,6 +426,8 @@ class CondFlowMatching(nn.Module):
         self.prob = args.prob
         self.guidance_scale = args.guidance_scale
         self.no_wandb = args.no_wandb
+        self.warmup = args.warmup
+        self.decay = args.decay
 
     def forward(self, x, t, c):
         '''
@@ -505,7 +504,7 @@ class CondFlowMatching(nn.Module):
         plt.close(fig)
 
     
-    def train_model(self, train_loader):
+    def train_model(self, train_loader, verbose=True):
         '''
         Train the model
         :param train_loader: training data loader
@@ -517,10 +516,13 @@ class CondFlowMatching(nn.Module):
 
         best_loss = float('inf')
 
+        lr_lambda = lambda epoch: min(1.0, (epoch + 1) / self.warmup)  # noqa
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
+
         for epoch in epoch_bar:
             self.model.train()
             train_loss = 0.0
-            for x, cl in tqdm(train_loader, desc='Batches', leave=False):
+            for x, cl in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
                 cl = cl.to(self.device)
                 optimizer.zero_grad()
@@ -529,6 +531,7 @@ class CondFlowMatching(nn.Module):
                 optimizer.step()
                 train_loss += loss.item()*x.size(0)
             epoch_bar.set_postfix({'Loss': train_loss / len(train_loader.dataset)})
+            scheduler.step()
             if not self.no_wandb:
                 wandb.log({"Train Loss": train_loss / len(train_loader.dataset)})
 

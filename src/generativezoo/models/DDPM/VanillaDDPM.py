@@ -444,7 +444,7 @@ class VanillaDDPM(nn.Module):
         self.no_wandb = args.no_wandb
 
 
-    def train_model(self, dataloader):
+    def train_model(self, dataloader, verbose=True):
         '''
         Train the model
         :param dataloader: dataloader
@@ -453,7 +453,7 @@ class VanillaDDPM(nn.Module):
         create_checkpoint_dir()
         for epoch in tqdm(range(self.n_epochs), desc='Training DDPM', leave=True):
             acc_loss = 0.0
-            with tqdm(dataloader, desc=f'Batches', leave=False) as pbar:
+            with tqdm(dataloader, desc=f'Batches', leave=False, disable=not verbose) as pbar:
                 for step,batch in enumerate(dataloader):
                     self.optimizer.zero_grad()
                     batch_size = batch[0].shape[0]

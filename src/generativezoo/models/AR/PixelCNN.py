@@ -249,7 +249,7 @@ class PixelCNN(nn.Module):
         "Test step for the model."
         loss = self.calc_likelihood(batch)
 
-    def train_model(self, dataloader, args, img_size=32):
+    def train_model(self, dataloader, args, img_size=32, verbose=True):
         """
         Train the model with the given data.
         Inputs:
@@ -267,7 +267,7 @@ class PixelCNN(nn.Module):
             
             self.train()
             loss_acc = 0.0
-            for batch,_ in tqdm(dataloader, desc="Batches", leave=False):
+            for batch,_ in tqdm(dataloader, desc="Batches", leave=False, disable=not verbose):
 
                 batch = (batch*255.0).clip(0,255).to(torch.long)
                 batch = batch.to(self.device)
