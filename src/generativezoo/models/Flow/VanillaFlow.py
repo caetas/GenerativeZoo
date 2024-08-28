@@ -408,7 +408,7 @@ class VanillaFlow(nn.Module):
         loss = self._get_likelihood(batch)
         return loss
 
-    def train_model(self, train_loader, args):
+    def train_model(self, train_loader, args, verbose=True):
 
         create_checkpoint_dir()
 
@@ -421,7 +421,7 @@ class VanillaFlow(nn.Module):
             self.train()
             epoch_loss = 0.0
 
-            for batch, _ in tqdm(train_loader, desc='Batches', leave=False):
+            for batch, _ in tqdm(train_loader, desc='Batches', leave=False, display = not verbose):
                 batch = batch.to(self.device)
                 optimizer.zero_grad()
                 loss = self.training_step(batch)

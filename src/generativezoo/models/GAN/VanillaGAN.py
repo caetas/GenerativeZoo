@@ -316,7 +316,7 @@ class VanillaGAN(nn.Module):
         self.dataset = args.dataset
         self.no_wandb = args.no_wandb
     
-    def train_model(self, dataloader):
+    def train_model(self, dataloader, verbose = True):
         '''
         Train the model
         :param dataloader: dataloader for the data
@@ -338,7 +338,7 @@ class VanillaGAN(nn.Module):
             acc_g_loss = 0.0
             acc_d_loss = 0.0
 
-            for (imgs, _) in tqdm(dataloader, leave=False):
+            for (imgs, _) in tqdm(dataloader, leave=False, desc='Batches', disable=not verbose):
 
                 # Adversarial ground truths
                 valid = torch.ones(imgs.size(0), 1).to(self.device)

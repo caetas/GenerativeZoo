@@ -246,7 +246,7 @@ class ConditionalVAE(nn.Module):
         plt.close(fig)
         return grid
     
-    def train_model(self, train_loader, epochs):
+    def train_model(self, train_loader, epochs, verbose = True):
         '''Train the model
         Args:
         train_loader: torch.utils.data.DataLoader, dataloader for the training
@@ -263,7 +263,7 @@ class ConditionalVAE(nn.Module):
 
         for epoch in epochs_bar:
             acc_loss = 0
-            for x, y in tqdm(train_loader, leave=False, desc='Batches'):
+            for x, y in tqdm(train_loader, leave=False, desc='Batches', disable=not verbose):
                 x = x.to(self.device)
                 y = self.one_hot_encode(y).float().to(self.device)
                 recon_x, mu, logvar = self(x, y)

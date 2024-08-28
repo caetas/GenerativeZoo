@@ -137,6 +137,8 @@ def parse_args_FlowMatching():
     argparser.add_argument('--solver', type=str, default='dopri5', help='solver for ODE', choices=['dopri5', 'rk4', 'dopri8', 'euler', 'bosh3', 'adaptive_heun', 'midpoint', 'explicit_adams', 'implicit_adams'])
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
     argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
+    argparser.add_argument('--warmup', type=int, default=10, help='warmup epochs')
+    argparser.add_argument('--decay', type=float, default=1e-5, help='decay rate')
     args = argparser.parse_args()
     args.channel_scale_factors = tuple(args.channel_scale_factors)
     return args
@@ -169,6 +171,8 @@ def parse_args_CondFlowMatching():
     argparser.add_argument('--guidance_scale', type=float, default=2.0, help='guidance scale')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
     argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
+    argparser.add_argument('--warmup', type=int, default=10, help='warmup epochs')
+    argparser.add_argument('--decay', type=float, default=1e-5, help='decay rate')
     args = argparser.parse_args()
     args.channel_scale_factors = tuple(args.channel_scale_factors)
     return args
@@ -618,6 +622,8 @@ def parse_args_Glow():
     argparser.add_argument('--max_grad_norm', type=float, default=0.0, help='max grad norm')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
     argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
+    argparser.add_argument('--warmup', type=int, default=10, help='warmup epochs')
+    argparser.add_argument('--decay', type=float, default=1e-5, help='decay rate')
     return argparser.parse_args()
 
 def parse_args_NCSNv2():

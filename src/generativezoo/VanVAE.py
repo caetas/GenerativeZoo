@@ -41,7 +41,7 @@ if __name__ == '__main__':
         _, in_shape, in_channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, size = size)
         model = VanillaVAE(input_shape=in_shape, input_channels=in_channels,args=args)
         model.load_state_dict(torch.load(args.checkpoint))
-        model.create_grid(title="Sample", train = False)
+        model.sample(title="Sample", train = False)
 
     elif args.outlier_detection:
         in_loader, in_shape, in_channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, size = size, mode='val')

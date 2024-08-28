@@ -265,7 +265,7 @@ class WGAN(nn.Module):
         # Return gradient penalty
         return self.gp_weight * ((gradients_norm - 1) ** 2).mean()
     
-    def train_model(self, dataloader):
+    def train_model(self, dataloader, verbose=True):
         '''
         Train the Wasserstein GAN
         Args:
@@ -281,7 +281,7 @@ class WGAN(nn.Module):
             acc_loss_d = 0
             cnt = 0
             cnt_d = 0
-            for img,_ in tqdm(dataloader, desc='Batches', leave=False):
+            for img,_ in tqdm(dataloader, desc='Batches', leave=False, disable=not verbose):
                 self.num_steps += 1
                 real_imgs = img.to(self.device)
                 batch_size = real_imgs.size()[0]

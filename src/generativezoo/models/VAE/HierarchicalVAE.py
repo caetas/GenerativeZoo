@@ -626,7 +626,7 @@ class HierarchicalVAE(nn.Module):
 
         return decoder_output, recon_loss, [kl_loss] + losses
 
-    def train_model(self, data_loader, args):
+    def train_model(self, data_loader, args, verbose=True):
         """
 
         :param data_loader:
@@ -658,7 +658,7 @@ class HierarchicalVAE(nn.Module):
             epoch_recon_loss = 0.
             epoch_kl_loss = 0.
 
-            for x,_ in tqdm(data_loader, desc="Train", leave=False):
+            for x,_ in tqdm(data_loader, desc="Train", leave=False, disable=not verbose):
                 x = x.to(self.device)
                 optimizer.zero_grad()
 

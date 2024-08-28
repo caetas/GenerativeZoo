@@ -428,7 +428,7 @@ class RF:
             plt.show()
         plt.close(fig)
     
-    def train_model(self, train_loader):
+    def train_model(self, train_loader, verbose=True):
         
         create_checkpoint_dir()
 
@@ -441,7 +441,7 @@ class RF:
         for epoch in epoch_bar:
             self.model.train()
             train_loss = 0
-            for (x, cond) in tqdm(train_loader, desc='Batches', leave=False):
+            for (x, cond) in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
                 cond = cond.to(self.device)
                 optimizer.zero_grad()

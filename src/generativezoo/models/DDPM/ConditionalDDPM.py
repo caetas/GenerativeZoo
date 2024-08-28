@@ -440,7 +440,7 @@ class ConditionalDDPM(nn.Module):
         x_i_store = np.array(x_i_store)
         return x_i, x_i_store
     
-    def train_model(self,dataloader):
+    def train_model(self,dataloader, verbose = True):
         '''
         Trains the Conditional DDPM model
         Args:
@@ -452,7 +452,7 @@ class ConditionalDDPM(nn.Module):
         for ep in epoch_bar:
             self.denoising_model.train()
             acc_loss = 0.0
-            for x, c in tqdm(dataloader, desc="Batch", leave=False):
+            for x, c in tqdm(dataloader, desc="Batch", leave=False, disable=not verbose):
                 
                 self.optim.zero_grad()
 

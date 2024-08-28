@@ -382,7 +382,7 @@ class VanillaSGM(nn.Module):
     self.eps = args.eps
     self.no_wandb = args.no_wandb
 
-  def train_model(self, dataloader):
+  def train_model(self, dataloader, verbose=True):
     '''
     Train the Vanilla SGM model
     Args:
@@ -396,7 +396,7 @@ class VanillaSGM(nn.Module):
     for epoch in epoch_bar:
       avg_loss = 0.0
       
-      for x,_ in tqdm(dataloader, desc='Batches', leave=False):
+      for x,_ in tqdm(dataloader, desc='Batches', leave=False, disable=not verbose):
         x = x.to(self.device)
 
         self.optimizer.zero_grad()

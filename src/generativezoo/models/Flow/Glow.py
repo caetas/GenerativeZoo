@@ -641,6 +641,8 @@ class Glow(nn.Module):
         self.learn_top = args.learn_top
         self.y_condition = args.y_condition
         self.no_wandb = args.no_wandb
+        self.warmup = args.warmup
+        self.decay = args.decay
 
         # learned prior
         if self.learn_top:
@@ -736,16 +738,19 @@ class Glow(nn.Module):
 
         return x
 
-    def train_model(self,dataloader, args):
+    def train_model(self,dataloader, args, verbose=True):
         optimizer = torch.optim.Adamax(self.parameters(), lr=self.lr)
         epoch_bar = trange(self.n_epochs, desc="Epochs")
         self.train()
         create_checkpoint_dir()
         best_loss = np.inf
 
+        lr_lambda = lambda epoch: min(1.0, (epoch + 1) / self.warmup)  # noqa
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
+
         for epoch in epoch_bar:
             total_loss = 0
-            for x, label in tqdm(dataloader, desc = "Batches", leave = False):
+            for x, label in tqdm(dataloader, desc = "Batches", leave = False, disable = not verbose):
                 x = self.preprocess(x)
                 x = x.to(self.device)
                 optimizer.zero_grad()
@@ -764,7 +769,8 @@ class Glow(nn.Module):
                     torch.nn.utils.clip_grad_norm_(self.parameters(), args.max_grad_norm)
                 optimizer.step()
                 total_loss += losses["total_loss"].item()
-
+            
+            scheduler.step()
             epoch_bar.set_postfix(loss=total_loss/len(dataloader))
             if self.no_wandb:
                 wandb.log({'Loss': total_loss/len(dataloader)})

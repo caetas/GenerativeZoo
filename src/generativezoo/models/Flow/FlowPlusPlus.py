@@ -127,7 +127,7 @@ class FlowPlusPlus(nn.Module):
             self.dequant_flows.load_state_dict(torch.load(args.checkpoint.replace('FlowPP_', 'DequantFlowPP_')))
     
     @torch.enable_grad()
-    def train_model(self, args, train_loader):
+    def train_model(self, args, train_loader, verbose=True):
         """Train a Flow++ model.
 
         Args:
@@ -152,7 +152,7 @@ class FlowPlusPlus(nn.Module):
         for epoch in tbar:
             self.train()
             total_loss = 0.
-            for (x, _) in tqdm(train_loader, desc='Batches', leave=False):
+            for (x, _) in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
 
                 optimizer.zero_grad()
