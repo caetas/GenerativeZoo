@@ -826,7 +826,7 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
         if mode == 'train':
             return octmnist_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
-            return octmnist_val_loader(batch_size, normalize, size, num_workers)
+            return octmnist_val_loader(batch_size, normalize, size)
     elif dataset_name == 'tissuemnist':
         if mode == 'train':
             return tissuemnist_train_loader(batch_size, normalize, size, num_workers)
@@ -841,7 +841,7 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
         if mode == 'train':
             return fashion_mnist_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
-            return fashion_mnist_val_loader(batch_size, normalize, size, num_workers)
+            return fashion_mnist_val_loader(batch_size, normalize, size)
     elif dataset_name == 'svhn':
         if mode == 'train':
             return svhn_train_loader(batch_size, normalize, size, num_workers)
