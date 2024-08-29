@@ -29,6 +29,9 @@
 | `--prob`                     | Probability of conditioning during training | `0.5`   |                                                                                                              |
 | `--guidance_scale`           | Guidance scale                     | `2.0`             |                                                                                                              |
 | `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
+| `--warmup`   | Number of warmup epochs   | `10`     |                                                              |
+| `--decay`   | weight decay of learning rate   | `0`     |                                                              |
+
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 
