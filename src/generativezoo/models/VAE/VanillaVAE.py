@@ -376,9 +376,13 @@ class VanillaVAE(nn.Module):
             # plot histograms of the scores
             plt.hist(in_scores, bins=50, alpha=0.5, label='In-distribution')
             plt.hist(out_scores, bins=50, alpha=0.5, label='Out-of-distribution')
-            plt.legend(loc='upper left')
+            plt.legend(loc='upper right')
             plt.title('OOD detection')
+            plt.xlabel('ELBO Score')
+            plt.ylabel('Frequency')
             plt.show()
+
+            print(f'AUROC: {100*auroc:.2f}%')
         
         else:
             return auroc, in_scores
