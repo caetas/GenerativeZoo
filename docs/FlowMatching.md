@@ -27,6 +27,8 @@
 | `--step_size`                | Step size for ODE solver           | `0.1`             |                                                                                                              |
 | `--solver`                   | Solver for ODE                     | `dopri5`        | `dopri5`, `rk4`, `dopri8`, `euler`, `bosh3`, `adaptive_heun`, `midpoint`, `explicit_adams`, `implicit_adams` |
 | `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
+| `--warmup`   | Number of warmup epochs   | `10`     |                                                              |
+| `--decay`   | weight decay of learning rate   | `0`     |                                                              |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 
