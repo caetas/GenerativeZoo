@@ -378,7 +378,7 @@ class VanillaVAE(nn.Module):
             plt.hist(out_scores, bins=50, alpha=0.5, label='Out-of-distribution')
             plt.legend(loc='upper right')
             plt.title('OOD detection')
-            plt.xlabel('ELBO Score')
+            plt.xlabel('OOD Score')
             plt.ylabel('Frequency')
             plt.show()
 
