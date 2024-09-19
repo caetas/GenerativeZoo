@@ -228,10 +228,11 @@ class ConditionalVAE(nn.Module):
         '''
         z = torch.randn(n, self.latent_dim).to(self.device)
         if label is None:
-            y = torch.eye(n=n, m=self.num_classes).to(self.device)
+            pattern = torch.eye(self.num_classes).to(self.device)  # Create an identity matrix of size num_classes
+            y = pattern.repeat(n // self.num_classes + 1, 1)[:n]  # Repeat the pattern to have at least n rows
         else:
             y = label*torch.ones(n).to(self.device)
-            y = F.one_hot(y, num_classes=self.num_classes).float()
+            y = F.one_hot(y.long(), num_classes=self.num_classes).float()
         samples = self.generate(z,y).detach().cpu()
         samples = (samples + 1) / 2
         fig = plt.figure(figsize=figsize)
