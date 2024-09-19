@@ -216,14 +216,15 @@ class VanillaVAE(nn.Module):
             return ssim + kld*self.kld_weight
     
     @torch.no_grad()
-    def sample(self, figsize=(10, 10), title=None, train = False):
+    def sample(self, figsize=(10, 10), title=None, train = False, n=16):
         '''Create a grid of samples from the latent space
         Args:
         figsize: tuple, size of the figure
         title: str, title of the figure
         train: bool, if the model is training or not
+        n: int, number of samples to generate
         '''
-        samples = self.generate(torch.randn(9, self.latent_dim).to(self.device)).detach().cpu()
+        samples = self.generate(torch.randn(n, self.latent_dim).to(self.device)).detach().cpu()
         samples = (samples + 1) / 2
         fig = plt.figure(figsize=figsize)
         grid_size = int(np.sqrt(samples.shape[0]))
