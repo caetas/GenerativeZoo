@@ -215,19 +215,23 @@ class ConditionalVAE(nn.Module):
         y_onehot.scatter_(1, y.unsqueeze(1), 1)
         return y_onehot
     
-    def sample(self, figsize=(10, 10), title=None, train = False):
+    def sample(self, figsize=(10, 10), title=None, train = False, n = 16, label = None):
         '''Create a grid of samples from the latent space
         Args:
         device: torch.device to run the model
         figsize: tuple, size of the figure
         title: str, title of the figure
+        n: int, number of samples
+        label: int, label of the class to generate samples from
         Returns:
         torch.Tensor, grid of samples
         '''
-        n = 9
         z = torch.randn(n, self.latent_dim).to(self.device)
-        y = torch.eye(self.num_classes).to(self.device)
-        y = y[:n]
+        if label is None:
+            y = torch.eye(n=n, m=self.num_classes).to(self.device)
+        else:
+            y = label*torch.ones(n).to(self.device)
+            y = F.one_hot(y, num_classes=self.num_classes).float()
         samples = self.generate(z,y).detach().cpu()
         samples = (samples + 1) / 2
         fig = plt.figure(figsize=figsize)
