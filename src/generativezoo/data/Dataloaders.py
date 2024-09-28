@@ -735,7 +735,7 @@ class ImageNetDataset(Dataset):
             with open(os.path.join(data_dir,'splits', 'train_images.txt'), 'r') as f:
                 self.imgs = f.readlines()
             self.imgs = [i.strip() for i in self.imgs]
-            self.imgs = self.imgs[:10000]
+            self.imgs = self.imgs
             self.tar_files = os.listdir(os.path.join(root, 'imagenet', 'train'))
             self.tar_files = {f"{i[:-4]}": tarfile.open(os.path.join(root, 'imagenet', 'train', i)) for i in tqdm(self.tar_files, desc='Opening tar files')}
             self.prefix = self.tar_files[self.imgs[0].split('/')[-2]].getnames()[0].split('/')[:-1]
@@ -749,6 +749,9 @@ class ImageNetDataset(Dataset):
             self.imgs = [i.strip() for i in self.imgs]
             self.tar_files = tarfile.open(os.path.join(root, 'imagenet', 'test.tar'))
             self.prefix = self.tar_files.getnames()[0]
+            # load all images to memory
+            self.imgs = [Image.open(io.BytesIO(self.tar_files.extractfile(f'{self.prefix}/{img}').read())).convert('RGB') for img in tqdm(self.imgs, desc='Loading images')]
+            del self.tar_files
     def __len__(self):
         return len(self.imgs)
     
@@ -758,7 +761,8 @@ class ImageNetDataset(Dataset):
             #img = Image.open(io.BytesIO(self.tar_files[tar_file].extractfile(f'{self.prefix}/{self.imgs[idx]}').read())).convert('RGB')
             img = self.imgs[idx]
         else:
-            img = Image.open(io.BytesIO(self.tar_files.extractfile(f'{self.prefix}/{self.imgs[idx]}').read())).convert('RGB')
+            #img = Image.open(io.BytesIO(self.tar_files.extractfile(f'{self.prefix}/{self.imgs[idx]}').read())).convert('RGB')
+            img = self.imgs[idx]
         if self.transform:
             img = self.transform(img)
         return img, 0
