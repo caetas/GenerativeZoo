@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import tarfile
 import io
+from tqdm import tqdm
 
 
 def cifar_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
@@ -734,11 +735,13 @@ class ImageNetDataset(Dataset):
             with open(os.path.join(data_dir,'splits', 'train_images.txt'), 'r') as f:
                 self.imgs = f.readlines()
             self.imgs = [i.strip() for i in self.imgs]
-            self.imgs = self.imgs
+            self.imgs = self.imgs[:10000]
             self.tar_files = os.listdir(os.path.join(root, 'imagenet', 'train'))
             self.tar_files = {f"{i[:-4]}": tarfile.open(os.path.join(root, 'imagenet', 'train', i)) for i in self.tar_files}
             self.prefix = self.tar_files[self.imgs[0].split('/')[-2]].getnames()[0].split('/')[:-1]
             self.prefix = '/'.join(self.prefix)
+            # load all images to memory
+            self.imgs = [Image.open(io.BytesIO(self.tar_files[img.split('/')[-2]].extractfile(f'{self.prefix}/{img}').read())).convert('RGB') for img in tqdm(self.imgs, desc='Loading images')]
         else:
             with open(os.path.join(data_dir,'splits', 'test_images.txt'), 'r') as f:
                 self.imgs = f.readlines()
