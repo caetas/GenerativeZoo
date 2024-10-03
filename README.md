@@ -161,15 +161,7 @@ The following datasets are ready to be used to train and sample from the provide
 - DTD [`Source`](https://arxiv.org/abs/1311.3618)
 - TinyImageNet [`Source`](https://cs231n.stanford.edu/reports/2015/pdfs/yle_project.pdf) **MANUAL DOWNLOAD REQUIRED** [`Link`](https://www.kaggle.com/datasets/nikhilshingadiya/tinyimagenet200)
 - Horse2Zebra [`Source`](https://arxiv.org/abs/1703.10593v6) **MANUAL DOWNLOAD REQUIRED** [`Link`](https://www.kaggle.com/datasets/balraj98/horse2zebra-dataset)
-- ImageNet-1k [`Source`](https://ieeexplore.ieee.org/abstract/document/5206848) **MANUAL DOWNLOAD REQUIRED** [`Link`](https://www.kaggle.com/c/imagenet-object-localization-challenge/data) **AND PRE-PROCESSING FOLLOWING THE INSTRUCTIONS BELOW**
-
-#### ImageNet-1K Pre-Processing
-
-ImageNet-1K must be downloaded from [Kaggle](https://www.kaggle.com/c/imagenet-object-localization-challenge/data). After downloading it:
-1. Unzip the Folder.
-2. Rename the folder `ILSVRC/Data/CLS-LOC` as `imagenet`.
-3. Move `imagenet` only to [`data/raw`](data/raw). The other folders can be deleted.
-4. Run the [`process_imagenet.py`](src/generativezoo/process_imagenet.py) script. This operation takes a while due to de dataset size.
+- ImageNet-1k [`Source`](https://ieeexplore.ieee.org/abstract/document/5206848)
 
 ## Tracking
 

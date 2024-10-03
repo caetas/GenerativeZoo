@@ -268,6 +268,7 @@ class AdversarialVAE(nn.Module):
         self.loss_type = args.loss_type
         self.kld_weight = args.kld_weight
         self.no_wandb = args.no_wandb
+        self.input_shape = input_shape
 
     def forward(self, x):
         '''
@@ -435,12 +436,12 @@ class AdversarialVAE(nn.Module):
             if (epoch+1) % self.sample_and_save_frequency == 0 or epoch == 0:
                 self.create_grid(title=f"Epoch {epoch}", train=True)
                 self.create_validation_grid(data_loader, title=f"Epoch {epoch}", train=True)
-                torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'AdversarialVAE', f"Discriminator_{self.dataset}_{epoch}.pt"))
+                torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'AdversarialVAE', f"Discriminator_{self.dataset}_{self.input_shape}_{epoch}.pt"))
         
             if acc_g_loss/len(data_loader.dataset) < best_loss:
                 best_loss = acc_g_loss/len(data_loader.dataset)
-                torch.save(self.vae.state_dict(), os.path.join(models_dir, 'AdversarialVAE', f"AdvVAE_{self.dataset}.pt"))
-                torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'AdversarialVAE', f"Discriminator_{self.dataset}.pt"))
+                torch.save(self.vae.state_dict(), os.path.join(models_dir, 'AdversarialVAE', f"AdvVAE_{self.dataset}_{self.input_shape}.pt"))
+                torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'AdversarialVAE', f"Discriminator_{self.dataset}_{self.input_shape}.pt"))
         '''
         # create an artifact for the state dict
         artifact = wandb.Artifact(f"AdvVAE_{self.dataset}", type="model")
