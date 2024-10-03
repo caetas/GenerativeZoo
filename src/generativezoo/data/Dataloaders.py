@@ -11,6 +11,7 @@ import torch
 import tarfile
 import io
 from tqdm import tqdm
+from datasets import load_dataset
 
 
 def cifar_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
@@ -724,67 +725,46 @@ def dtd_test_loader(batch_size, normalize = False, input_shape = None, num_worke
         return test_loader, input_shape, 3
     else:
         return test_loader, 128, 3
-    
-class ImageNetDataset(Dataset):  
-    def __init__(self, root, train = False, transform=None):
-        self.root = root
-        self.transform = transform
+
+class ImageNetDataset(Dataset):
+    def __init__(self, transform_fn, train = False):
+
+        self.dataset = load_dataset('benjamin-paine/imagenet-1k-256x256')
+        self.transform_fn = transform_fn
         self.train = train
-        self.imgs = []
-        if train:
-            with open(os.path.join(data_dir,'splits', 'train_images.txt'), 'r') as f:
-                self.imgs = f.readlines()
-            self.imgs = [i.strip() for i in self.imgs]
-            self.imgs = self.imgs
-            self.tar_files = os.listdir(os.path.join(root, 'imagenet', 'train'))
-            self.tar_files = {f"{i[:-4]}": tarfile.open(os.path.join(root, 'imagenet', 'train', i)) for i in tqdm(self.tar_files, desc='Opening tar files')}
-            self.prefix = self.tar_files[self.imgs[0].split('/')[-2]].getnames()[0].split('/')[:-1]
-            self.prefix = '/'.join(self.prefix)
-            # load all images to memory
-            self.imgs = [Image.open(io.BytesIO(self.tar_files[img.split('/')[-2]].extractfile(f'{self.prefix}/{img}').read())).convert('RGB') for img in tqdm(self.imgs, desc='Loading images')]
-            del self.tar_files
-        else:
-            with open(os.path.join(data_dir,'splits', 'test_images.txt'), 'r') as f:
-                self.imgs = f.readlines()
-            self.imgs = [i.strip() for i in self.imgs]
-            self.tar_files = tarfile.open(os.path.join(root, 'imagenet', 'test.tar'))
-            self.prefix = self.tar_files.getnames()[0]
-            # load all images to memory
-            self.imgs = [Image.open(io.BytesIO(self.tar_files.extractfile(f'{self.prefix}/{img}').read())).convert('RGB') for img in tqdm(self.imgs, desc='Loading images')]
-            del self.tar_files
+        self.dataset.set_transform(self.transform_fn)
+        self.dataset = self.dataset['train' if train else 'test']
+
     def __len__(self):
-        return len(self.imgs)
+        return len(self.dataset)
     
     def __getitem__(self, idx):
-        if self.train:
-            #tar_file = self.imgs[idx].split('/')[-2]
-            #img = Image.open(io.BytesIO(self.tar_files[tar_file].extractfile(f'{self.prefix}/{self.imgs[idx]}').read())).convert('RGB')
-            img = self.imgs[idx]
-        else:
-            #img = Image.open(io.BytesIO(self.tar_files.extractfile(f'{self.prefix}/{self.imgs[idx]}').read())).convert('RGB')
-            img = self.imgs[idx]
-        if self.transform:
-            img = self.transform(img)
-        return img, 0
-    
+        return self.dataset[idx]['pixel_values'], 0
+
 def imagenet_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
-        
+
         if normalize:
             transform = transforms.Compose([
                 transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
             ])
+
         else:
             transform = transforms.Compose([
                 transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
                 transforms.ToTensor(),
             ])
-        
-        training_data = ImageNetDataset(root=data_raw_dir, train = True, transform=transform)
-    
-        training_loader = DataLoader(training_data, 
-                                    batch_size=batch_size, 
+
+        # Define a function to apply transformations to each dataset sample
+        def transform_fn(examples):
+            examples['pixel_values'] = [transform(image) for image in examples['image']]
+            return examples
+
+        dataset = ImageNetDataset(transform_fn, train = True)
+
+        training_loader = DataLoader(dataset,
+                                    batch_size=batch_size,
                                     shuffle=True,
                                     pin_memory=True,
                                     num_workers = num_workers)
@@ -794,31 +774,39 @@ def imagenet_train_loader(batch_size, normalize = False, input_shape = None, num
         else:
             return training_loader, 128, 3
         
+        
 def imagenet_val_loader(batch_size, normalize = False, input_shape = None):
-                    
+
         if normalize:
             transform = transforms.Compose([
                 transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
             ])
+
         else:
             transform = transforms.Compose([
                 transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
                 transforms.ToTensor(),
             ])
+
+        # Define a function to apply transformations to each dataset sample
+        def transform_fn(examples):
+            examples['pixel_values'] = [transform(image) for image in examples['image']]
+            return examples
         
-        validation_data = ImageNetDataset(root=data_raw_dir, train = False, transform=transform)
-    
-        validation_loader = DataLoader(validation_data,
+        dataset = ImageNetDataset(transform_fn, train = False)
+
+        validation_loader = DataLoader(dataset,
                                     batch_size=batch_size,
                                     shuffle=True,
-                                    pin_memory=True)
+                                    pin_memory=True,
+                                    num_workers = 0)
         
         if input_shape is not None:
             return validation_loader, input_shape, 3
         else:
-            return validation_loader, 128, 3    
+            return validation_loader, 128, 3   
 
 def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None, num_workers = 0):
     if dataset_name == 'mnist':
