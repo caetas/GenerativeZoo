@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
     args = parse_args_AdversarialVAE()
 
-    size = None
+    size = args.size
 
     if args.train:
         if not args.no_wandb:
@@ -24,7 +24,8 @@ if __name__ == '__main__':
                         'lr': args.lr,
                         'gen_weight': args.gen_weight,
                         'recon_weight': args.recon_weight,
-                        'sample_and_save_frequency': args.sample_and_save_frequency
+                        'sample_and_save_frequency': args.sample_and_save_frequency,
+                        'kld_weight': args.kld_weight,
                         },
                         name = 'AdversarialVAE_{}'.format(args.dataset))
         
