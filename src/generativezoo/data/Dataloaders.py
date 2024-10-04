@@ -739,7 +739,7 @@ class ImageNetDataset(Dataset):
         return len(self.dataset)
     
     def __getitem__(self, idx):
-        return self.dataset[idx]['pixel_values'], 0
+        return self.dataset[idx]['pixel_values'], self.dataset[idx]['label']
 
 def imagenet_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
 
