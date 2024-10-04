@@ -129,7 +129,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 - RealNVP [`Paper`](https://arxiv.org/abs/1605.08803) | [`Code`](src/generativezoo/models/Flow/RealNVP.py)<sup>15</sup> | [`Script`](src/generativezoo/RealNVP.py) | [`Documentation`](docs/RealNVP.md)
 - Glow [`Paper`](https://arxiv.org/abs/1807.03039) | [`Code`](src/generativezoo/models/Flow/Glow.py)<sup>16</sup> | [`Script`](src/generativezoo/GLOW.py) | [`Documentation`](docs/Glow.md)
 - Flow++ [`Paper`](https://arxiv.org/abs/1902.00275) | [`Code`](src/generativezoo/models/Flow/FlowPlusPlus.py)<sup>17</sup> | [`Script`](src/generativezoo/FlowPP.py) | [`Documentation`](docs/FlowPlusPlus.md)
-- Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/Flow/FlowMatching.py)<sup>8,18</sup> | [`Script`](src/generativezoo/FM.py) | [`Documentation`](docs/FlowMatching.md)
+- Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/Flow/FlowMatching.py)<sup>18,21</sup> | [`Script`](src/generativezoo/FM.py) | [`Documentation`](docs/FlowMatching.md)
 - Conditional Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/Flow/CondFlowMatching.py)<sup>8,18</sup> | [`Script`](src/generativezoo/CondFM.py) | [`Documentation`](docs/ConditionalFlowMatching.md)
 - Rectified Flows [`Paper`](https://arxiv.org/abs/2403.03206) | [`Code`](src/generativezoo/models/Flow/RectifiedFlows.py)<sup>19</sup> | [`Script`](src/generativezoo/RF.py) | [`Documentation`](docs/RectifiedFlows.md)
 
@@ -161,15 +161,7 @@ The following datasets are ready to be used to train and sample from the provide
 - DTD [`Source`](https://arxiv.org/abs/1311.3618)
 - TinyImageNet [`Source`](https://cs231n.stanford.edu/reports/2015/pdfs/yle_project.pdf) **MANUAL DOWNLOAD REQUIRED** [`Link`](https://www.kaggle.com/datasets/nikhilshingadiya/tinyimagenet200)
 - Horse2Zebra [`Source`](https://arxiv.org/abs/1703.10593v6) **MANUAL DOWNLOAD REQUIRED** [`Link`](https://www.kaggle.com/datasets/balraj98/horse2zebra-dataset)
-- ImageNet-1k [`Source`](https://ieeexplore.ieee.org/abstract/document/5206848) **MANUAL DOWNLOAD REQUIRED** [`Link`](https://www.kaggle.com/c/imagenet-object-localization-challenge/data) **AND PRE-PROCESSING FOLLOWING THE INSTRUCTIONS BELOW**
-
-#### ImageNet-1K Pre-Processing
-
-ImageNet-1K must be downloaded from [Kaggle](https://www.kaggle.com/c/imagenet-object-localization-challenge/data). After downloading it:
-1. Unzip the Folder.
-2. Rename the folder `ILSVRC/Data/CLS-LOC` as `imagenet`.
-3. Move `imagenet` only to [`data/raw`](data/raw). The other folders can be deleted.
-4. Run the [`process_imagenet.py`](src/generativezoo/process_imagenet.py) script. This operation takes a while due to de dataset size.
+- ImageNet-1k [`Source`](https://ieeexplore.ieee.org/abstract/document/5206848)
 
 ## Tracking
 
@@ -250,6 +242,7 @@ All the repositories used to generate this code are mentioned in each of the cor
 18. [conditional-flow-matching](https://bm371613.github.io/conditional-flow-matching/)
 19. [minRF](https://github.com/cloneofsimo/minRF)
 20. [diffusers](https://github.com/huggingface/diffusers)
+21. [guided-diffusion](https://github.com/openai/guided-diffusion)
 
 ## Citation
 

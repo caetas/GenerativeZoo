@@ -27,6 +27,7 @@ The Adversarial Variational Autoencoder (Adversarial VAE) is a generative model 
 | `--loss_type`             | Type of loss to evaluate reconstruction            | `mse`    |  `mse`, `ssim`                                                                                                                                                               |
 | `--kld_weight`            | KL-Divergence weight                               | `1e-4`   |                                                                                                                                                                              |
 | `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
+| `--size`          | Size of image (None uses default for each dataset) | `None` | |
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

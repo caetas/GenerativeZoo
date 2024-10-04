@@ -119,12 +119,18 @@ def parse_args_FlowMatching():
     argparser.add_argument('--batch_size', type=int, default=256, help='batch size')
     argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
     argparser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
-    argparser.add_argument('--n_features', type=int, default = 64, help='number of features')
-    argparser.add_argument('--init_channels', type=int, default = 32, help='initial channels')
-    argparser.add_argument('--channel_scale_factors', type=int, nargs='+', default = [1, 2, 2], help='channel scale factors')
-    argparser.add_argument('--resnet_block_groups', type=int, default = 8, help='resnet block groups')
-    argparser.add_argument('--use_convnext', type=bool, default = True, help='use convnext (default: True)')
-    argparser.add_argument('--convnext_scale_factor', type=int, default = 2, help='convnext scale factor (default: 2)')
+    argparser.add_argument('--model_channels', type=int, default = 64, help='number of features')
+    argparser.add_argument('--num_res_blocks', type=int, default = 2, help='number of residual blocks per downsample')
+    argparser.add_argument('--attention_resolutions', type=int, nargs='+', default = [4], help='downsample rates at which attention will take place')
+    argparser.add_argument('--dropout', type=float, default = 0.0, help='dropout probability')
+    argparser.add_argument('--channel_mult', type=int, nargs='+', default = [1, 2, 2], help='channel multiplier for each level of the UNet')
+    argparser.add_argument('--conv_resample', type=bool, default = True, help='use learned convolutions for upsampling and downsampling')
+    argparser.add_argument('--dims', type=int, default = 2, help='determines if the signal is 1D, 2D, or 3D')
+    argparser.add_argument('--num_heads', type=int, default = 4, help='number of attention heads in each attention layer')
+    argparser.add_argument('--num_head_channels', type=int, default = 32, help='use a fixed channel width per attention head')
+    argparser.add_argument('--use_scale_shift_norm', type=bool, default = False, help='use a FiLM-like conditioning mechanism')
+    argparser.add_argument('--resblock_updown', type=bool, default = False, help='use residual blocks for up/downsampling')
+    argparser.add_argument('--use_new_attention_order', type=bool, default = False, help='use a different attention pattern for potentially increased efficiency')
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet','imagenet'])
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
@@ -140,7 +146,8 @@ def parse_args_FlowMatching():
     argparser.add_argument('--warmup', type=int, default=10, help='warmup epochs')
     argparser.add_argument('--decay', type=float, default=1e-5, help='decay rate')
     args = argparser.parse_args()
-    args.channel_scale_factors = tuple(args.channel_scale_factors)
+    args.channel_mult = tuple(args.channel_mult)
+    args.attention_resolutions = tuple(args.attention_resolutions)
     return args
 
 def parse_args_CondFlowMatching():
@@ -345,6 +352,7 @@ def parse_args_AdversarialVAE():
     argparser.add_argument('--loss_type', type=str, default='mse', help='loss type', choices=['mse', 'ssim'])
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
     argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
+    argparser.add_argument('--size', type=int, default=None, help='size of image (leave None for default for each dataset)')
     return argparser.parse_args()
 
 def parse_args_VanillaSGM():
