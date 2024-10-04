@@ -1,6 +1,6 @@
 ##############################################################################################
 ############ Code based on: https://bm371613.github.io/conditional-flow-matching/ ############
-### and https://github.com/DhruvSrikanth/DenoisingDiffusionProbabilisticModels/tree/master ###
+### and https://github.com/openai/guided-diffusion                                         ###
 ##############################################################################################
 
 import matplotlib.pyplot as plt
