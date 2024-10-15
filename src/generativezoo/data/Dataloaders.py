@@ -745,8 +745,8 @@ def imagenet_train_loader(batch_size, normalize = False, input_shape = None, num
 
         if normalize:
             transform = transforms.Compose([
-                transforms.CenterCrop(256),
                 transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
+                transforms.RandomCrop((64,64)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
             ])
