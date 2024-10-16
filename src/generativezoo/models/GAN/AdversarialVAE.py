@@ -213,17 +213,18 @@ class Discriminator(nn.Module):
             modules.append(
                 nn.Sequential(
                     nn.Conv2d(input_channels, h_dim, kernel_size = 3, stride = 2, padding = 1),
-                    #nn.BatchNorm2d(h_dim),
-                    nn.GroupNorm(h_dim//2, h_dim),
+                    nn.BatchNorm2d(h_dim, momentum=0.01),
+                    #nn.GroupNorm(h_dim//2, h_dim),
                     nn.LeakyReLU()
                 )
             )
             input_channels = h_dim
 
         modules.append(nn.Flatten())
-        modules.append(nn.Linear(hidden_dims[-1]*(self.multiplier**2), 1024))
-        modules.append(nn.LeakyReLU())
-        modules.append(nn.Linear(1024, 1))
+        modules.append(nn.Linear(hidden_dims[-1]*(self.multiplier**2), 1))
+        #modules.append(nn.Linear(hidden_dims[-1]*(self.multiplier**2), 1024))
+        #modules.append(nn.LeakyReLU())
+        #modules.append(nn.Linear(1024, 1))
         modules.append(nn.Sigmoid())
 
         self.encoder = nn.Sequential(*modules)
