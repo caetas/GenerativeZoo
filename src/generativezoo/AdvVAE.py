@@ -30,7 +30,7 @@ if __name__ == '__main__':
                         name = 'AdversarialVAE_{}'.format(args.dataset))
         
         train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=True, num_workers=args.num_workers, mode='train', size=size)
-        model = AdversarialVAE(input_shape = size, input_channels=channels, args=args)
+        model = AdversarialVAE(input_shape = input_size, input_channels=channels, args=args)
         model.train_model(train_loader)
 
     elif args.test:
