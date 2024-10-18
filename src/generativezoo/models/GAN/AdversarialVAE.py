@@ -213,7 +213,7 @@ class Discriminator(nn.Module):
             modules.append(
                 nn.Sequential(
                     nn.Conv2d(input_channels, h_dim, kernel_size = 3, stride = 2, padding = 1),
-                    nn.BatchNorm2d(h_dim),
+                    nn.BatchNorm2d(h_dim, affine=False),
                     #nn.GroupNorm(h_dim//2, h_dim),
                     nn.LeakyReLU()
                 )
@@ -416,17 +416,6 @@ class AdversarialVAE(nn.Module):
 
                 optimizer_D.zero_grad()
                 # Loss for real images
-                # concat real, fake and recon images
-                val_imgs = torch.cat((real_imgs, gen_imgs.detach(), recon_imgs.detach()), 0)
-                val_labels = torch.cat((valid, fake, fake), 0)
-                # shuffle the images and labels in the same way
-                perm = torch.randperm(val_imgs.size(0))
-                val_imgs = val_imgs[perm]
-                val_labels = val_labels[perm]
-                validity = self.discriminator(val_imgs)
-                d_loss = adversarial_loss(validity, val_labels)
-                '''
-                # Loss for real images
                 validity_real = self.discriminator(real_imgs)
                 d_real_loss = adversarial_loss(validity_real, valid)
 
@@ -440,7 +429,6 @@ class AdversarialVAE(nn.Module):
 
                 # Total self.discriminator loss
                 d_loss = (d_real_loss + d_fake_loss*0.5 + d_recon_loss*0.5) / 2
-                '''
                 acc_d_loss += d_loss.item()*imgs.size(0)
 
                 d_loss.backward()
