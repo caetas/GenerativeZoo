@@ -326,7 +326,7 @@ class AdversarialVAE(nn.Module):
         '''
         # get a batch of data
         x, _ = next(iter(data_loader))
-        if self.dataset == 'imagenetpatch':
+        if self.dataset == 'imagenetpatch' or self.dataset == 'tinyimagenetpatch':
             # x will have the shape (batch_size, self.patches, channels, height, width) and it should be (batch_size*self.patches, channels, height, width) but keep the order of the patches
             x = x.view(-1, x.size(2), x.size(3), x.size(4))
         x = x.to(self.device)
@@ -381,7 +381,7 @@ class AdversarialVAE(nn.Module):
             cnt = 0
             for (imgs, _) in tqdm(data_loader, desc = 'Batches', leave=False, disable=not verbose):
 
-                if self.dataset == 'imagenetpatch':
+                if self.dataset == 'imagenetpatch' or self.dataset == 'tinyimagenetpatch':
                     # x will have the shape (batch_size, self.patches, channels, height, width) and it should be (batch_size*self.patches, channels, height, width) but keep the order of the patches
                     imgs = imgs.view(-1, imgs.size(2), imgs.size(3), imgs.size(4))
 

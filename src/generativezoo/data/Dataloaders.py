@@ -468,6 +468,95 @@ def svhn_val_loader(batch_size, normalize = False, input_shape = None):
     else:
         return validation_loader, 32, 3
 
+class TinyImageNetPatchDataset(Dataset):
+    
+        def __init__(self, root, train = False, transform=None):
+            self.root = root
+            self.transform = transform
+            self.train = train
+            self.imgs = []
+            self.label = []
+            if train:
+                # to get self.imgs iterate over all class folders and all images in each class
+                classes = os.listdir(os.path.join(root, 'tiny-imagenet-200', 'train'))
+                classes.sort()
+                for i in range(200):
+                    class_folder = os.path.join(root, 'tiny-imagenet-200', 'train', classes[i], 'images')
+                    for img in os.listdir(class_folder):
+                        self.imgs.append(os.path.join(class_folder, img))
+                        self.label.append(i)
+            else:
+                self.imgs = glob(os.path.join(root, 'tiny-imagenet-200', 'test', 'images', '*.JPEG'))
+                self.label = [0]*len(self.imgs)
+            
+        def __len__(self):
+            return len(self.imgs)
+        
+        def __getitem__(self, idx):
+            img = Image.open(self.imgs[idx]).convert('RGB')
+            if self.transform:
+                img = self.transform(img)
+            patches = []
+            for i in range(64):
+                x = np.random.randint(0, img.shape[1] - 32)
+                y = np.random.randint(0, img.shape[2] - 32)
+                patches.append(img[:, x:x+32, y:y+32])
+            patches = torch.stack(patches)
+            return patches, self.label[idx]
+
+def tinyimagenetpatch_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
+        
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
+            transforms.ToTensor(),
+        ])
+    
+    training_data = TinyImageNetDataset(root=data_raw_dir, train = True, transform=transform)
+
+    training_loader = DataLoader(training_data, 
+                                batch_size=batch_size, 
+                                shuffle=True,
+                                pin_memory=True,
+                                num_workers = num_workers)
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 3
+    else:
+        return training_loader, 32, 3
+
+def tinyimagenetpatch_test_loader(batch_size, normalize = False, input_shape = None):
+                
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((64,64)),
+            transforms.ToTensor(),
+        ])
+    
+    test_data = TinyImageNetDataset(root=data_raw_dir, train = False, transform=transform)
+
+    test_loader = DataLoader(test_data, 
+                            batch_size=batch_size, 
+                            shuffle=True,
+                            pin_memory=True)
+    
+    if input_shape is not None:
+        return test_loader, input_shape, 3
+    else:
+        return test_loader, 32, 3
+
 class TinyImageNetDataset(Dataset):
     
         def __init__(self, root, train = False, transform=None):
@@ -977,5 +1066,10 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return imagenetpatch_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
             return imagenetpatch_val_loader(batch_size, normalize, size)
+    elif dataset_name == 'tinyimagenetpatch':
+        if mode == 'train':
+            return tinyimagenetpatch_train_loader(batch_size, normalize, size, num_workers)
+        elif mode == 'val':
+            return tinyimagenetpatch_test_loader(batch_size, normalize, size)
     else:
         raise ValueError('Dataset name not found.')
