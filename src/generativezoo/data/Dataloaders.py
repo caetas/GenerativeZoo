@@ -839,7 +839,8 @@ def imagenetpatch_train_loader(batch_size, normalize = False, input_shape = None
 
         if normalize:
             transform = transforms.Compose([
-                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.CenterCrop(256),
+                transforms.Resize((256,256)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
             ])
@@ -847,7 +848,7 @@ def imagenetpatch_train_loader(batch_size, normalize = False, input_shape = None
         else:
             transform = transforms.Compose([
                 transforms.CenterCrop(256),
-                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.Resize((256,256)),
                 transforms.ToTensor(),
             ])
 
@@ -875,7 +876,7 @@ def imagenetpatch_val_loader(batch_size, normalize = False, input_shape = None):
         if normalize:
             transform = transforms.Compose([
                 transforms.CenterCrop(256),
-                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.Resize((256,256)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
             ])
@@ -883,7 +884,7 @@ def imagenetpatch_val_loader(batch_size, normalize = False, input_shape = None):
         else:
             transform = transforms.Compose([
                 transforms.CenterCrop(256),
-                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.Resize((256,256)),
                 transforms.ToTensor(),
             ])
 

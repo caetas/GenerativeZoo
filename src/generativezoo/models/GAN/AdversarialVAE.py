@@ -378,7 +378,7 @@ class AdversarialVAE(nn.Module):
             
             acc_g_loss = 0.0
             acc_d_loss = 0.0
-
+            cnt = 0
             for (imgs, _) in tqdm(data_loader, desc = 'Batches', leave=False, disable=not verbose):
 
                 if self.dataset == 'imagenetpatch':
@@ -440,6 +440,10 @@ class AdversarialVAE(nn.Module):
 
                 d_loss.backward()
                 optimizer_D.step()
+
+                cnt+=1
+                if self.dataset == 'imagenetpatch' and cnt>len(data_loader)*0.2:
+                    break
 
             epochs_bar.set_description(f"Loss: {acc_g_loss/len(data_loader.dataset):.4f} - D Loss: {acc_d_loss/len(data_loader.dataset):.4f}")
             if not self.no_wandb:
