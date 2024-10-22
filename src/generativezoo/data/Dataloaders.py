@@ -518,7 +518,7 @@ def tinyimagenetpatch_train_loader(batch_size, normalize = False, input_shape = 
             transforms.ToTensor(),
         ])
     
-    training_data = TinyImageNetDataset(root=data_raw_dir, train = True, transform=transform)
+    training_data = TinyImageNetPatchDataset(root=data_raw_dir, train = True, transform=transform)
 
     training_loader = DataLoader(training_data, 
                                 batch_size=batch_size, 
@@ -545,7 +545,7 @@ def tinyimagenetpatch_test_loader(batch_size, normalize = False, input_shape = N
             transforms.ToTensor(),
         ])
     
-    test_data = TinyImageNetDataset(root=data_raw_dir, train = False, transform=transform)
+    test_data = TinyImageNetPatchDataset(root=data_raw_dir, train = False, transform=transform)
 
     test_loader = DataLoader(test_data, 
                             batch_size=batch_size, 
