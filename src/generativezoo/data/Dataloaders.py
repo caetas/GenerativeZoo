@@ -812,7 +812,7 @@ def imagenet_val_loader(batch_size, normalize = False, input_shape = None):
             return validation_loader, 128, 3
         
 class ImageNetPatchDataset(Dataset):
-    def __init__(self, transform_fn, train = False, patches = 32):
+    def __init__(self, transform_fn, train = False, patches = 16):
 
         self.dataset = load_dataset('benjamin-paine/imagenet-1k-256x256')
         self.transform_fn = transform_fn
