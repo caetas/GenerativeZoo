@@ -812,7 +812,7 @@ def imagenet_val_loader(batch_size, normalize = False, input_shape = None):
             return validation_loader, 128, 3
         
 class ImageNetPatchDataset(Dataset):
-    def __init__(self, transform_fn, train = False, patches = 64):
+    def __init__(self, transform_fn, train = False, patches = 32):
 
         self.dataset = load_dataset('benjamin-paine/imagenet-1k-256x256')
         self.transform_fn = transform_fn
@@ -829,9 +829,9 @@ class ImageNetPatchDataset(Dataset):
         image = self.dataset[idx]['pixel_values']
         patches = []
         for i in range(self.patches):
-            x = np.random.randint(0, image.shape[1] - 128)
-            y = np.random.randint(0, image.shape[2] - 128)
-            patches.append(image[:, x:x+128, y:y+128])
+            x = np.random.randint(0, image.shape[1] - 64)
+            y = np.random.randint(0, image.shape[2] - 64)
+            patches.append(image[:, x:x+64, y:y+64])
         patches = torch.stack(patches)
         return patches, self.dataset[idx]['label']
 
@@ -867,7 +867,7 @@ def imagenetpatch_train_loader(batch_size, normalize = False, input_shape = None
         if input_shape is not None:
             return training_loader, input_shape, 3
         else:
-            return training_loader, 128, 3
+            return training_loader, 64, 3
         
         
 def imagenetpatch_val_loader(batch_size, normalize = False, input_shape = None):
@@ -903,7 +903,7 @@ def imagenetpatch_val_loader(batch_size, normalize = False, input_shape = None):
         if input_shape is not None:
             return validation_loader, input_shape, 3
         else:
-            return validation_loader, 128, 3   
+            return validation_loader, 64, 3   
 
 def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None, num_workers = 0):
     if dataset_name == 'mnist':
