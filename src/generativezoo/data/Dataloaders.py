@@ -746,7 +746,6 @@ def imagenet_train_loader(batch_size, normalize = False, input_shape = None, num
         if normalize:
             transform = transforms.Compose([
                 transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((128,128)),
-                transforms.RandomCrop((64,64)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
             ])
@@ -800,6 +799,100 @@ def imagenet_val_loader(batch_size, normalize = False, input_shape = None):
             return examples
         
         dataset = ImageNetDataset(transform_fn, train = False)
+
+        validation_loader = DataLoader(dataset,
+                                    batch_size=batch_size,
+                                    shuffle=True,
+                                    pin_memory=True,
+                                    num_workers = 0)
+        
+        if input_shape is not None:
+            return validation_loader, input_shape, 3
+        else:
+            return validation_loader, 128, 3
+        
+class ImageNetPatchDataset(Dataset):
+    def __init__(self, transform_fn, train = False, patches = 64):
+
+        self.dataset = load_dataset('benjamin-paine/imagenet-1k-256x256')
+        self.transform_fn = transform_fn
+        self.train = train
+        self.dataset.set_transform(self.transform_fn)
+        self.dataset = self.dataset['train' if train else 'test']
+        self.patches = patches
+
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, idx):
+        # get self.patches random patches from the image
+        image = self.dataset[idx]['pixel_values']
+        patches = []
+        for i in range(self.patches):
+            x = np.random.randint(0, image.shape[1] - 128)
+            y = np.random.randint(0, image.shape[2] - 128)
+            patches.append(image[:, x:x+128, y:y+128])
+        patches = torch.stack(patches)
+        return patches, self.dataset[idx]['label']
+
+def imagenetpatch_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
+
+        if normalize:
+            transform = transforms.Compose([
+                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
+            ])
+
+        else:
+            transform = transforms.Compose([
+                transforms.CenterCrop(256),
+                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.ToTensor(),
+            ])
+
+        # Define a function to apply transformations to each dataset sample
+        def transform_fn(examples):
+            examples['pixel_values'] = [transform(image) for image in examples['image']]
+            return examples
+
+        dataset = ImageNetPatchDataset(transform_fn, train = True)
+
+        training_loader = DataLoader(dataset,
+                                    batch_size=batch_size,
+                                    shuffle=True,
+                                    pin_memory=True,
+                                    num_workers = num_workers)
+        
+        if input_shape is not None:
+            return training_loader, input_shape, 3
+        else:
+            return training_loader, 128, 3
+        
+        
+def imagenetpatch_val_loader(batch_size, normalize = False, input_shape = None):
+
+        if normalize:
+            transform = transforms.Compose([
+                transforms.CenterCrop(256),
+                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
+            ])
+
+        else:
+            transform = transforms.Compose([
+                transforms.CenterCrop(256),
+                transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+                transforms.ToTensor(),
+            ])
+
+        # Define a function to apply transformations to each dataset sample
+        def transform_fn(examples):
+            examples['pixel_values'] = [transform(image) for image in examples['image']]
+            return examples
+        
+        dataset = ImageNetPatchDataset(transform_fn, train = False)
 
         validation_loader = DataLoader(dataset,
                                     batch_size=batch_size,
@@ -873,10 +966,15 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return dtd_train_loader(batch_size, normalize, size, num_workers = num_workers)
         elif mode == 'val':
             return dtd_test_loader(batch_size, normalize, size, num_workers = num_workers)
-    if dataset_name == 'imagenet':
+    elif dataset_name == 'imagenet':
         if mode == 'train':
             return imagenet_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
             return imagenet_val_loader(batch_size, normalize, size)
+    elif dataset_name == 'imagenetpatch':
+        if mode == 'train':
+            return imagenetpatch_train_loader(batch_size, normalize, size, num_workers)
+        elif mode == 'val':
+            return imagenetpatch_val_loader(batch_size, normalize, size)
     else:
         raise ValueError('Dataset name not found.')

@@ -213,7 +213,7 @@ class Discriminator(nn.Module):
             modules.append(
                 nn.Sequential(
                     nn.Conv2d(input_channels, h_dim, kernel_size = 3, stride = 2, padding = 1),
-                    nn.BatchNorm2d(h_dim, affine=False),
+                    nn.BatchNorm2d(h_dim),
                     #nn.GroupNorm(h_dim//2, h_dim),
                     nn.LeakyReLU()
                 )
@@ -326,6 +326,9 @@ class AdversarialVAE(nn.Module):
         '''
         # get a batch of data
         x, _ = next(iter(data_loader))
+        if self.dataset == 'imagenetpatch':
+            # x will have the shape (batch_size, self.patches, channels, height, width) and it should be (batch_size*self.patches, channels, height, width) but keep the order of the patches
+            x = x.view(-1, x.size(2), x.size(3), x.size(4))
         x = x.to(self.device)
         x = x[:10]
         # get reconstruction
@@ -377,6 +380,10 @@ class AdversarialVAE(nn.Module):
             acc_d_loss = 0.0
 
             for (imgs, _) in tqdm(data_loader, desc = 'Batches', leave=False, disable=not verbose):
+
+                if self.dataset == 'imagenetpatch':
+                    # x will have the shape (batch_size, self.patches, channels, height, width) and it should be (batch_size*self.patches, channels, height, width) but keep the order of the patches
+                    imgs = imgs.view(-1, imgs.size(2), imgs.size(3), imgs.size(4))
 
                 # Adversarial ground truths
                 valid = torch.ones(imgs.size(0), 1).to(self.device)
