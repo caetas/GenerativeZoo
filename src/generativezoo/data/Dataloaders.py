@@ -497,7 +497,7 @@ class TinyImageNetPatchDataset(Dataset):
             if self.transform:
                 img = self.transform(img)
             patches = []
-            for i in range(64):
+            for i in range(16):
                 x = np.random.randint(0, img.shape[1] - 32)
                 y = np.random.randint(0, img.shape[2] - 32)
                 patches.append(img[:, x:x+32, y:y+32])
