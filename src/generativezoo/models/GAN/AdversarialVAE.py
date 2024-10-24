@@ -221,10 +221,10 @@ class Discriminator(nn.Module):
             input_channels = h_dim
 
         modules.append(nn.Flatten())
-        modules.append(nn.Linear(hidden_dims[-1]*(self.multiplier**2), 1))
-        #modules.append(nn.Linear(hidden_dims[-1]*(self.multiplier**2), 1024))
-        #modules.append(nn.LeakyReLU())
-        #modules.append(nn.Linear(1024, 1))
+        #modules.append(nn.Linear(hidden_dims[-1]*(self.multiplier**2), 1))
+        modules.append(nn.Linear(hidden_dims[-1]*(self.multiplier**2), 1024))
+        modules.append(nn.LeakyReLU())
+        modules.append(nn.Linear(1024, 1))
         modules.append(nn.Sigmoid())
 
         self.encoder = nn.Sequential(*modules)
