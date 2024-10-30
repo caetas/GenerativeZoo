@@ -924,7 +924,7 @@ class ImageNetPatchDataset(Dataset):
         patches = torch.stack(patches)
         return patches, self.dataset[idx]['label']
 
-def imagenetpatch_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
+def imagenetpatch_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0, n_patches = 16):
 
         if normalize:
             transform = transforms.Compose([
@@ -946,7 +946,7 @@ def imagenetpatch_train_loader(batch_size, normalize = False, input_shape = None
             examples['pixel_values'] = [transform(image) for image in examples['image']]
             return examples
 
-        dataset = ImageNetPatchDataset(transform_fn, train = True)
+        dataset = ImageNetPatchDataset(transform_fn, train = True, patches=n_patches)
 
         training_loader = DataLoader(dataset,
                                     batch_size=batch_size,
@@ -995,7 +995,7 @@ def imagenetpatch_val_loader(batch_size, normalize = False, input_shape = None):
         else:
             return validation_loader, 64, 3   
 
-def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None, num_workers = 0):
+def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = False, good = True, size = None, num_workers = 0, n_patches = 16):
     if dataset_name == 'mnist':
         if mode == 'train':
             return mnist_train_loader(batch_size, normalize, size, num_workers)
@@ -1063,7 +1063,7 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return imagenet_val_loader(batch_size, normalize, size)
     elif dataset_name == 'imagenetpatch':
         if mode == 'train':
-            return imagenetpatch_train_loader(batch_size, normalize, size, num_workers)
+            return imagenetpatch_train_loader(batch_size, normalize, size, num_workers, n_patches)
         elif mode == 'val':
             return imagenetpatch_val_loader(batch_size, normalize, size)
     elif dataset_name == 'tinyimagenetpatch':

@@ -353,6 +353,7 @@ def parse_args_AdversarialVAE():
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
     argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     argparser.add_argument('--size', type=int, default=None, help='size of image (leave None for default for each dataset)')
+    argparser.add_argument('--patches', type=int, default=16, help='number of patches to divide image into')
     return argparser.parse_args()
 
 def parse_args_VanillaSGM():
