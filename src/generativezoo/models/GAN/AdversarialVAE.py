@@ -180,7 +180,38 @@ class VanillaVAE(nn.Module):
         ssim = self.mssim_loss(recon_x*0.5 + 0.5,x*0.5 + 0.5)
         kld = torch.mean(-0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1), dim=0)
         return ssim + kld*self.kld_weight
-    
+
+
+class PatchNorm2D(nn.Module):
+    def __init__(self, patch_size=3, epsilon=1e-5):
+        super(PatchNorm2D, self).__init__()
+        self.patch_size = patch_size
+        self.epsilon = epsilon
+
+    def forward(self, x):
+        # Extract shape
+        B, C, H, W = x.shape
+
+        # Reshape to merge batch and channel dimensions for computation
+        x_merged = x.view(B * C, 1, H, W)
+        
+        # Define the mean filter for patch mean calculation
+        mean_filter = torch.ones(1, 1, self.patch_size, self.patch_size, device=x.device) / (self.patch_size ** 2)
+        print(mean_filter.shape)
+
+        # Calculate the mean in the patch for each image
+        mean = F.conv2d(x_merged, mean_filter, padding=self.patch_size // 2).view(B, C, H, W)
+        
+        # Calculate variance by first calculating mean of squared values
+        mean_square = F.conv2d(x_merged ** 2, mean_filter, padding=self.patch_size // 2).view(B, C, H, W)
+        variance = mean_square - mean ** 2
+
+        # Calculate the standard deviation with numerical stability
+        stddev = torch.sqrt(variance + self.epsilon)
+
+        # Normalize the input
+        normalized = (x - mean) / stddev
+        return normalized
 
 class Discriminator(nn.Module):
     def __init__(self, input_shape, input_channels, hidden_dims = None, lr = 5e-3, batch_size = 64):
@@ -204,21 +235,25 @@ class Discriminator(nn.Module):
         if hidden_dims is None:
             hidden_dims = [32, 64, 128, 256]
         
+        self.conv_size = [input_shape//(2*(i+1)) for i in range(len(hidden_dims))]
         # each layer decreases the h and w by 2, so we need to divide by 2**(number of layers) to know the factor for the flattened input
         self.multiplier = np.round(self.input_shape/(2**len(hidden_dims)), 0).astype(int)
         self.last_channel = hidden_dims[-1]
         modules = []
 
         for h_dim in hidden_dims:
+            cnt = 0
             modules.append(
                 nn.Sequential(
                     nn.Conv2d(input_channels, h_dim, kernel_size = 3, stride = 2, padding = 1),
-                    nn.BatchNorm2d(h_dim, track_running_stats=False),
+                    nn.PatchNorm2D(patch_size=self.conv_size[cnt]//4),
+                    #nn.BatchNorm2d(h_dim, track_running_stats=False),
                     #nn.GroupNorm(h_dim//2, h_dim),
                     nn.LeakyReLU()
                 )
             )
             input_channels = h_dim
+            cnt+=1
 
         modules.append(nn.Flatten())
         modules.append(nn.Linear(hidden_dims[-1]*(self.multiplier**2), 1))
