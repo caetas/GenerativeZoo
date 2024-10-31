@@ -188,6 +188,10 @@ class PatchNorm2D(nn.Module):
         self.patch_size = patch_size
         self.epsilon = epsilon
 
+        # Trainable weight and bias for scaling and shifting
+        self.weight = nn.Parameter(torch.ones(1))
+        self.bias = nn.Parameter(torch.zeros(1))
+
     def forward(self, x):
         # Extract shape
         B, C, H, W = x.shape
@@ -210,7 +214,7 @@ class PatchNorm2D(nn.Module):
 
         # Normalize the input
         normalized = (x - mean) / stddev
-        return normalized
+        return normalized * self.weight + self.bias
 
 class Discriminator(nn.Module):
     def __init__(self, input_shape, input_channels, hidden_dims = None, lr = 5e-3, batch_size = 64):
