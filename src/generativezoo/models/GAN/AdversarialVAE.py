@@ -197,8 +197,7 @@ class PatchNorm2D(nn.Module):
         
         # Define the mean filter for patch mean calculation
         mean_filter = torch.ones(1, 1, self.patch_size, self.patch_size, device=x.device) / (self.patch_size ** 2)
-        print(mean_filter.shape)
-
+        
         # Calculate the mean in the patch for each image
         mean = F.conv2d(x_merged, mean_filter, padding=self.patch_size // 2).view(B, C, H, W)
         
@@ -246,7 +245,7 @@ class Discriminator(nn.Module):
             modules.append(
                 nn.Sequential(
                     nn.Conv2d(input_channels, h_dim, kernel_size = 3, stride = 2, padding = 1),
-                    nn.PatchNorm2D(patch_size=self.conv_size[cnt]//4),
+                    PatchNorm2D(patch_size=self.conv_size[cnt]//4),
                     #nn.BatchNorm2d(h_dim, track_running_stats=False),
                     #nn.GroupNorm(h_dim//2, h_dim),
                     nn.LeakyReLU()
