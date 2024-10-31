@@ -458,15 +458,15 @@ class AdversarialVAE(nn.Module):
                 # Loss for real images
                 validity_real = self.discriminator(real_imgs)
                 d_real_loss = adversarial_loss(validity_real, valid)
-
+                print(f"Real Loss: {d_real_loss.item()}")
                 # Loss for fake images
                 validity_fake = self.discriminator(gen_imgs.detach())
                 d_fake_loss = adversarial_loss(validity_fake, fake)
-
+                print(f"Fake Loss: {d_fake_loss.item()}")
                 # Loss for reconstructed images
                 validity_recon = self.discriminator(recon_imgs.detach())
                 d_recon_loss = adversarial_loss(validity_recon, fake)
-
+                print(f"Recon Loss: {d_recon_loss.item()}")
                 # Total self.discriminator loss
                 d_loss = (d_real_loss + d_fake_loss*0.5 + d_recon_loss*0.5) / 2
                 acc_d_loss += d_loss.item()*imgs.size(0)
