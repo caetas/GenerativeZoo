@@ -183,14 +183,14 @@ class VanillaVAE(nn.Module):
 
 
 class PatchNorm2D(nn.Module):
-    def __init__(self, patch_size=3, epsilon=1e-5):
+    def __init__(self, num_channels, patch_size=3, epsilon=1e-5):
         super(PatchNorm2D, self).__init__()
         self.patch_size = patch_size
         self.epsilon = epsilon
 
-        # Trainable weight and bias for scaling and shifting
-        self.weight = nn.Parameter(torch.ones(1))
-        self.bias = nn.Parameter(torch.zeros(1))
+        # Per-channel trainable weight and bias
+        self.weight = nn.Parameter(torch.ones(1, num_channels, 1, 1))
+        self.bias = nn.Parameter(torch.zeros(1, num_channels, 1, 1))
 
     def forward(self, x):
         # Extract shape
@@ -205,8 +205,10 @@ class PatchNorm2D(nn.Module):
         # Calculate the mean in the patch for each image
         mean = F.conv2d(x_merged, mean_filter, padding=self.patch_size // 2).view(B, C, H, W)
         
-        # Calculate variance by first calculating mean of squared values
+        # Calculate the mean of squared values
         mean_square = F.conv2d(x_merged ** 2, mean_filter, padding=self.patch_size // 2).view(B, C, H, W)
+        
+        # Correct variance calculation: variance = E[X^2] - (E[X])^2
         variance = mean_square - mean ** 2
 
         # Calculate the standard deviation with numerical stability
@@ -214,7 +216,10 @@ class PatchNorm2D(nn.Module):
 
         # Normalize the input
         normalized = (x - mean) / stddev
-        return normalized * self.weight + self.bias
+
+        # Apply per-channel trainable weight and bias
+        output = self.weight * normalized + self.bias
+        return output
 
 class Discriminator(nn.Module):
     def __init__(self, input_shape, input_channels, hidden_dims = None, lr = 5e-3, batch_size = 64):
@@ -249,7 +254,7 @@ class Discriminator(nn.Module):
             modules.append(
                 nn.Sequential(
                     nn.Conv2d(input_channels, h_dim, kernel_size = 3, stride = 2, padding = 1),
-                    PatchNorm2D(patch_size=max(conv_size[cnt]//2 - 1, 1)),
+                    PatchNorm2D(patch_size=max(conv_size[cnt]//2 - 1, 1), num_channels=h_dim),
                     #nn.BatchNorm2d(h_dim, track_running_stats=False),
                     #nn.GroupNorm(h_dim//2, h_dim),
                     nn.LeakyReLU()
