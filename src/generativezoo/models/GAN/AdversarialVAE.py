@@ -254,7 +254,7 @@ class Discriminator(nn.Module):
             modules.append(
                 nn.Sequential(
                     nn.Conv2d(input_channels, h_dim, kernel_size = 3, stride = 2, padding = 1),
-                    PatchNorm2D(patch_size=max(conv_size[cnt]//2 - 1, 3), num_channels=h_dim),
+                    PatchNorm2D(patch_size=max(conv_size[cnt]//2 - 1, 3), num_channels=h_dim) if cnt<2 else nn.GroupNorm(h_dim//2, h_dim),
                     #nn.BatchNorm2d(h_dim, track_running_stats=False),
                     #nn.GroupNorm(h_dim//2, h_dim),
                     nn.LeakyReLU()
@@ -491,7 +491,7 @@ class AdversarialVAE(nn.Module):
             if not self.no_wandb:
                 wandb.log({"Generator Loss": acc_g_loss/len(data_loader.dataset), "Discriminator Loss": acc_d_loss/len(data_loader.dataset)})
 
-
+            print(acc_d_loss/len(data_loader.dataset))
             if (epoch+1) % self.sample_and_save_frequency == 0 or epoch == 0:
                 self.create_grid(title=f"Epoch {epoch}", train=True)
                 self.create_validation_grid(data_loader, title=f"Epoch {epoch}", train=True)
