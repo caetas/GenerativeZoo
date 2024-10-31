@@ -197,7 +197,7 @@ class PatchNorm2D(nn.Module):
         
         # Define the mean filter for patch mean calculation
         mean_filter = torch.ones(1, 1, self.patch_size, self.patch_size, device=x.device) / (self.patch_size ** 2)
-        
+
         # Calculate the mean in the patch for each image
         mean = F.conv2d(x_merged, mean_filter, padding=self.patch_size // 2).view(B, C, H, W)
         
@@ -234,18 +234,18 @@ class Discriminator(nn.Module):
         if hidden_dims is None:
             hidden_dims = [32, 64, 128, 256]
         
-        self.conv_size = [input_shape//(2*(i+1)) for i in range(len(hidden_dims))]
+        conv_size = [input_shape//(2**(i+1)) for i in range(len(hidden_dims))]
         # each layer decreases the h and w by 2, so we need to divide by 2**(number of layers) to know the factor for the flattened input
         self.multiplier = np.round(self.input_shape/(2**len(hidden_dims)), 0).astype(int)
         self.last_channel = hidden_dims[-1]
         modules = []
-
+        cnt = 0
         for h_dim in hidden_dims:
-            cnt = 0
+
             modules.append(
                 nn.Sequential(
                     nn.Conv2d(input_channels, h_dim, kernel_size = 3, stride = 2, padding = 1),
-                    PatchNorm2D(patch_size=self.conv_size[cnt]//4),
+                    PatchNorm2D(patch_size=max(conv_size[cnt]//2 - 1, 1)),
                     #nn.BatchNorm2d(h_dim, track_running_stats=False),
                     #nn.GroupNorm(h_dim//2, h_dim),
                     nn.LeakyReLU()
@@ -253,7 +253,6 @@ class Discriminator(nn.Module):
             )
             input_channels = h_dim
             cnt+=1
-
         modules.append(nn.Flatten())
         modules.append(nn.Linear(hidden_dims[-1]*(self.multiplier**2), 1))
         #modules.append(nn.Linear(hidden_dims[-1]*(self.multiplier**2), 1024))
