@@ -255,7 +255,7 @@ class Discriminator(nn.Module):
                 nn.Sequential(
                     nn.Conv2d(input_channels, h_dim, kernel_size = 3, stride = 2, padding = 1),
                     #PatchNorm2D(patch_size=max(conv_size[cnt]//2 - 1, 3), num_channels=h_dim) if cnt<2 else nn.GroupNorm(h_dim//2, h_dim),
-                    nn.BatchNorm2d(h_dim, track_running_stats=False),
+                    nn.BatchNorm2d(h_dim, track_running_stats=True),
                     #nn.GroupNorm(h_dim//2, h_dim),
                     nn.LeakyReLU()
                 )
