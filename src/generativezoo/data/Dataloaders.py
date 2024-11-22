@@ -985,10 +985,10 @@ def imagenetpatch_val_loader(batch_size, normalize = False, input_shape = None):
         dataset = ImageNetPatchDataset(transform_fn, train = False)
 
         validation_loader = DataLoader(dataset,
-                                    batch_size=batch_size,
-                                    shuffle=True,
-                                    pin_memory=True,
-                                    num_workers = 0)
+                                        batch_size=batch_size,
+                                        shuffle=True,
+                                        pin_memory=True,
+                                        num_workers = 0)
         
         if input_shape is not None:
             return validation_loader, input_shape, 3

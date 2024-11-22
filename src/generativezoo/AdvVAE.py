@@ -51,6 +51,7 @@ if __name__ == '__main__':
             model.vae.load_state_dict(torch.load(args.checkpoint))
         if args.discriminator_checkpoint is not None:
             model.discriminator.load_state_dict(torch.load(args.discriminator_checkpoint))
+        model.eval()
         model.outlier_detection(in_loader, out_loader)
     else:
         Exception("Invalid mode. Set --train, --test or --sample")
