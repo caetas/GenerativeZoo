@@ -449,7 +449,7 @@ class AdversarialVAE(nn.Module):
                 validity_recon = self.discriminator(recon_imgs)
                 validity_gen = self.discriminator(gen_imgs)
                 if self.loss_type == 'mse':
-                    g_loss = self.recon_weight*adversarial_loss(validity_recon, valid)*0 + self.gen_weight*adversarial_loss(validity_gen, valid) + self.vae.loss_function(recon_imgs, real_imgs, mu, logvar)
+                    g_loss = self.recon_weight*adversarial_loss(validity_recon, valid) + self.gen_weight*adversarial_loss(validity_gen, valid)*0 + self.vae.loss_function(recon_imgs, real_imgs, mu, logvar)
                 else:
                     g_loss = self.recon_weight*adversarial_loss(validity_recon, valid) + self.gen_weight*adversarial_loss(validity_gen, valid) + self.vae.ssim_loss_function(recon_imgs, real_imgs, mu, logvar)
                 acc_g_loss += g_loss.item()*imgs.size(0)
@@ -477,7 +477,7 @@ class AdversarialVAE(nn.Module):
                 d_recon_loss = adversarial_loss(validity_recon, fake)
 
                 # Total self.discriminator loss
-                d_loss = (d_real_loss + d_fake_loss*0.5 + d_recon_loss*0) / 2
+                d_loss = (d_real_loss + d_fake_loss*0 + d_recon_loss*0.5) / 2
                 acc_d_loss += d_loss.item()*imgs.size(0)
 
                 d_loss.backward()

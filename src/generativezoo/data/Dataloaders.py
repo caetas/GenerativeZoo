@@ -82,6 +82,8 @@ def mnist_train_loader(batch_size, normalize = False, input_shape = None, num_wo
         ])
 
     training_data = datasets.MNIST(root=data_raw_dir, train=True, download=True, transform=transform)
+    # get only zeros
+    training_data = [x for x in training_data if x[1] == 0]
 
     training_loader = DataLoader(training_data, 
                                  batch_size=batch_size, 

@@ -31,9 +31,18 @@ if __name__ == '__main__':
                               'input_size': input_size,
                               'channels': channels,
                               'loss_type': args.loss_type,
-                              'channel_scale_factors': args.channel_scale_factors,
-                              'init_channels': args.init_channels,
-                              'n_features': args.n_features
+                              'model_channels': args.model_channels,
+                              'num_res_blocks': args.num_res_blocks,
+                              'attention_resolutions': args.attention_resolutions,
+                              'dropout': args.dropout,
+                              'channel_mult': args.channel_mult,
+                              'conv_resample': args.conv_resample,
+                              'dims': args.dims,
+                              'num_heads': args.num_heads,
+                              'num_head_channels': args.num_head_channels,
+                              'use_scale_shift_norm': args.use_scale_shift_norm,
+                              'resblock_updown': args.resblock_updown,
+                              'use_new_attention_order': args.use_new_attention_order,
                          },
 
                          name = 'DDPM_{}'.format(args.dataset))
