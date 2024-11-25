@@ -60,6 +60,7 @@ class VanillaVAE(nn.Module):
                 nn.Sequential(
                     nn.Conv2d(input_channels, h_dim, kernel_size = 3, stride = 2, padding = 1),
                     nn.BatchNorm2d(h_dim),
+                    #nn.GroupNorm(h_dim//2, h_dim),
                     nn.LeakyReLU()
                 )
             )
@@ -80,6 +81,7 @@ class VanillaVAE(nn.Module):
                 nn.Sequential(
                     nn.ConvTranspose2d(hidden_dims[i], hidden_dims[i + 1], kernel_size=3, stride = 2, padding=1, output_padding=1),
                     nn.BatchNorm2d(hidden_dims[i + 1]),
+                    #nn.GroupNorm(hidden_dims[i + 1]//2, hidden_dims[i + 1]),
                     nn.LeakyReLU())
             )
         
@@ -88,6 +90,7 @@ class VanillaVAE(nn.Module):
         self.final_layer = nn.Sequential(
             nn.ConvTranspose2d(hidden_dims[-1], hidden_dims[-1], kernel_size=3, stride = 2, padding=1, output_padding=1),
             nn.BatchNorm2d(hidden_dims[-1]),
+            #nn.GroupNorm(hidden_dims[-1]//2, hidden_dims[-1]),
             nn.LeakyReLU(),
             nn.Conv2d(hidden_dims[-1], out_channels=self.final_channels, kernel_size=3, padding=1),
             nn.Tanh()
@@ -177,7 +180,46 @@ class VanillaVAE(nn.Module):
         ssim = self.mssim_loss(recon_x*0.5 + 0.5,x*0.5 + 0.5)
         kld = torch.mean(-0.5 * torch.sum(1 + logvar - mu**2 - logvar.exp(), dim = 1), dim=0)
         return ssim + kld*self.kld_weight
-    
+
+
+class PatchNorm2D(nn.Module):
+    def __init__(self, num_channels, patch_size=3, epsilon=1e-5):
+        super(PatchNorm2D, self).__init__()
+        self.patch_size = patch_size
+        self.epsilon = epsilon
+
+        # Per-channel trainable weight and bias
+        self.weight = nn.Parameter(torch.ones(1, num_channels, 1, 1))
+        self.bias = nn.Parameter(torch.zeros(1, num_channels, 1, 1))
+
+    def forward(self, x):
+        # Extract shape
+        B, C, H, W = x.shape
+
+        # Reshape to merge batch and channel dimensions for computation
+        x_merged = x.view(B * C, 1, H, W)
+        
+        # Define the mean filter for patch mean calculation
+        mean_filter = torch.ones(1, 1, self.patch_size, self.patch_size, device=x.device) / (self.patch_size ** 2)
+
+        # Calculate the mean in the patch for each image
+        mean = F.conv2d(x_merged, mean_filter, padding=self.patch_size // 2).view(B, C, H, W)
+        
+        # Calculate the mean of squared values
+        mean_square = F.conv2d(x_merged ** 2, mean_filter, padding=self.patch_size // 2).view(B, C, H, W)
+        
+        # Correct variance calculation: variance = E[X^2] - (E[X])^2
+        variance = mean_square - mean ** 2
+
+        # Calculate the standard deviation with numerical stability
+        stddev = torch.sqrt(variance + self.epsilon)
+
+        # Normalize the input
+        normalized = (x - mean) / stddev
+
+        # Apply per-channel trainable weight and bias
+        output = self.weight * normalized + self.bias
+        return output
 
 class Discriminator(nn.Module):
     def __init__(self, input_shape, input_channels, hidden_dims = None, lr = 5e-3, batch_size = 64):
@@ -201,23 +243,30 @@ class Discriminator(nn.Module):
         if hidden_dims is None:
             hidden_dims = [32, 64, 128, 256]
         
+        conv_size = [input_shape//(2**(i+1)) for i in range(len(hidden_dims))]
         # each layer decreases the h and w by 2, so we need to divide by 2**(number of layers) to know the factor for the flattened input
         self.multiplier = np.round(self.input_shape/(2**len(hidden_dims)), 0).astype(int)
         self.last_channel = hidden_dims[-1]
         modules = []
-
+        cnt = 0
         for h_dim in hidden_dims:
+
             modules.append(
                 nn.Sequential(
                     nn.Conv2d(input_channels, h_dim, kernel_size = 3, stride = 2, padding = 1),
-                    nn.BatchNorm2d(h_dim),
+                    #PatchNorm2D(patch_size=max(conv_size[cnt]//2 - 1, 3), num_channels=h_dim) if cnt<2 else nn.GroupNorm(h_dim//2, h_dim),
+                    nn.BatchNorm2d(h_dim, track_running_stats=True),
+                    #nn.GroupNorm(h_dim//2, h_dim),
                     nn.LeakyReLU()
                 )
             )
             input_channels = h_dim
-
+            cnt+=1
         modules.append(nn.Flatten())
         modules.append(nn.Linear(hidden_dims[-1]*(self.multiplier**2), 1))
+        #modules.append(nn.Linear(hidden_dims[-1]*(self.multiplier**2), 1024))
+        #modules.append(nn.LeakyReLU())
+        #modules.append(nn.Linear(1024, 1))
         modules.append(nn.Sigmoid())
 
         self.encoder = nn.Sequential(*modules)
@@ -319,6 +368,9 @@ class AdversarialVAE(nn.Module):
         '''
         # get a batch of data
         x, _ = next(iter(data_loader))
+        if self.dataset == 'imagenetpatch' or self.dataset == 'tinyimagenetpatch':
+            # x will have the shape (batch_size, self.patches, channels, height, width) and it should be (batch_size*self.patches, channels, height, width) but keep the order of the patches
+            x = x.view(-1, x.size(2), x.size(3), x.size(4))
         x = x.to(self.device)
         x = x[:10]
         # get reconstruction
@@ -368,8 +420,12 @@ class AdversarialVAE(nn.Module):
             
             acc_g_loss = 0.0
             acc_d_loss = 0.0
-
+            cnt = 0
             for (imgs, _) in tqdm(data_loader, desc = 'Batches', leave=False, disable=not verbose):
+
+                if self.dataset == 'imagenetpatch' or self.dataset == 'tinyimagenetpatch':
+                    # x will have the shape (batch_size, self.patches, channels, height, width) and it should be (batch_size*self.patches, channels, height, width) but keep the order of the patches
+                    imgs = imgs.view(-1, imgs.size(2), imgs.size(3), imgs.size(4))
 
                 # Adversarial ground truths
                 valid = torch.ones(imgs.size(0), 1).to(self.device)
@@ -393,7 +449,7 @@ class AdversarialVAE(nn.Module):
                 validity_recon = self.discriminator(recon_imgs)
                 validity_gen = self.discriminator(gen_imgs)
                 if self.loss_type == 'mse':
-                    g_loss = self.recon_weight*adversarial_loss(validity_recon, valid) + self.gen_weight*adversarial_loss(validity_gen, valid) + self.vae.loss_function(recon_imgs, real_imgs, mu, logvar)
+                    g_loss = self.recon_weight*adversarial_loss(validity_recon, valid) + self.gen_weight*adversarial_loss(validity_gen, valid)*0 + self.vae.loss_function(recon_imgs, real_imgs, mu, logvar)
                 else:
                     g_loss = self.recon_weight*adversarial_loss(validity_recon, valid) + self.gen_weight*adversarial_loss(validity_gen, valid) + self.vae.ssim_loss_function(recon_imgs, real_imgs, mu, logvar)
                 acc_g_loss += g_loss.item()*imgs.size(0)
@@ -408,7 +464,6 @@ class AdversarialVAE(nn.Module):
                 # ---------------------
 
                 optimizer_D.zero_grad()
-
                 # Loss for real images
                 validity_real = self.discriminator(real_imgs)
                 d_real_loss = adversarial_loss(validity_real, valid)
@@ -422,17 +477,21 @@ class AdversarialVAE(nn.Module):
                 d_recon_loss = adversarial_loss(validity_recon, fake)
 
                 # Total self.discriminator loss
-                d_loss = (d_real_loss + d_fake_loss*0.5 + d_recon_loss*0.5) / 2
+                d_loss = (d_real_loss + d_fake_loss*0 + d_recon_loss*0.5) / 2
                 acc_d_loss += d_loss.item()*imgs.size(0)
 
                 d_loss.backward()
                 optimizer_D.step()
 
+                cnt+=1
+                if self.dataset == 'imagenetpatch' and cnt>len(data_loader)*0.2:
+                    break
+
             epochs_bar.set_description(f"Loss: {acc_g_loss/len(data_loader.dataset):.4f} - D Loss: {acc_d_loss/len(data_loader.dataset):.4f}")
             if not self.no_wandb:
                 wandb.log({"Generator Loss": acc_g_loss/len(data_loader.dataset), "Discriminator Loss": acc_d_loss/len(data_loader.dataset)})
 
-
+            print(acc_d_loss/len(data_loader.dataset))
             if (epoch+1) % self.sample_and_save_frequency == 0 or epoch == 0:
                 self.create_grid(title=f"Epoch {epoch}", train=True)
                 self.create_validation_grid(data_loader, title=f"Epoch {epoch}", train=True)

@@ -4,7 +4,7 @@
 
 # GenerativeZoo
 
-[![Python](https://img.shields.io/badge/python-3.9+-informational.svg)](https://www.python.org/downloads/release/python-3918/)
+[![Python](https://img.shields.io/badge/python-3.10+-informational.svg)](https://www.python.org/downloads/release/python-3918/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=black)](https://pycqa.github.io/isort)
 [![documentation](https://img.shields.io/badge/docs-mkdocs%20material-blue.svg?style=flat)](https://mkdocstrings.github.io)
@@ -76,8 +76,7 @@ You can setup the virtualenv by running the following commands:
     python -m venv .venv-dev
     .venv-dev/Scripts/Activate.ps1
     python -m pip install --upgrade pip setuptools
-    pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-    python -m pip install -r requirements/requirements-win.txt
+    python -m pip install -r requirements/requirements.txt
 
 
 To run the code please remember to always activate both environments:

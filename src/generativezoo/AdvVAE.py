@@ -29,7 +29,7 @@ if __name__ == '__main__':
                         },
                         name = 'AdversarialVAE_{}'.format(args.dataset))
         
-        train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=True, num_workers=args.num_workers, mode='train', size=size)
+        train_loader, input_size, channels = pick_dataset(dataset_name=args.dataset, batch_size=args.batch_size, normalize=True, num_workers=args.num_workers, mode='train', size=size, n_patches=args.patches)
         model = AdversarialVAE(input_shape = input_size, input_channels=channels, args=args)
         model.train_model(train_loader)
 
@@ -51,6 +51,7 @@ if __name__ == '__main__':
             model.vae.load_state_dict(torch.load(args.checkpoint))
         if args.discriminator_checkpoint is not None:
             model.discriminator.load_state_dict(torch.load(args.discriminator_checkpoint))
+        model.eval()
         model.outlier_detection(in_loader, out_loader)
     else:
         Exception("Invalid mode. Set --train, --test or --sample")
