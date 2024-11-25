@@ -948,13 +948,6 @@ class VanillaDDPM(nn.Module):
         x_noisy = self.forward_diffusion_model.q_sample(x_start=x_start, t=t, noise=noise)
         predicted_image = self.sampler.reconstruct_loop(self.denoising_model, self.image_size, x_noisy)[-1]
         predicted_image = torch.tensor(predicted_image, device=self.device)
-        #plot first x_noisy and first predicted_image
-        plt.imshow(x_start[0].cpu().permute(1, 2, 0), cmap='gray')
-        plt.show()
-        plt.imshow(x_noisy[0].cpu().permute(1, 2, 0), cmap='gray')
-        plt.show()
-        plt.imshow(predicted_image[0].cpu().permute(1, 2, 0), cmap='gray')
-        plt.show()
 
         if self.loss_type == 'l1':
             loss = nn.L1Loss(reduction = 'none')
@@ -991,19 +984,17 @@ class VanillaDDPM(nn.Module):
 
         out_scores = []
 
-        out_scores = []
         for step, batch in enumerate(out_loader):
             batch_size = batch[0].shape[0]
             batch = batch[0].to(self.device)
-            t = torch.ones((batch_size,), device=self.device).long() * 0
-            out_scores.append(outlier_score(forward_diffusion_model=self.forward_diffusion_model, denoising_model=self.denoising_model, x_start=batch, t=t, loss_type=self.loss_type).cpu().numpy())
+            score = self.outlier_score(x_start=batch)
+            out_scores.append(score.cpu().numpy())
         out_scores = np.concatenate(out_scores)
         
         y_true = np.concatenate([np.zeros_like(val_scores), np.ones_like(out_scores)], axis=0)
         y_score = np.concatenate([val_scores, out_scores], axis=0)
         auc_score = roc_auc_score(y_true, y_score)
-        if auc_score < 0.2:
-            auc_score = 1. - auc_score
+
         print('AUC score: {:.5f}'.format(auc_score))
 
         plt.hist(val_scores, bins=100, alpha=0.5, label='In')

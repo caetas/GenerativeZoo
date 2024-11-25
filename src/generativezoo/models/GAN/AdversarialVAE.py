@@ -459,9 +459,9 @@ class AdversarialVAE(nn.Module):
 
                 epochs_bar.set_description(f"Loss: {g_loss.item():.5f}")
 
-                # ---------------------
+                # -------------------------
                 #  Train self.discriminator
-                # ---------------------
+                # -------------------------
 
                 optimizer_D.zero_grad()
                 # Loss for real images
