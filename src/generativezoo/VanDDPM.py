@@ -53,13 +53,13 @@ if __name__ == '__main__':
      elif args.sample:
           _, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize, size=size)
           model = VanillaDDPM(args, channels=channels, image_size=input_size)
-          model.denoising_model.load_state_dict(torch.load(args.checkpoint))
+          model.denoising_model.load_state_dict(torch.load(args.checkpoint, weights_only=False))
           model.sample(args.num_samples)
 
      elif args.outlier_detection:
           dataloader_a, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize, size=size)
           model = VanillaDDPM(args, channels=channels, image_size=input_size)
-          model.denoising_model.load_state_dict(torch.load(args.checkpoint))
+          model.denoising_model.load_state_dict(torch.load(args.checkpoint, weights_only=False))
           dataloader_b, input_size_b, channels_b = pick_dataset(args.out_dataset, 'val', args.batch_size, normalize=normalize, good = False, size=input_size)
           model.outlier_detection(dataloader_a,dataloader_b, args.dataset, args.out_dataset)
 

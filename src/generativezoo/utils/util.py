@@ -418,6 +418,7 @@ def parse_args_DDPM():
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
     argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     argparser.add_argument('--recon_factor', type=float, default=0.5, help='reconstruction factor')
+    argparser.add_argument('--lpips', action='store_true', default=False, help='use lpips loss')
     args = argparser.parse_args()
     args.channel_mult = tuple(args.channel_mult)
     args.attention_resolutions = tuple(args.attention_resolutions)

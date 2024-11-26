@@ -21,6 +21,7 @@ from config import models_dir
 from torchvision.transforms import Compose, Lambda, ToPILImage
 from abc import abstractmethod
 from torchvision.utils import make_grid
+from lpips import LPIPS
 
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
@@ -889,6 +890,10 @@ class VanillaDDPM(nn.Module):
         self.num_channels = channels
         self.dataset = args.dataset
         self.no_wandb = args.no_wandb
+        if args.lpips:
+            self.lpips_loss = LPIPS(net='alex').to(self.device)
+        else:
+            self.lpips_loss = None
 
 
     def train_model(self, dataloader, verbose=True):
@@ -960,6 +965,15 @@ class VanillaDDPM(nn.Module):
             elementwise_loss = torch.mean(loss(x_start, predicted_image).reshape(x_start.shape), dim=(1,2,3))
         else:
             raise NotImplementedError()
+        
+        if self.lpips_loss is not None:
+            # if image only has 1 channel, repeat it to 3 channels
+            if predicted_image.shape[1] == 1:
+                predicted_image = predicted_image.repeat(1,3,1,1)
+                x_start = x_start.repeat(1,3,1,1)
+
+            lpips = torch.mean(self.lpips_loss(predicted_image, x_start), dim=(1,2,3))
+            elementwise_loss += lpips
 
         return elementwise_loss
     
@@ -975,8 +989,7 @@ class VanillaDDPM(nn.Module):
         self.denoising_model.eval()
         val_loss = 0.0
         val_scores = []
-        for step, batch in enumerate(val_loader):
-            batch_size = batch[0].shape[0]
+        for batch in tqdm(val_loader, desc='In-distribution', leave=True):
             batch = batch[0].to(self.device)
             score = self.outlier_score(x_start=batch)
             val_scores.append(score.cpu().numpy())
@@ -984,8 +997,7 @@ class VanillaDDPM(nn.Module):
 
         out_scores = []
 
-        for step, batch in enumerate(out_loader):
-            batch_size = batch[0].shape[0]
+        for batch in tqdm(out_loader, desc='Out-of-distribution', leave=True):
             batch = batch[0].to(self.device)
             score = self.outlier_score(x_start=batch)
             out_scores.append(score.cpu().numpy())
