@@ -21,7 +21,18 @@ The Conditional Denoising Diffusion Probabilistic Model (CDDPM) is akin to the s
 | `--checkpoint`         | checkpoint path                           | `None`  |                                                              |
 | `--out_dataset`        | outlier dataset name                      | `fashionmnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet`|
 | `--sample_timesteps`   | number of timesteps for sampling          | `500`   |                                                              |
-| `--n_features`         | number of features                        | `128`   |                                                              |
+| `--model_channels`           | `64`              | Number of features                            |                                                                                                              |
+| `--num_res_blocks`           | `2`               | Number of residual blocks per downsample      |                                                                                                              |
+| `--attention_resolutions`    | `[4]`             | Downsample rates for attention                |                                                                                                              |
+| `--dropout`                  | `0.0`             | Dropout probability                           |                                                                                                              |
+| `--channel_mult`             | `[1, 2, 2]`       | Channel multiplier for UNet levels           |                                                                                                              |
+| `--conv_resample`            | `True`            | Use learned convolutions for resampling       |                                                                                                              |
+| `--dims`                     | `2`               | Signal dimensionality (1D, 2D, 3D)            |                                                                                                              |
+| `--num_heads`                | `4`               | Number of attention heads per layer           |                                                                                                              |
+| `--num_head_channels`        | `32`              | Fixed channel width per attention head        |                                                                                                              |
+| `--use_scale_shift_norm`     | `False`           | Use FiLM-like conditioning mechanism          |                                                                                                              |
+| `--resblock_updown`          | `False`           | Use residual blocks for up/downsampling       |                                                                                                              |
+| `--use_new_attention_order`  | `False`           | Use an alternative attention pattern          |                                                               |
 | `--n_classes`          | number of classes                         | `10`    |                                                              |
 | `--sample_and_save_freq` | sample and save frequency              | `10`    |                                                              |
 | `--drop_prob`          | dropout probability                       | `0.1`   |                                                              |
