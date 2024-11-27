@@ -21,7 +21,6 @@ if __name__ == '__main__':
                             'batch_size': args.batch_size,
                             'n_epochs': args.n_epochs,
                             'lr': args.lr,
-                            'n_features': args.n_features,
                             'n_classes': args.n_classes,
                             'drop_prob': args.drop_prob,
                             'timesteps': args.timesteps,
@@ -30,6 +29,18 @@ if __name__ == '__main__':
                             'ddpm': args.ddpm,
                             'input_size': input_size,
                             'channels': channels,
+                            'model_channels': args.model_channels,
+                            'num_res_blocks': args.num_res_blocks,
+                            'attention_resolutions': args.attention_resolutions,
+                            'dropout': args.dropout,
+                            'channel_mult': args.channel_mult,
+                            'conv_resample': args.conv_resample,
+                            'dims': args.dims,
+                            'num_heads': args.num_heads,
+                            'num_head_channels': args.num_head_channels,
+                            'use_scale_shift_norm': args.use_scale_shift_norm,
+                            'resblock_updown': args.resblock_updown,
+                            'use_new_attention_order': args.use_new_attention_order,
                         },
 
                         name = 'CDDPM_{}'.format(args.dataset))
@@ -40,7 +51,7 @@ if __name__ == '__main__':
         _, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize, size=size)
         model = ConditionalDDPM(in_channels=channels, input_size=input_size, args=args)
         model.denoising_model.load_state_dict(torch.load(args.checkpoint))
-        model.sample(guide_w=args.guide_w)
+        model.sample()
 
     elif args.outlier_detection:
         pass
