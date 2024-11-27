@@ -7,6 +7,7 @@
 from tqdm import tqdm
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,6 +15,8 @@ from tqdm import tqdm, trange
 from config import models_dir
 import os
 import wandb
+from abc import abstractmethod
+import math
 
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
@@ -21,275 +24,793 @@ def create_checkpoint_dir():
   if not os.path.exists(os.path.join(models_dir, 'ConditionalDDPM')):
     os.makedirs(os.path.join(models_dir, 'ConditionalDDPM'))
 
-class ResidualConvBlock(nn.Module):
+# PyTorch 1.7 has SiLU, but we support PyTorch 1.5.
+class SiLU(nn.Module):
+    def forward(self, x):
+        return x * torch.sigmoid(x)
+
+
+class GroupNorm32(nn.GroupNorm):
+    def forward(self, x):
+        return super().forward(x.float()).type(x.dtype)
+
+
+def conv_nd(dims, *args, **kwargs):
+    """
+    Create a 1D, 2D, or 3D convolution module.
+    """
+    if dims == 1:
+        return nn.Conv1d(*args, **kwargs)
+    elif dims == 2:
+        return nn.Conv2d(*args, **kwargs)
+    elif dims == 3:
+        return nn.Conv3d(*args, **kwargs)
+    raise ValueError(f"unsupported dimensions: {dims}")
+
+
+def linear(*args, **kwargs):
+    """
+    Create a linear module.
+    """
+    return nn.Linear(*args, **kwargs)
+
+
+def avg_pool_nd(dims, *args, **kwargs):
+    """
+    Create a 1D, 2D, or 3D average pooling module.
+    """
+    if dims == 1:
+        return nn.AvgPool1d(*args, **kwargs)
+    elif dims == 2:
+        return nn.AvgPool2d(*args, **kwargs)
+    elif dims == 3:
+        return nn.AvgPool3d(*args, **kwargs)
+    raise ValueError(f"unsupported dimensions: {dims}")
+
+
+def update_ema(target_params, source_params, rate=0.99):
+    """
+    Update target parameters to be closer to those of source parameters using
+    an exponential moving average.
+
+    :param target_params: the target parameter sequence.
+    :param source_params: the source parameter sequence.
+    :param rate: the EMA rate (closer to 1 means slower).
+    """
+    for targ, src in zip(target_params, source_params):
+        targ.detach().mul_(rate).add_(src, alpha=1 - rate)
+
+
+def zero_module(module):
+    """
+    Zero out the parameters of a module and return it.
+    """
+    for p in module.parameters():
+        p.detach().zero_()
+    return module
+
+
+def scale_module(module, scale):
+    """
+    Scale the parameters of a module and return it.
+    """
+    for p in module.parameters():
+        p.detach().mul_(scale)
+    return module
+
+
+def mean_flat(tensor):
+    """
+    Take the mean over all non-batch dimensions.
+    """
+    return tensor.mean(dim=list(range(1, len(tensor.shape))))
+
+
+def normalization(channels):
+    """
+    Make a standard normalization layer.
+
+    :param channels: number of input channels.
+    :return: an nn.Module for normalization.
+    """
+    return GroupNorm32(32, channels)
+
+
+def timestep_embedding(timesteps, dim, max_period=10000):
+    """
+    Create sinusoidal timestep embeddings.
+
+    :param timesteps: a 1-D Tensor of N indices, one per batch element.
+                      These may be fractional.
+    :param dim: the dimension of the output.
+    :param max_period: controls the minimum frequency of the embeddings.
+    :return: an [N x dim] Tensor of positional embeddings.
+    """
+    half = dim // 2
+    freqs = torch.exp(
+        -math.log(max_period) * torch.arange(start=0, end=half, dtype=torch.float32) / half
+    ).to(device=timesteps.device)
+    args = timesteps[:, None].float() * freqs[None]
+    embedding = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
+    if dim % 2:
+        embedding = torch.cat([embedding, torch.zeros_like(embedding[:, :1])], dim=-1)
+    return embedding
+
+
+def checkpoint(func, inputs, params, flag):
+    """
+    Evaluate a function without caching intermediate activations, allowing for
+    reduced memory at the expense of extra compute in the backward pass.
+
+    :param func: the function to evaluate.
+    :param inputs: the argument sequence to pass to `func`.
+    :param params: a sequence of parameters `func` depends on but does not
+                   explicitly take as arguments.
+    :param flag: if False, disable gradient checkpointing.
+    """
+    if flag:
+        args = tuple(inputs) + tuple(params)
+        return CheckpointFunction.apply(func, len(inputs), *args)
+    else:
+        return func(*inputs)
+
+
+class CheckpointFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, run_function, length, *args):
+        ctx.run_function = run_function
+        ctx.input_tensors = list(args[:length])
+        ctx.input_params = list(args[length:])
+        with torch.no_grad():
+            output_tensors = ctx.run_function(*ctx.input_tensors)
+        return output_tensors
+
+    @staticmethod
+    def backward(ctx, *output_grads):
+        ctx.input_tensors = [x.detach().requires_grad_(True) for x in ctx.input_tensors]
+        with torch.enable_grad():
+            # Fixes a bug where the first op in run_function modifies the
+            # Tensor storage in place, which is not allowed for detach()'d
+            # Tensors.
+            shallow_copies = [x.view_as(x) for x in ctx.input_tensors]
+            output_tensors = ctx.run_function(*shallow_copies)
+        input_grads = torch.autograd.grad(
+            output_tensors,
+            ctx.input_tensors + ctx.input_params,
+            output_grads,
+            allow_unused=True,
+        )
+        del ctx.input_tensors
+        del ctx.input_params
+        del output_tensors
+        return (None, None) + input_grads
+
+class AttentionPool2d(nn.Module):
+    """
+    Adapted from CLIP: https://github.com/openai/CLIP/blob/main/clip/model.py
+    """
+
     def __init__(
-        self, in_channels: int, out_channels: int, is_res: bool = False
-    ) -> None:
+        self,
+        spacial_dim: int,
+        embed_dim: int,
+        num_head_channels: int,
+        output_dim: int = None,
+    ):
         super().__init__()
-        '''
-        standard ResNet style convolutional block
-        '''
-        self.same_channels = in_channels==out_channels
-        self.is_res = is_res
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 3, 1, 1),
-            nn.BatchNorm2d(out_channels),
-            nn.GELU(),
+        self.positional_embedding = nn.Parameter(
+            torch.randn(embed_dim, spacial_dim ** 2 + 1) / embed_dim ** 0.5
         )
-        self.conv2 = nn.Sequential(
-            nn.Conv2d(out_channels, out_channels, 3, 1, 1),
-            nn.BatchNorm2d(out_channels),
-            nn.GELU(),
-        )
+        self.qkv_proj = conv_nd(1, embed_dim, 3 * embed_dim, 1)
+        self.c_proj = conv_nd(1, embed_dim, output_dim or embed_dim, 1)
+        self.num_heads = embed_dim // num_head_channels
+        self.attention = QKVAttention(self.num_heads)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if self.is_res:
-            x1 = self.conv1(x)
-            x2 = self.conv2(x1)
-            # this adds on correct residual in case channels have increased
-            if self.same_channels:
-                out = x + x2
+    def forward(self, x):
+        b, c, *_spatial = x.shape
+        x = x.reshape(b, c, -1)  # NC(HW)
+        x = torch.cat([x.mean(dim=-1, keepdim=True), x], dim=-1)  # NC(HW+1)
+        x = x + self.positional_embedding[None, :, :].to(x.dtype)  # NC(HW+1)
+        x = self.qkv_proj(x)
+        x = self.attention(x)
+        x = self.c_proj(x)
+        return x[:, :, 0]
+
+
+class TimestepBlock(nn.Module):
+    """
+    Any module where forward() takes timestep embeddings as a second argument.
+    """
+
+    @abstractmethod
+    def forward(self, x, emb):
+        """
+        Apply the module to `x` given `emb` timestep embeddings.
+        """
+
+
+class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
+    """
+    A sequential module that passes timestep embeddings to the children that
+    support it as an extra input.
+    """
+
+    def forward(self, x, emb):
+        for layer in self:
+            if isinstance(layer, TimestepBlock):
+                x = layer(x, emb)
             else:
-                out = x1 + x2 
-            return out / 1.414
-        else:
-            x1 = self.conv1(x)
-            x2 = self.conv2(x1)
-            return x2
-
-class UnetDown(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(UnetDown, self).__init__()
-        '''
-        process and downscale the image feature maps
-        '''
-        layers = [ResidualConvBlock(in_channels, out_channels), nn.MaxPool2d(2)]
-        self.model = nn.Sequential(*layers)
-
-    def forward(self, x):
-        return self.model(x)
-    
-class UnetUp(nn.Module):
-    def __init__(self, in_channels, out_channels, padding = 0):
-        super(UnetUp, self).__init__()
-        '''
-        process and upscale the image feature maps
-        '''
-        layers = [
-            nn.ConvTranspose2d(in_channels, out_channels, 2, 2, output_padding = padding),
-            ResidualConvBlock(out_channels, out_channels),
-            ResidualConvBlock(out_channels, out_channels),
-        ]
-        self.model = nn.Sequential(*layers)
-
-    def forward(self, x, skip):
-        x = torch.cat((x, skip), 1)
-        x = self.model(x)
+                x = layer(x)
         return x
-    
-class EmbedFC(nn.Module):
-    def __init__(self, input_dim, emb_dim):
-        super(EmbedFC, self).__init__()
-        '''
-        generic one layer FC NN for embedding things  
-        '''
-        self.input_dim = input_dim
-        layers = [
-            nn.Linear(input_dim, emb_dim),
-            nn.GELU(),
-            nn.Linear(emb_dim, emb_dim),
-        ]
-        self.model = nn.Sequential(*layers)
+
+
+class Upsample(nn.Module):
+    """
+    An upsampling layer with an optional convolution.
+
+    :param channels: channels in the inputs and outputs.
+    :param use_conv: a bool determining if a convolution is applied.
+    :param dims: determines if the signal is 1D, 2D, or 3D. If 3D, then
+                 upsampling occurs in the inner-two dimensions.
+    """
+
+    def __init__(self, channels, use_conv, dims=2, out_channels=None):
+        super().__init__()
+        self.channels = channels
+        self.out_channels = out_channels or channels
+        self.use_conv = use_conv
+        self.dims = dims
+        if use_conv:
+            self.conv = conv_nd(dims, self.channels, self.out_channels, 3, padding=1)
 
     def forward(self, x):
-        x = x.view(-1, self.input_dim)
-        return self.model(x)
-    
-class ContextUnet(nn.Module):
-    def __init__(self, in_channels, n_feat = 256, n_classes=10, input_size=28):
-        super(ContextUnet, self).__init__()
-
-        self.in_channels = in_channels
-        self.n_feat = n_feat
-        self.n_classes = n_classes
-
-        self.init_conv = ResidualConvBlock(in_channels, n_feat, is_res=True)
-
-        self.down1 = UnetDown(n_feat, n_feat)
-        self.down2 = UnetDown(n_feat, 2 * n_feat)
-
-        self.to_vec = nn.Sequential(nn.AvgPool2d(7), nn.GELU())
-
-        self.timeembed1 = EmbedFC(1, 2*n_feat)
-        self.timeembed2 = EmbedFC(1, 1*n_feat)
-        self.contextembed1 = EmbedFC(n_classes, 2*n_feat)
-        self.contextembed2 = EmbedFC(n_classes, 1*n_feat)
-
-        self.up0 = nn.Sequential(
-            # nn.ConvTranspose2d(6 * n_feat, 2 * n_feat, 7, 7), # when concat temb and cemb end up w 6*n_feat
-            nn.ConvTranspose2d(2 * n_feat, 2 * n_feat, input_size//4, input_size//4), # otherwise just have 2*n_feat
-            nn.GroupNorm(8, 2 * n_feat),
-            nn.ReLU(),
-        )
-
-        self.up1 = UnetUp(4 * n_feat, n_feat)
-        self.up2 = UnetUp(2 * n_feat, n_feat)
-        self.out = nn.Sequential(
-            nn.Conv2d(2 * n_feat, n_feat, 3, 1, 1),
-            nn.GroupNorm(8, n_feat),
-            nn.ReLU(),
-            nn.Conv2d(n_feat, self.in_channels, 3, 1, 1),
-        )
-
-    def forward(self, x, c, t, context_mask):
-        # x is (noisy) image, c is context label, t is timestep, 
-        # context_mask says which samples to block the context on
-        x = self.init_conv(x)
-        down1 = self.down1(x)
-        down2 = self.down2(down1)
-        hiddenvec = self.to_vec(down2)
-
-        # convert context to one hot embedding
-        c = nn.functional.one_hot(c, num_classes=self.n_classes).type(torch.float)
-        
-        # mask out context if context_mask == 1
-        context_mask = context_mask[:, None]
-        context_mask = context_mask.repeat(1,self.n_classes)
-        context_mask = (-1*(1-context_mask)) # need to flip 0 <-> 1
-        c = c * context_mask
-        
-        # embed context, time step
-        cemb1 = self.contextembed1(c).view(-1, self.n_feat * 2, 1, 1)
-        temb1 = self.timeembed1(t).view(-1, self.n_feat * 2, 1, 1)
-        cemb2 = self.contextembed2(c).view(-1, self.n_feat, 1, 1)
-        temb2 = self.timeembed2(t).view(-1, self.n_feat, 1, 1)
-
-        # could concatenate the context embedding here instead of adaGN
-        # hiddenvec = torch.cat((hiddenvec, temb1, cemb1), 1)
-
-        up1 = self.up0(hiddenvec)
-        # up2 = self.up1(up1, down2) # if want to avoid add and multiply embeddings
-        up2 = self.up1(cemb1*up1+ temb1, down2)  # add and multiply embeddings
-        up3 = self.up2(cemb2*up2+ temb2, down1)
-        out = self.out(torch.cat((up3, x), 1))
-        return out
-    
-def ddpm_schedules(beta1, beta2, T):
-    """
-    Returns pre-computed schedules for DDPM sampling, training process.
-    """
-    assert beta1 < beta2 < 1.0, "beta1 and beta2 must be in (0, 1)"
-
-    beta_t = (beta2 - beta1) * torch.arange(0, T + 1, dtype=torch.float32) / T + beta1
-    sqrt_beta_t = torch.sqrt(beta_t)
-    alpha_t = 1 - beta_t
-    log_alpha_t = torch.log(alpha_t)
-    alphabar_t = torch.cumsum(log_alpha_t, dim=0).exp()
-
-    sqrtab = torch.sqrt(alphabar_t)
-    oneover_sqrta = 1 / torch.sqrt(alpha_t)
-
-    sqrtmab = torch.sqrt(1 - alphabar_t)
-    mab_over_sqrtmab_inv = (1 - alpha_t) / sqrtmab
-
-    return {
-        "alpha_t": alpha_t,  # \alpha_t
-        "oneover_sqrta": oneover_sqrta,  # 1/\sqrt{\alpha_t}
-        "sqrt_beta_t": sqrt_beta_t,  # \sqrt{\beta_t}
-        "alphabar_t": alphabar_t,  # \bar{\alpha_t}
-        "sqrtab": sqrtab,  # \sqrt{\bar{\alpha_t}}
-        "sqrtmab": sqrtmab,  # \sqrt{1-\bar{\alpha_t}}
-        "mab_over_sqrtmab": mab_over_sqrtmab_inv,  # (1-\alpha_t)/\sqrt{1-\bar{\alpha_t}}
-    }
-
-class DDPM(nn.Module):
-    def __init__(self, denoising_model, betas, n_T, device, drop_prob=0.1):
-        super(DDPM, self).__init__()
-        self.denoising_model = denoising_model.to(device)
-
-        # register_buffer allows accessing dictionary produced by ddpm_schedules
-        # e.g. can access self.sqrtab later
-        for k, v in ddpm_schedules(betas[0], betas[1], n_T).items():
-            self.register_buffer(k, v)
-
-        self.n_T = n_T
-        self.device = device
-        self.drop_prob = drop_prob
-        self.loss_mse = nn.MSELoss()
-
-    def forward(self, x, c):
-        """
-        this method is used in training, so samples t and noise randomly
-        """
-
-        _ts = torch.randint(1, self.n_T+1, (x.shape[0],)).to(self.device)  # t ~ Uniform(0, n_T)
-        noise = torch.randn_like(x)  # eps ~ N(0, 1)
-
-        x_t = (
-            self.sqrtab[_ts, None, None, None] * x
-            + self.sqrtmab[_ts, None, None, None] * noise
-        )  # This is the x_t, which is sqrt(alphabar) x_0 + sqrt(1-alphabar) * eps
-        # We should predict the "error term" from this x_t. Loss is what we return.
-
-        # dropout context with some probability
-        context_mask = torch.bernoulli(torch.zeros_like(c)+self.drop_prob).to(self.device)
-        
-        # return MSE between added noise, and our predicted noise
-        return self.loss_mse(noise, self.denoising_model(x_t, c, _ts / self.n_T, context_mask))
-
-    def sample(self, n_sample, size, device, n_classes, guide_w = 0.0, ddpm = 0.0):
-        # we follow the guidance sampling scheme described in 'Classifier-Free Diffusion Guidance'
-        # to make the fwd passes efficient, we concat two versions of the dataset,
-        # one with context_mask=0 and the other context_mask=1
-        # we then mix the outputs with the guidance scale, w
-        # where w>0 means more guidance
-        # if ddpm = 0, we just use DDIM instead
-
-        x_i = torch.randn(n_sample, *size).to(device)  # x_T ~ N(0, 1), sample initial noise
-        c_i = torch.arange(0,n_classes).to(device) # context for us just cycles throught the mnist labels
-        c_i = c_i.repeat(int(n_sample/c_i.shape[0]))
-
-        # don't drop context at test time
-        context_mask = torch.zeros_like(c_i).to(device)
-
-        # double the batch
-        c_i = c_i.repeat(2)
-        context_mask = context_mask.repeat(2)
-        context_mask[n_sample:] = 1. # makes second half of batch context free
-
-        x_i_store = [] # keep track of generated steps in case want to plot something 
-        print()
-        for i in trange(self.n_T, 0, -1, desc="Sampling Timestep"):
-            t_is = torch.tensor([i / self.n_T]).to(device)
-            t_is = t_is.repeat(n_sample,1,1,1)
-
-            # double batch
-            x_i = x_i.repeat(2,1,1,1)
-            t_is = t_is.repeat(2,1,1,1)
-
-            z = torch.randn(n_sample, *size).to(device) if i > 1 else 0
-
-            # split predictions and compute weightinggmai
-            eps = self.denoising_model(x_i, c_i, t_is, context_mask)
-            eps1 = eps[:n_sample]
-            eps2 = eps[n_sample:]
-            eps = (1+guide_w)*eps1 - guide_w*eps2
-            c1 = ddpm*((1 - self.alphabar_t[i] / self.alphabar_t[i-1]) * (1-self.alphabar_t[i-1]) / (1-self.alphabar_t[i])).sqrt()
-            c2  = ((1-self.alphabar_t[i-1]) - c1**2).sqrt()
-            x_i = x_i[:n_sample]
-            x_0 = (x_i - (1-self.alphabar_t[i]).sqrt()*eps) / self.alphabar_t[i].sqrt()
-            '''
-            x_i = (
-                self.oneover_sqrta[i] * (x_i - eps * self.mab_over_sqrtmab[i])
-                + self.sqrt_beta_t[i] * z
+        assert x.shape[1] == self.channels
+        if self.dims == 3:
+            x = F.interpolate(
+                x, (x.shape[2], x.shape[3] * 2, x.shape[4] * 2), mode="nearest"
             )
-            '''
-            x_i = self.alphabar_t[i-1].sqrt() * x_0 + c2*eps + c1*z
-            if i%1==0 or i==self.n_T or i<8:
-                x_i_store.append(x_i.detach().cpu().numpy())
-        
-        x_i_store = np.array(x_i_store)
-        return x_i, x_i_store
+        else:
+            x = F.interpolate(x, scale_factor=2, mode="nearest")
+        if self.use_conv:
+            x = self.conv(x)
+        return x
+
+
+class Downsample(nn.Module):
+    """
+    A downsampling layer with an optional convolution.
+
+    :param channels: channels in the inputs and outputs.
+    :param use_conv: a bool determining if a convolution is applied.
+    :param dims: determines if the signal is 1D, 2D, or 3D. If 3D, then
+                 downsampling occurs in the inner-two dimensions.
+    """
+
+    def __init__(self, channels, use_conv, dims=2, out_channels=None):
+        super().__init__()
+        self.channels = channels
+        self.out_channels = out_channels or channels
+        self.use_conv = use_conv
+        self.dims = dims
+        stride = 2 if dims != 3 else (1, 2, 2)
+        if use_conv:
+            self.op = conv_nd(
+                dims, self.channels, self.out_channels, 3, stride=stride, padding=1
+            )
+        else:
+            assert self.channels == self.out_channels
+            self.op = avg_pool_nd(dims, kernel_size=stride, stride=stride)
+
+    def forward(self, x):
+        assert x.shape[1] == self.channels
+        return self.op(x)
+
+
+class ResBlock(TimestepBlock):
+    """
+    A residual block that can optionally change the number of channels.
+
+    :param channels: the number of input channels.
+    :param emb_channels: the number of timestep embedding channels.
+    :param dropout: the rate of dropout.
+    :param out_channels: if specified, the number of out channels.
+    :param use_conv: if True and out_channels is specified, use a spatial
+        convolution instead of a smaller 1x1 convolution to change the
+        channels in the skip connection.
+    :param dims: determines if the signal is 1D, 2D, or 3D.
+    :param use_checkpoint: if True, use gradient checkpointing on this module.
+    :param up: if True, use this block for upsampling.
+    :param down: if True, use this block for downsampling.
+    """
+
+    def __init__(
+        self,
+        channels,
+        emb_channels,
+        dropout,
+        out_channels=None,
+        use_conv=False,
+        use_scale_shift_norm=False,
+        dims=2,
+        use_checkpoint=False,
+        up=False,
+        down=False,
+    ):
+        super().__init__()
+        self.channels = channels
+        self.emb_channels = emb_channels
+        self.dropout = dropout
+        self.out_channels = out_channels or channels
+        self.use_conv = use_conv
+        self.use_checkpoint = use_checkpoint
+        self.use_scale_shift_norm = use_scale_shift_norm
+
+        self.in_layers = nn.Sequential(
+            normalization(channels),
+            nn.SiLU(),
+            conv_nd(dims, channels, self.out_channels, 3, padding=1),
+        )
+
+        self.updown = up or down
+
+        if up:
+            self.h_upd = Upsample(channels, False, dims)
+            self.x_upd = Upsample(channels, False, dims)
+        elif down:
+            self.h_upd = Downsample(channels, False, dims)
+            self.x_upd = Downsample(channels, False, dims)
+        else:
+            self.h_upd = self.x_upd = nn.Identity()
+
+        self.emb_layers = nn.Sequential(
+            nn.SiLU(),
+            linear(
+                emb_channels,
+                2 * self.out_channels if use_scale_shift_norm else self.out_channels,
+            ),
+        )
+        self.out_layers = nn.Sequential(
+            normalization(self.out_channels),
+            nn.SiLU(),
+            nn.Dropout(p=dropout),
+            zero_module(
+                conv_nd(dims, self.out_channels, self.out_channels, 3, padding=1)
+            ),
+        )
+
+        if self.out_channels == channels:
+            self.skip_connection = nn.Identity()
+        elif use_conv:
+            self.skip_connection = conv_nd(
+                dims, channels, self.out_channels, 3, padding=1
+            )
+        else:
+            self.skip_connection = conv_nd(dims, channels, self.out_channels, 1)
+
+    def forward(self, x, emb):
+        """
+        Apply the block to a Tensor, conditioned on a timestep embedding.
+
+        :param x: an [N x C x ...] Tensor of features.
+        :param emb: an [N x emb_channels] Tensor of timestep embeddings.
+        :return: an [N x C x ...] Tensor of outputs.
+        """
+        return checkpoint(
+            self._forward, (x, emb), self.parameters(), self.use_checkpoint
+        )
+
+    def _forward(self, x, emb):
+        if self.updown:
+            in_rest, in_conv = self.in_layers[:-1], self.in_layers[-1]
+            h = in_rest(x)
+            h = self.h_upd(h)
+            x = self.x_upd(x)
+            h = in_conv(h)
+        else:
+            h = self.in_layers(x)
+        emb_out = self.emb_layers(emb).type(h.dtype)
+        while len(emb_out.shape) < len(h.shape):
+            emb_out = emb_out[..., None]
+        if self.use_scale_shift_norm:
+            out_norm, out_rest = self.out_layers[0], self.out_layers[1:]
+            scale, shift = torch.chunk(emb_out, 2, dim=1)
+            h = out_norm(h) * (1 + scale) + shift
+            h = out_rest(h)
+        else:
+            h = h + emb_out
+            h = self.out_layers(h)
+        return self.skip_connection(x) + h
+
+
+class AttentionBlock(nn.Module):
+    """
+    An attention block that allows spatial positions to attend to each other.
+
+    Originally ported from here, but adapted to the N-d case.
+    https://github.com/hojonathanho/diffusion/blob/1e0dceb3b3495bbe19116a5e1b3596cd0706c543/diffusion_tf/models/unet.py#L66.
+    """
+
+    def __init__(
+        self,
+        channels,
+        num_heads=1,
+        num_head_channels=-1,
+        use_checkpoint=False,
+        use_new_attention_order=False,
+    ):
+        super().__init__()
+        self.channels = channels
+        if num_head_channels == -1:
+            self.num_heads = num_heads
+        else:
+            assert (
+                channels % num_head_channels == 0
+            ), f"q,k,v channels {channels} is not divisible by num_head_channels {num_head_channels}"
+            self.num_heads = channels // num_head_channels
+        self.use_checkpoint = use_checkpoint
+        self.norm = normalization(channels)
+        self.qkv = conv_nd(1, channels, channels * 3, 1)
+        if use_new_attention_order:
+            # split qkv before split heads
+            self.attention = QKVAttention(self.num_heads)
+        else:
+            # split heads before split qkv
+            self.attention = QKVAttentionLegacy(self.num_heads)
+
+        self.proj_out = zero_module(conv_nd(1, channels, channels, 1))
+
+    def forward(self, x):
+        return checkpoint(self._forward, (x,), self.parameters(), True)
+
+    def _forward(self, x):
+        b, c, *spatial = x.shape
+        x = x.reshape(b, c, -1)
+        qkv = self.qkv(self.norm(x))
+        h = self.attention(qkv)
+        h = self.proj_out(h)
+        return (x + h).reshape(b, c, *spatial)
+
+
+def count_flops_attn(model, _x, y):
+    """
+    A counter for the `thop` package to count the operations in an
+    attention operation.
+    Meant to be used like:
+        macs, params = thop.profile(
+            model,
+            inputs=(inputs, timestamps),
+            custom_ops={QKVAttention: QKVAttention.count_flops},
+        )
+    """
+    b, c, *spatial = y[0].shape
+    num_spatial = int(np.prod(spatial))
+    # We perform two matmuls with the same number of ops.
+    # The first computes the weight matrix, the second computes
+    # the combination of the value vectors.
+    matmul_ops = 2 * b * (num_spatial ** 2) * c
+    model.total_ops += torch.DoubleTensor([matmul_ops])
+
+
+class QKVAttentionLegacy(nn.Module):
+    """
+    A module which performs QKV attention. Matches legacy QKVAttention + input/ouput heads shaping
+    """
+
+    def __init__(self, n_heads):
+        super().__init__()
+        self.n_heads = n_heads
+
+    def forward(self, qkv):
+        """
+        Apply QKV attention.
+
+        :param qkv: an [N x (H * 3 * C) x T] tensor of Qs, Ks, and Vs.
+        :return: an [N x (H * C) x T] tensor after attention.
+        """
+        bs, width, length = qkv.shape
+        assert width % (3 * self.n_heads) == 0
+        ch = width // (3 * self.n_heads)
+        q, k, v = qkv.reshape(bs * self.n_heads, ch * 3, length).split(ch, dim=1)
+        scale = 1 / math.sqrt(math.sqrt(ch))
+        weight = torch.einsum(
+            "bct,bcs->bts", q * scale, k * scale
+        )  # More stable with f16 than dividing afterwards
+        weight = torch.softmax(weight.float(), dim=-1).type(weight.dtype)
+        a = torch.einsum("bts,bcs->bct", weight, v)
+        return a.reshape(bs, -1, length)
+
+    @staticmethod
+    def count_flops(model, _x, y):
+        return count_flops_attn(model, _x, y)
+
+
+class QKVAttention(nn.Module):
+    """
+    A module which performs QKV attention and splits in a different order.
+    """
+
+    def __init__(self, n_heads):
+        super().__init__()
+        self.n_heads = n_heads
+
+    def forward(self, qkv):
+        """
+        Apply QKV attention.
+
+        :param qkv: an [N x (3 * H * C) x T] tensor of Qs, Ks, and Vs.
+        :return: an [N x (H * C) x T] tensor after attention.
+        """
+        bs, width, length = qkv.shape
+        assert width % (3 * self.n_heads) == 0
+        ch = width // (3 * self.n_heads)
+        q, k, v = qkv.chunk(3, dim=1)
+        scale = 1 / math.sqrt(math.sqrt(ch))
+        weight = torch.einsum(
+            "bct,bcs->bts",
+            (q * scale).view(bs * self.n_heads, ch, length),
+            (k * scale).view(bs * self.n_heads, ch, length),
+        )  # More stable with f16 than dividing afterwards
+        weight = torch.softmax(weight.float(), dim=-1).type(weight.dtype)
+        a = torch.einsum("bts,bcs->bct", weight, v.reshape(bs * self.n_heads, ch, length))
+        return a.reshape(bs, -1, length)
+
+    @staticmethod
+    def count_flops(model, _x, y):
+        return count_flops_attn(model, _x, y)
+
+
+class UNetModel(nn.Module):
+    """
+    The full UNet model with attention and timestep embedding.
+
+    :param in_channels: channels in the input Tensor.
+    :param model_channels: base channel count for the model.
+    :param out_channels: channels in the output Tensor.
+    :param num_res_blocks: number of residual blocks per downsample.
+    :param attention_resolutions: a collection of downsample rates at which
+        attention will take place. May be a set, list, or tuple.
+        For example, if this contains 4, then at 4x downsampling, attention
+        will be used.
+    :param dropout: the dropout probability.
+    :param channel_mult: channel multiplier for each level of the UNet.
+    :param conv_resample: if True, use learned convolutions for upsampling and
+        downsampling.
+    :param dims: determines if the signal is 1D, 2D, or 3D.
+    :param num_classes: if specified (as an int), then this model will be
+        class-conditional with `num_classes` classes.
+    :param use_checkpoint: use gradient checkpointing to reduce memory usage.
+    :param num_heads: the number of attention heads in each attention layer.
+    :param num_head_channels: if specified, ignore num_heads and instead use
+                               a fixed channel width per attention head.
+    :param num_heads_upsample: works with num_heads to set a different number
+                               of heads for upsampling. Deprecated.
+    :param use_scale_shift_norm: use a FiLM-like conditioning mechanism.
+    :param resblock_updown: use residual blocks for up/downsampling.
+    :param use_new_attention_order: use a different attention pattern for potentially
+                                    increased efficiency.
+    """
+
+    def __init__(
+        self,
+        image_size,
+        in_channels,
+        model_channels,
+        out_channels,
+        num_res_blocks,
+        attention_resolutions,
+        dropout=0,
+        channel_mult=(1, 2, 4, 8),
+        conv_resample=True,
+        dims=2,
+        num_classes=None,
+        use_checkpoint=False,
+        use_fp16=False,
+        num_heads=1,
+        num_head_channels=-1,
+        num_heads_upsample=-1,
+        use_scale_shift_norm=False,
+        resblock_updown=False,
+        use_new_attention_order=False,
+    ):
+        super().__init__()
+
+        if num_heads_upsample == -1:
+            num_heads_upsample = num_heads
+
+        self.image_size = image_size
+        self.in_channels = in_channels
+        self.model_channels = model_channels
+        self.out_channels = out_channels
+        self.num_res_blocks = num_res_blocks
+        self.attention_resolutions = attention_resolutions
+        self.dropout = dropout
+        self.channel_mult = channel_mult
+        self.conv_resample = conv_resample
+        self.num_classes = num_classes
+        self.use_checkpoint = use_checkpoint
+        self.dtype = torch.float16 if use_fp16 else torch.float32
+        self.num_heads = num_heads
+        self.num_head_channels = num_head_channels
+        self.num_heads_upsample = num_heads_upsample
+
+        time_embed_dim = model_channels * 4
+        self.time_embed = nn.Sequential(
+            linear(model_channels, time_embed_dim),
+            nn.SiLU(),
+            linear(time_embed_dim, time_embed_dim),
+        )
+
+        if self.num_classes is not None:
+            self.label_emb = nn.Embedding(num_classes, time_embed_dim)
+
+        ch = input_ch = int(channel_mult[0] * model_channels)
+        self.input_blocks = nn.ModuleList(
+            [TimestepEmbedSequential(conv_nd(dims, in_channels, ch, 3, padding=1))]
+        )
+        self._feature_size = ch
+        input_block_chans = [ch]
+        ds = 1
+        for level, mult in enumerate(channel_mult):
+            for _ in range(num_res_blocks):
+                layers = [
+                    ResBlock(
+                        ch,
+                        time_embed_dim,
+                        dropout,
+                        out_channels=int(mult * model_channels),
+                        dims=dims,
+                        use_checkpoint=use_checkpoint,
+                        use_scale_shift_norm=use_scale_shift_norm,
+                    )
+                ]
+                ch = int(mult * model_channels)
+                if ds in attention_resolutions:
+                    layers.append(
+                        AttentionBlock(
+                            ch,
+                            use_checkpoint=use_checkpoint,
+                            num_heads=num_heads,
+                            num_head_channels=num_head_channels,
+                            use_new_attention_order=use_new_attention_order,
+                        )
+                    )
+                self.input_blocks.append(TimestepEmbedSequential(*layers))
+                self._feature_size += ch
+                input_block_chans.append(ch)
+            if level != len(channel_mult) - 1:
+                out_ch = ch
+                self.input_blocks.append(
+                    TimestepEmbedSequential(
+                        ResBlock(
+                            ch,
+                            time_embed_dim,
+                            dropout,
+                            out_channels=out_ch,
+                            dims=dims,
+                            use_checkpoint=use_checkpoint,
+                            use_scale_shift_norm=use_scale_shift_norm,
+                            down=True,
+                        )
+                        if resblock_updown
+                        else Downsample(
+                            ch, conv_resample, dims=dims, out_channels=out_ch
+                        )
+                    )
+                )
+                ch = out_ch
+                input_block_chans.append(ch)
+                ds *= 2
+                self._feature_size += ch
+
+        self.middle_block = TimestepEmbedSequential(
+            ResBlock(
+                ch,
+                time_embed_dim,
+                dropout,
+                dims=dims,
+                use_checkpoint=use_checkpoint,
+                use_scale_shift_norm=use_scale_shift_norm,
+            ),
+            AttentionBlock(
+                ch,
+                use_checkpoint=use_checkpoint,
+                num_heads=num_heads,
+                num_head_channels=num_head_channels,
+                use_new_attention_order=use_new_attention_order,
+            ),
+            ResBlock(
+                ch,
+                time_embed_dim,
+                dropout,
+                dims=dims,
+                use_checkpoint=use_checkpoint,
+                use_scale_shift_norm=use_scale_shift_norm,
+            ),
+        )
+        self._feature_size += ch
+
+        self.output_blocks = nn.ModuleList([])
+        for level, mult in list(enumerate(channel_mult))[::-1]:
+            for i in range(num_res_blocks + 1):
+                ich = input_block_chans.pop()
+                layers = [
+                    ResBlock(
+                        ch + ich,
+                        time_embed_dim,
+                        dropout,
+                        out_channels=int(model_channels * mult),
+                        dims=dims,
+                        use_checkpoint=use_checkpoint,
+                        use_scale_shift_norm=use_scale_shift_norm,
+                    )
+                ]
+                ch = int(model_channels * mult)
+                if ds in attention_resolutions:
+                    layers.append(
+                        AttentionBlock(
+                            ch,
+                            use_checkpoint=use_checkpoint,
+                            num_heads=num_heads_upsample,
+                            num_head_channels=num_head_channels,
+                            use_new_attention_order=use_new_attention_order,
+                        )
+                    )
+                if level and i == num_res_blocks:
+                    out_ch = ch
+                    layers.append(
+                        ResBlock(
+                            ch,
+                            time_embed_dim,
+                            dropout,
+                            out_channels=out_ch,
+                            dims=dims,
+                            use_checkpoint=use_checkpoint,
+                            use_scale_shift_norm=use_scale_shift_norm,
+                            up=True,
+                        )
+                        if resblock_updown
+                        else Upsample(ch, conv_resample, dims=dims, out_channels=out_ch)
+                    )
+                    ds //= 2
+                self.output_blocks.append(TimestepEmbedSequential(*layers))
+                self._feature_size += ch
+
+        self.out = nn.Sequential(
+            normalization(ch),
+            nn.SiLU(),
+            zero_module(conv_nd(dims, input_ch, out_channels, 3, padding=1)),
+        )
+
+    def forward(self, x, timesteps, y=None):
+        """
+        Apply the model to an input batch.
+
+        :param x: an [N x C x ...] Tensor of inputs.
+        :param timesteps: a 1-D batch of timesteps.
+        :param y: an [N] Tensor of labels, if class-conditional.
+        :return: an [N x C x ...] Tensor of outputs.
+        """
+        assert (y is not None) == (
+            self.num_classes is not None
+        ), "must specify y if and only if the model is class-conditional"
+
+        hs = []
+        emb = self.time_embed(timestep_embedding(timesteps, self.model_channels))
+
+        if self.num_classes is not None:
+            assert y.shape == (x.shape[0],)
+            emb = emb + self.label_emb(y)
+
+        h = x.type(self.dtype)
+        for module in self.input_blocks:
+            h = module(h, emb)
+            hs.append(h)
+        h = self.middle_block(h, emb)
+        for module in self.output_blocks:
+            h = torch.cat([h, hs.pop()], dim=1)
+            h = module(h, emb)
+        h = h.type(x.dtype)
+        return self.out(h)
     
 def ddpm_schedules(beta1, beta2, T):
     """
@@ -320,7 +841,7 @@ def ddpm_schedules(beta1, beta2, T):
     }
 
 class ConditionalDDPM(nn.Module):
-    def __init__(self, in_channels, input_size, args, ws_test = [0.0, 0.5, 2.0]):
+    def __init__(self, in_channels, input_size, args):
         '''Conditional DDPM
         Args:
         in_channels: int, number of input channels
@@ -330,7 +851,26 @@ class ConditionalDDPM(nn.Module):
         super(ConditionalDDPM, self).__init__()
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.denoising_model = ContextUnet(in_channels=in_channels, n_feat = args.n_features, n_classes=args.n_classes, input_size=input_size).to(self.device)
+        self.denoising_model = UNetModel(
+            image_size=input_size,
+            in_channels=in_channels,
+            model_channels=args.model_channels,
+            out_channels=in_channels,
+            num_res_blocks=args.num_res_blocks,
+            attention_resolutions=args.attention_resolutions,
+            dropout=args.dropout,
+            channel_mult=args.channel_mult,
+            conv_resample=args.conv_resample,
+            dims=args.dims,
+            num_classes=args.n_classes + 1,
+            use_checkpoint=False,
+            num_heads=args.num_heads,
+            num_head_channels=args.num_head_channels,
+            num_heads_upsample=-1,
+            use_scale_shift_norm=args.use_scale_shift_norm,
+            resblock_updown=args.resblock_updown,
+            use_new_attention_order=args.use_new_attention_order
+        ).to(self.device)
         # register_buffer allows accessing dictionary produced by ddpm_schedules
         # e.g. can access self.sqrtab later
         for k, v in ddpm_schedules(args.beta_start, args.beta_end, args.timesteps).items():
@@ -353,19 +893,31 @@ class ConditionalDDPM(nn.Module):
         self.input_size = input_size
         self.dataset = args.dataset
         self.sample_and_save_freq = args.sample_and_save_freq
-        self.ws_test = ws_test
+        self.cfg = args.cfg
         self.no_wandb = args.no_wandb
 
-    def forward(self, x, c):
+    def forward(self, x, _ts, y):
         """
         This method is used in training, so samples t and noise randomly
         Args:
         x: torch.Tensor, input image
-        c: torch.Tensor, context label
+        _ts: torch.Tensor, timestep
+        y: torch.Tensor, label
         Returns:
         loss: torch.Tensor, loss value
         """
-
+        return self.denoising_model(x, _ts, y)
+    
+    def denoising_loss(self, x, y):
+        """
+        This method is used in training, so samples noise randomly
+        Args:
+        x: torch.Tensor, input image
+        y: torch.Tensor, label
+        t: torch.Tensor, timestep
+        Returns:
+        loss: torch.Tensor, loss value
+        """
         _ts = torch.randint(1, self.n_T+1, (x.shape[0],)).to(self.device)  # t ~ Uniform(0, n_T)
         noise = torch.randn_like(x).to(self.device)  # eps ~ N(0, 1)
 
@@ -373,16 +925,54 @@ class ConditionalDDPM(nn.Module):
             self.sqrtab[_ts, None, None, None] * x
             + self.sqrtmab[_ts, None, None, None] * noise
         )  # This is the x_t, which is sqrt(alphabar) x_0 + sqrt(1-alphabar) * eps
-        # We should predict the "error term" from this x_t. Loss is what we return.
-
-        # dropout context with some probability
-        context_mask = torch.bernoulli(torch.zeros_like(c)+self.drop_prob).to(self.device)
         
-        # return MSE between added noise, and our predicted noise
-        return self.loss_mse(noise, self.denoising_model(x_t, c, _ts / self.n_T, context_mask))
+        y = torch.where(torch.rand(x.shape[0], device=self.device) < self.drop_prob, torch.full((x.shape[0],), self.n_classes, device=self.device), y)
+
+        return self.loss_mse(noise, self.forward(x_t, _ts, y))
+
     
+    
+    def train_model(self,dataloader, verbose = True):
+        '''
+        Trains the Conditional DDPM model
+        Args:
+        dataloader: torch.utils.data.DataLoader, dataloader for the dataset
+        '''
+        create_checkpoint_dir()
+        epoch_bar = trange(self.n_epochs, desc="Epoch")
+        best_loss = np.inf
+        for epoch in epoch_bar:
+            self.denoising_model.train()
+            acc_loss = 0.0
+            for x, y in tqdm(dataloader, desc="Batch", leave=False, disable=not verbose):
+                
+                self.optim.zero_grad()
+
+                x = x.to(self.device)
+                y = y.to(self.device)
+                
+                loss = self.denoising_loss(x,y)
+                acc_loss += loss.item() * x.shape[0]
+                
+                loss.backward()
+                self.optim.step()
+
+            epoch_bar.set_description(f"loss: {acc_loss/len(dataloader.dataset):.4f}")
+            if not self.no_wandb:
+                wandb.log({"CDDPM Loss": acc_loss/len(dataloader.dataset)})
+
+            if acc_loss/len(dataloader.dataset) < best_loss:
+                best_loss = acc_loss/len(dataloader.dataset)
+                torch.save(self.denoising_model.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f'CondDDPM_{self.dataset}.pt'))
+
+            # for eval, save an image of currently generated samples (top rows)
+            # followed by real images (bottom rows)
+            if (epoch + 1) % self.sample_and_save_freq==0 or epoch == 0:
+                self.denoising_model.eval()
+                self.sample(train=True)
+
     @torch.no_grad()
-    def gen_samples(self, n_sample, guide_w = 0.0):
+    def gen_samples(self, n_sample):
         """
         This method is used to sample from the model
         Args:
@@ -403,115 +993,49 @@ class ConditionalDDPM(nn.Module):
         c_i = torch.arange(0,self.n_classes).to(self.device) # context for us just cycles throught the mnist labels
         c_i = c_i.repeat(int(n_sample/c_i.shape[0]))
 
-        # don't drop context at test time
-        context_mask = torch.zeros_like(c_i).to(self.device)
-
         # double the batch
         c_i = c_i.repeat(2)
-        context_mask = context_mask.repeat(2)
-        context_mask[n_sample:] = 1. # makes second half of batch context free
-
-        x_i_store = [] # keep track of generated steps in case want to plot something 
+        c_i[n_sample:] = self.n_classes # makes second half of batch context free
 
         for j in trange(self.n_Tau, 0, -1, desc="Sampling Timestep", leave=False):
             i = j*self.scaling
-            t_is = torch.tensor([i / self.n_T]).to(self.device)
-            t_is = t_is.repeat(n_sample,1,1,1)
+            t_is = torch.tensor([i]).to(self.device)
 
             # double batch
             x_i = x_i.repeat(2,1,1,1)
-            t_is = t_is.repeat(2,1,1,1)
+            t_is = t_is.repeat(n_sample*2)
 
             z = torch.randn(n_sample, *(self.in_channels, self.input_size, self.input_size)).to(self.device) if i > 1 else 0
 
             # split predictions and compute weight
-            eps = self.denoising_model(x_i, c_i, t_is, context_mask)
+            eps = self.forward(x_i, t_is, c_i)
             eps1 = eps[:n_sample]
             eps2 = eps[n_sample:]
-            eps = (1+guide_w)*eps1 - guide_w*eps2
+
+            eps = (1+self.cfg)*eps1 - self.cfg*eps2
             c1 = self.ddpm*((1 - self.alphabar_t[i] / self.alphabar_t[i-self.scaling]) * (1-self.alphabar_t[i-self.scaling]) / (1-self.alphabar_t[i])).sqrt()
             c2  = ((1-self.alphabar_t[i-self.scaling]) - c1**2).sqrt()
             x_i = x_i[:n_sample]
             x_0 = (x_i - (1-self.alphabar_t[i]).sqrt()*eps) / self.alphabar_t[i].sqrt()
             x_i = self.alphabar_t[i-self.scaling].sqrt() * x_0 + c2*eps + c1*z
-            if i%1==0 or i==self.n_T or i<8:
-                x_i_store.append(x_i.detach().cpu().numpy())
-        
-        x_i_store = np.array(x_i_store)
-        return x_i, x_i_store
-    
-    def train_model(self,dataloader, verbose = True):
-        '''
-        Trains the Conditional DDPM model
-        Args:
-        dataloader: torch.utils.data.DataLoader, dataloader for the dataset
-        '''
-        create_checkpoint_dir()
-        epoch_bar = trange(self.n_epochs, desc="Epoch")
-        best_loss = np.inf
-        for ep in epoch_bar:
-            self.denoising_model.train()
-            acc_loss = 0.0
-            for x, c in tqdm(dataloader, desc="Batch", leave=False, disable=not verbose):
-                
-                self.optim.zero_grad()
 
-                x = x.to(self.device)
-                c = c.to(self.device)
-                
-                loss = self.forward(x, c)
-                acc_loss += loss.item() * x.shape[0]
-                
-                loss.backward()
-                self.optim.step()
+        return x_i
 
-            epoch_bar.set_description(f"loss: {acc_loss/len(dataloader.dataset):.4f}")
-            if not self.no_wandb:
-                wandb.log({"CDDPM Loss": acc_loss/len(dataloader.dataset)})
-
-            if acc_loss/len(dataloader.dataset) < best_loss:
-                best_loss = acc_loss/len(dataloader.dataset)
-                torch.save(self.denoising_model.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f'CondDDPM_{self.dataset}.pt'))
-
-            # for eval, save an image of currently generated samples (top rows)
-            # followed by real images (bottom rows)
-            if ep % self.sample_and_save_freq==0:
-                self.denoising_model.eval()
-                x_all = torch.Tensor().to(self.device)
-                with torch.no_grad():
-                    n_sample = self.n_classes
-                    for w_i, w in enumerate(self.ws_test):
-                        x_gen, _ = self.gen_samples(n_sample, guide_w=w)
-
-                        # append some real images at bottom, order by class also
-                        x_real = torch.Tensor(x_gen.shape).to(self.device)
-                        for k in range(self.n_classes):
-                            for j in range(n_sample//self.n_classes):
-                                try: 
-                                    idx = torch.squeeze((c == k).nonzero())[j]
-                                except:
-                                    idx = 0
-                                x_real[k+(j*self.n_classes)] = x[idx]
-
-                        x_all = torch.cat([x_all, x_gen])
-                    grid = make_grid(torch.clamp(((x_all + 1)/2),0,1), nrow=self.n_classes)
-                    # plot image
-                    fig = plt.figure(figsize=(10, 5))
-                    plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
-                    plt.axis('off')
-                    if not self.no_wandb:
-                        wandb.log({"CDDPM Samples": fig})
-                    plt.close(fig)
-
-    def sample(self, guide_w = 0.0):
+    def sample(self, train=False):
         self.denoising_model.eval()
-        samples,_ = self.gen_samples(self.n_classes, guide_w)
+        samples = self.gen_samples(self.n_classes).cpu().detach()
+        samples = torch.clamp(samples, -1, 1)
+        samples = samples*0.5 + 0.5
         # plot using make_grid
-        grid = make_grid(torch.clamp(((samples + 1)/2),0,1), nrow=self.n_classes)
+        grid = make_grid(samples, nrow=int(np.sqrt(self.n_classes)), padding=0)
         # plot image
-        fig = plt.figure(figsize=(10, 5))
+        fig = plt.figure(figsize=(10, 10))
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
         plt.axis('off')
-        plt.show()
+        if not self.no_wandb and train:
+            wandb.log({"CDDPM Samples": fig})
+        else:
+            plt.show()
+        plt.close(fig)
 
     
