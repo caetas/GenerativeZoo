@@ -15,6 +15,7 @@ import os
 from config import models_dir
 import copy
 from collections import OrderedDict
+from diffusers.models import AutoencoderKL
 
 @torch.no_grad()
 def update_ema(ema_model, model, decay=0.5):
@@ -376,8 +377,10 @@ def create_checkpoint_dir():
     if not os.path.exists(os.path.join(models_dir, "RectifiedFlows")):
         os.makedirs(os.path.join(models_dir, "RectifiedFlows"))
 
-class RF:
+class RF(nn.Module):
+
     def __init__(self, args, img_size, channels, ln=True):
+        super(RF, self).__init__()
         '''
         Initialize the model
         :param args: argparse.ArgumentParser, arguments
@@ -386,23 +389,32 @@ class RF:
         :param ln: bool, whether to use layer normalization
         '''
         self.conditional = args.conditional
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.vae =  AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-mse").to(self.device) if args.latent else None
+        self.channels = channels
+        self.img_size = img_size
+
+        # If using VAE, change the number of channels and image size accordingly
+        if self.vae is not None:
+            self.channels = 4
+            self.img_size = self.img_size // 8
+
         if self.conditional:
-            self.model = DiT_Llama(channels, img_size, args.patch_size, args.dim, args.n_layers, args.n_heads, args.multiple_of, args.ffn_dim_multiplier, args.norm_eps, args.class_dropout_prob, args.num_classes)
+            self.model = DiT_Llama(self.channels, self.img_size, args.patch_size, args.dim, args.n_layers, args.n_heads, args.multiple_of, args.ffn_dim_multiplier, args.norm_eps, args.class_dropout_prob, args.num_classes)
         else:
-            self.model = DiT_Llama(channels, img_size, args.patch_size, args.dim, args.n_layers, args.n_heads, args.multiple_of, args.ffn_dim_multiplier, args.norm_eps, 0, 1)
+            self.model = DiT_Llama(self.channels, self.img_size, args.patch_size, args.dim, args.n_layers, args.n_heads, args.multiple_of, args.ffn_dim_multiplier, args.norm_eps, 0, 1)
         self.ln = ln
         self.n_epochs = args.n_epochs
         self.lr = args.lr
         self.num_classes = args.num_classes
-        self.channels = channels
-        self.img_size = img_size
         self.sample_and_save_freq = args.sample_and_save_freq
         self.dataset = args.dataset
         self.sample_steps = args.sample_steps
         self.cfg = args.cfg
+        self.warmup = args.warmup
+        self.decay = args.decay
         model_size = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         print(f"Number of parameters: {model_size}, {model_size / 1e6}M")
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
         self.no_wandb = args.no_wandb
         if args.train:
@@ -478,6 +490,8 @@ class RF:
             images.append(z)
         
         imgs = images[-1]
+        if self.vae is not None:
+            imgs = self.vae.decode(imgs / 0.18215).sample
         imgs = imgs*0.5 + 0.5
         imgs = imgs.clamp(0, 1)
         grid = make_grid(imgs, nrow=4)
@@ -499,7 +513,7 @@ class RF:
         
         create_checkpoint_dir()
 
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
         epoch_bar = trange(self.n_epochs, desc="Epochs")
@@ -515,29 +529,40 @@ class RF:
                 x = x.to(self.device)
                 cond = cond.to(self.device)
 
+                if self.vae is not None:
+                    with torch.no_grad():
+                        # if x has one channel, make it 3 channels
+                        if x.shape[1] == 1:
+                            x = torch.cat((x, x, x), dim=1)
+                        x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
+
                 optimizer.zero_grad()
-                loss, _ = self.forward(x, cond)
+                if self.conditional:
+                    loss, _ = self.forward(x, cond)
+                else:
+                    loss, _ = self.forward(x, torch.zeros_like(cond).long())
                 loss.backward()
                 optimizer.step()
 
                 train_loss += loss.item()*x.shape[0]
                 update_ema(self.ema, self.model, self.ema_rate)
 
-            epoch_bar.set_postfix(loss=train_loss / len(train_loader.dataset))
-            scheduler.step()
-
             if not self.no_wandb:
                 wandb.log({"train_loss": train_loss / len(train_loader.dataset)})
                 wandb.log({"lr": scheduler.get_last_lr()[0]})
+                
+            epoch_bar.set_postfix(loss=train_loss / len(train_loader.dataset))
+            scheduler.step()
 
             if train_loss/len(train_loader.dataset) < best_loss:
                 best_loss = train_loss/len(train_loader.dataset)
-                torch.save(self.ema.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'CondRF' if self.conditional else 'RF'}_{self.dataset}.pt"))
+                torch.save(self.ema.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'Lat' if self.vae is not None else ''}{'CondRF' if self.conditional else 'RF'}_{self.dataset}.pt"))
         
             if epoch ==0 or ((epoch+1) % self.sample_and_save_freq == 0):
                 cond = torch.arange(0, 16).cuda() % self.num_classes
                 z = torch.randn(16, self.channels, self.img_size, self.img_size).to(self.device)
-                self.get_sample(z, cond, train=True, sample_steps=self.sample_steps, cfg=self.cfg)
+                null_cond = self.num_classes*torch.ones_like(cond).long() if self.conditional else torch.zeros_like(cond).long()
+                self.get_sample(z, cond, train=True, sample_steps=self.sample_steps, cfg=self.cfg, null_cond=null_cond)
 
     def sample(self, num_samples):
         '''
@@ -547,7 +572,8 @@ class RF:
         self.model.eval()
         cond = torch.arange(0, num_samples).cuda() % self.num_classes
         z = torch.randn(num_samples, self.channels, self.img_size, self.img_size).to(self.device)
-        self.get_sample(z, cond, train=False, sample_steps=self.sample_steps, cfg=self.cfg, null_cond=self.num_classes*torch.ones_like(cond).long())
+        null_cond = self.num_classes*torch.ones_like(cond).long() if self.conditional else torch.zeros_like(cond).long()
+        self.get_sample(z, cond, train=False, sample_steps=self.sample_steps, cfg=self.cfg, null_cond=null_cond)
 
     def load_checkpoint(self, checkpoint):
         '''

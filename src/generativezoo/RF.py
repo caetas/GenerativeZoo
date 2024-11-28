@@ -25,11 +25,17 @@ if __name__ == '__main__':
                             "norm_eps": args.norm_eps,
                             "class_dropout_prob": args.class_dropout_prob,
                             "num_classes": args.num_classes,
+                            "conditional": args.conditional,
+                            "ema_rate": args.ema_rate,
+                            "warmup": args.warmup,
+                            "latent": args.latent,
+                            "decay": args.decay,
+                            "size": args.size,
                         },
 
                         name=f"RectifiedFlows_{args.dataset}")
 
-        train_loader, input_size, channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, num_workers=args.num_workers)
+        train_loader, input_size, channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, num_workers=args.num_workers, size=args.size)
         model = RF(args, input_size, channels)
         model.train_model(train_loader)
         wandb.finish()

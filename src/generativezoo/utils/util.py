@@ -216,8 +216,9 @@ def parse_args_RectifiedFlows():
     argparser.add_argument('--ema_rate', type=float, default=0.999, help='ema rate')
     argparser.add_argument('--conditional', action='store_true', default=False, help='conditional')
     argparser.add_argument('--warmup', type=int, default=10, help='warmup epochs')
-    argparser.add_argument('--decay', type=float, default=1e-5, help='decay rate')
+    argparser.add_argument('--decay', type=float, default=0.0, help='weight decay rate')
     argparser.add_argument('--latent', action='store_true', default=False, help='Use latent implementation')
+    argparser.add_argument('--size', type=int, default=None, help='Size of the original image')
     return argparser.parse_args()
 
 def parse_args_VanillaFlow():
