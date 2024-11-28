@@ -18,13 +18,20 @@ if __name__ == '__main__':
                             "lr": args.lr,
                             "channels": channels,
                             "input_size": input_size,
-                            "n_features": args.n_features,
-                            "init_channels": args.init_channels,
-                            "channel_scale_factors": args.channel_scale_factors,
-                            "resnet_block_groups": args.resnet_block_groups,
-                            "use_convnext": args.use_convnext,
-                            "convnext_scale_factor": args.convnext_scale_factor,
-                            "prob": args.prob,
+                            'model_channels': args.model_channels,
+                            'num_res_blocks': args.num_res_blocks,
+                            'attention_resolutions': args.attention_resolutions,
+                            'dropout': args.dropout,
+                            'channel_mult': args.channel_mult,
+                            'conv_resample': args.conv_resample,
+                            'dims': args.dims,
+                            'num_heads': args.num_heads,
+                            'num_head_channels': args.num_head_channels,
+                            'use_scale_shift_norm': args.use_scale_shift_norm,
+                            'resblock_updown': args.resblock_updown,
+                            'use_new_attention_order': args.use_new_attention_order,
+                            "dropout_prob": args.dropout_prob,
+                            "cfg": args.cfg,
                         },
 
                         name=f"CondFlowMatching_{args.dataset}")    
@@ -36,19 +43,6 @@ if __name__ == '__main__':
         _, input_size, channels = pick_dataset(args.dataset, batch_size = 1, normalize=True)
         model = CondFlowMatching(args, input_size, channels)
         model.load_checkpoint(args.checkpoint)
-        model.sample(args.guidance_scale, train=False)
-
-    elif args.outlier_detection:
-        in_loader, input_size, channels = pick_dataset(args.dataset, mode='val', batch_size = args.batch_size, normalize=True)
-        out_loader, _, _ = pick_dataset(args.out_dataset, mode='val', batch_size = args.batch_size, normalize=True, size=input_size)
-        model = CondFlowMatching(args, input_size, channels)
-        model.load_checkpoint(args.checkpoint)
-        model.outlier_detection(in_loader, out_loader)
-
-    elif args.interpolation:
-        in_loader, input_size, channels = pick_dataset(args.dataset, mode='val', batch_size = args.batch_size, normalize=True)
-        model = CondFlowMatching(args, input_size, channels)
-        model.load_checkpoint(args.checkpoint)
-        model.interpolate(in_loader)
+        model.sample(args.num_samples, train=False)
     else:
         raise ValueError("Invalid mode, please specify train or sample mode.")

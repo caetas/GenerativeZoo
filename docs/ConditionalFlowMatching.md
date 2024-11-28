@@ -9,25 +9,29 @@
 | `--batch_size`               | Batch size                         | `256`             |                                                                                                              |
 | `--n_epochs`                 | Number of epochs                   | `100`             |                                                                                                              |
 | `--lr`                       | Learning rate                      | `1e-3`            |                                                                                                              |
-| `--n_features`               | Number of features                 | `64`              |                                                                                                              |
-| `--init_channels`            | Initial channels                   | `32`              |                                                                                                              |
-| `--channel_scale_factors`    | Channel scale factors              | `[1, 2, 2]`       |                                                                                                              |
-| `--resnet_block_groups`      | Resnet block groups                | `8`               |                                                                                                              |
-| `--use_convnext`             | Use convnext (default: True)       | `True`            |                                                                                                              |
-| `--convnext_scale_factor`    | Convnext scale factor (default: 2) | `2`               |                                                                                                              |
+| `--model_channels`           | `64`              | Number of features                            |                                                                                                              |
+| `--num_res_blocks`           | `2`               | Number of residual blocks per downsample      |                                                                                                              |
+| `--attention_resolutions`    | `[4]`             | Downsample rates for attention                |                                                                                                              |
+| `--dropout`                  | `0.0`             | Dropout probability                           |                                                                                                              |
+| `--channel_mult`             | `[1, 2, 2]`       | Channel multiplier for UNet levels           |                                                                                                              |
+| `--conv_resample`            | `True`            | Use learned convolutions for resampling       |                                                                                                              |
+| `--dims`                     | `2`               | Signal dimensionality (1D, 2D, 3D)            |                                                                                                              |
+| `--num_heads`                | `4`               | Number of attention heads per layer           |                                                                                                              |
+| `--num_head_channels`        | `32`              | Fixed channel width per attention head        |                                                                                                              |
+| `--use_scale_shift_norm`     | `False`           | Use FiLM-like conditioning mechanism          |                                                                                                              |
+| `--resblock_updown`          | `False`           | Use residual blocks for up/downsampling       |                                                                                                              |
+| `--use_new_attention_order`  | `False`           | Use an alternative attention pattern          |                                                                                                              |
 | `--sample_and_save_freq`     | Sample and save frequency          | `5`               |                                                                                                              |
 | `--dataset`               | Dataset name                                       | `mnist`  | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet`            |
 | `--no_wandb`              | Disable Wandb                                      | `False`  |                                                                                                                                                                              |
 | `--checkpoint`               | Checkpoint path                    | `None`            |                                                                                                              |
 | `--num_samples`              | Number of samples                  | `16`              |                                                                                                              |
-| `--outlier_detection`        | Outlier detection                  | `False`           |                                                                                                              |
-| `--interpolation`            | Interpolation                      | `False`           |                                                                                                              |
 | `--solver_lib`               | Solver library                     | `none`          | `torchdiffeq`, `zuko`, `none`                                                                          |
 | `--step_size`                | Step size for ODE solver           | `0.1`             |                                                                                                              |
 | `--solver`                   | Solver for ODE                     | `dopri5`        | `dopri5`, `rk4`, `dopri8`, `euler`, `bosh3`, `adaptive_heun`, `midpoint`, `explicit_adams`, `implicit_adams` |
-| `--num_classes`              | Number of classes                  | `10`              |                                                                                                              |
-| `--prob`                     | Probability of conditioning during training | `0.5`   |                                                                                                              |
-| `--guidance_scale`           | Guidance scale                     | `2.0`             |                                                                                                              |
+| `--n_classes`              | Number of classes                  | `10`              |                                                                                                              |
+| `--dropout_prob`                     | Probability of droping conditioning during training | `0.2`   |                                                                                                              |
+| `--cfg`           | Guidance scale                     | `2.0`             |                                                                                                              |
 | `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
 | `--warmup`   | Number of warmup epochs   | `10`     |                                                              |
 | `--decay`   | weight decay of learning rate   | `0`     |                                                              |
