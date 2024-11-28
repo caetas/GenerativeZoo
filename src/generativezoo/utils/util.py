@@ -213,6 +213,11 @@ def parse_args_RectifiedFlows():
     argparser.add_argument('--sample_steps', type=int, default=50, help='number of steps for sampling')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
     argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
+    argparser.add_argument('--ema_rate', type=float, default=0.999, help='ema rate')
+    argparser.add_argument('--conditional', action='store_true', default=False, help='conditional')
+    argparser.add_argument('--warmup', type=int, default=10, help='warmup epochs')
+    argparser.add_argument('--decay', type=float, default=1e-5, help='decay rate')
+    argparser.add_argument('--latent', action='store_true', default=False, help='Use latent implementation')
     return argparser.parse_args()
 
 def parse_args_VanillaFlow():
