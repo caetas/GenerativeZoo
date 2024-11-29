@@ -5,23 +5,22 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import torch
 from torch import nn
 from tqdm import tqdm
 import zuko
-from data.Dataloaders import mnist_train_loader, mnist_val_loader
 from torchvision.utils import make_grid
 import torch.nn.functional as F
 from functools import partial
-from torch import einsum
-from einops import rearrange
 import math
 import wandb
 from config import models_dir
 import os
 from torchdiffeq import odeint
-
+from diffusers.models import AutoencoderKL
+from accelerate import Accelerator
+from collections import OrderedDict
+import copy
 from abc import abstractmethod
 
 # PyTorch 1.7 has SiLU, but we support PyTorch 1.5.
@@ -68,17 +67,17 @@ def avg_pool_nd(dims, *args, **kwargs):
     raise ValueError(f"unsupported dimensions: {dims}")
 
 
-def update_ema(target_params, source_params, rate=0.99):
+@torch.no_grad()
+def update_ema(ema_model, model, decay=0.5):
     """
-    Update target parameters to be closer to those of source parameters using
-    an exponential moving average.
+    Step the EMA model towards the current model.
+    """
+    ema_params = OrderedDict(ema_model.named_parameters())
+    model_params = OrderedDict(model.named_parameters())
 
-    :param target_params: the target parameter sequence.
-    :param source_params: the source parameter sequence.
-    :param rate: the EMA rate (closer to 1 means slower).
-    """
-    for targ, src in zip(target_params, source_params):
-        targ.detach().mul_(rate).add_(src, alpha=1 - rate)
+    for name, param in model_params.items():
+        # TODO: Consider applying only to params that require_grad to avoid small numerical changes of pos_embed
+        ema_params[name].mul_(decay).add_(param.data, alpha=1 - decay)
 
 
 def zero_module(module):
@@ -833,9 +832,18 @@ class FlowMatching(nn.Module):
         super(FlowMatching, self).__init__()
         self.args = args
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.vae =  AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-mse").to(self.device) if args.latent else None
+        self.channels = in_channels
+        self.img_size = img_size
+
+        # If using VAE, change the number of channels and image size accordingly
+        if self.vae is not None:
+            self.channels = 4
+            self.img_size = self.img_size // 8
+
         self.model = UNetModel(
-            image_size=img_size,
-            in_channels=in_channels,
+            image_size=self.img_size,
+            in_channels=self.channels,
             model_channels=args.model_channels,
             out_channels=in_channels,
             num_res_blocks=args.num_res_blocks,
@@ -856,8 +864,6 @@ class FlowMatching(nn.Module):
         self.model.to(self.device)
         self.lr = args.lr
         self.n_epochs = args.n_epochs
-        self.img_size = img_size
-        self.channels = in_channels
         self.sample_and_save_freq = args.sample_and_save_freq
         self.dataset = args.dataset
         self.solver = args.solver
@@ -866,6 +872,11 @@ class FlowMatching(nn.Module):
         self.no_wandb = args.no_wandb
         self.warmup = args.warmup
         self.decay = args.decay
+        if args.train:
+            self.ema = copy.deepcopy(self.model)
+            self.ema_rate = args.ema_rate
+            for param in self.ema.parameters():
+                param.requires_grad = False
 
     def forward(self, x, t):
         '''
@@ -897,8 +908,13 @@ class FlowMatching(nn.Module):
         :param n_samples: number of samples
         '''
         x_0 = torch.randn(n_samples, self.channels, self.img_size, self.img_size, device=self.device)
-        def f(t: float, x):
-            return self.forward(x, torch.full(x.shape[:1], t, device=self.device))
+
+        if train:
+            def f(t: float, x):
+                return self.ema(x, torch.full(x.shape[:1], t, device=self.device))
+        else:
+            def f(t: float, x):
+                return self.forward(x, torch.full(x.shape[:1], t, device=self.device))
         
         if self.solver_lib == 'torchdiffeq':
             if self.solver == 'euler' or self.solver == 'rk4' or self.solver == 'midpoint' or self.solver == 'explicit_adams' or self.solver == 'implicit_adams':
@@ -911,11 +927,16 @@ class FlowMatching(nn.Module):
         else:
             t=0
             for i in tqdm(range(int(1/self.step_size)), desc='Sampling', leave=False):
-                v = self.forward(x_0, torch.full(x_0.shape[:1], t, device=self.device))
+                if train:
+                    v = self.ema(x_0, torch.full(x_0.shape[:1], t, device=self.device))
+                else:
+                    v = self.forward(x_0, torch.full(x_0.shape[:1], t, device=self.device))
                 x_0 = x_0 + self.step_size * v
                 t += self.step_size
             samples = x_0
-
+        
+        if self.vae is not None:
+            samples = self.vae.decode(samples / 0.18215).sample
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
         fig = plt.figure(figsize=(10, 10))
@@ -937,31 +958,74 @@ class FlowMatching(nn.Module):
         Train the model
         :param train_loader: training data loader
         '''
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        accelerate = Accelerator(log_with="wandb")
+        if not self.no_wandb:
+            accelerate.init_trackers(project_name='FlowMatching',
+            config = {
+                        "dataset": self.args.dataset,
+                        "batch_size": self.args.batch_size,
+                        "n_epochs": self.args.n_epochs,
+                        "lr": self.args.lr,
+                        "channels": self.channels,
+                        "input_size": self.img_size,
+                        'model_channels': self.args.model_channels,
+                        'num_res_blocks': self.args.num_res_blocks,
+                        'attention_resolutions': self.args.attention_resolutions,
+                        'dropout': self.args.dropout,
+                        'channel_mult': self.args.channel_mult,
+                        'conv_resample': self.args.conv_resample,
+                        'dims': self.args.dims,
+                        'num_heads': self.args.num_heads,
+                        'num_head_channels': self.args.num_head_channels,
+                        'use_scale_shift_norm': self.args.use_scale_shift_norm,
+                        'resblock_updown': self.args.resblock_updown,
+                        'use_new_attention_order': self.args.use_new_attention_order,  
+                        "ema_rate": self.args.ema_rate,
+                        "warmup": self.args.warmup,
+                        "latent": self.args.latent,
+                        "decay": self.args.decay,
+                        "size": self.args.size,   
+                },
+                init_kwargs={"wandb":{"name": f"FlowMatching_{self.args.dataset}"}})
 
         epoch_bar = tqdm(range(self.n_epochs), desc='Epochs', leave=True)
         create_checkpoint_dir()
 
         best_loss = float('inf')
 
-        lr_lambda = lambda epoch: min(1.0, (epoch + 1) / self.warmup)  # noqa
-        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
+
+        update_ema(self.ema, self.model, 0)
+
+        train_loader, self.model, optimizer, scheduler = accelerate.prepare(train_loader, self.model, optimizer, scheduler)
 
         for epoch in epoch_bar:
             self.model.train()
             train_loss = 0.0
             for x, _ in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
+
+                if self.vae is not None:
+                    with torch.no_grad():
+                        # if x has one channel, make it 3 channels
+                        if x.shape[1] == 1:
+                            x = torch.cat((x, x, x), dim=1)
+                        x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
+
                 optimizer.zero_grad()
                 loss = self.conditional_flow_matching_loss(x)
-                loss.backward()
+                accelerate.backward(loss)
                 optimizer.step()
                 train_loss += loss.item()*x.size(0)
+                update_ema(self.ema, self.model, self.ema_rate)
             
+            if not self.no_wandb:
+                accelerate.log({"Train Loss": train_loss / len(train_loader.dataset)})
+                accelerate.log({"Learning Rate": scheduler.get_last_lr()[0]})
+
             scheduler.step()
             epoch_bar.set_postfix({'Loss': train_loss / len(train_loader.dataset)})
-            if not self.no_wandb:
-                wandb.log({"Train Loss": train_loss / len(train_loader.dataset)})
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
                 self.model.eval()
@@ -969,7 +1033,7 @@ class FlowMatching(nn.Module):
             
             if train_loss < best_loss:
                 best_loss = train_loss
-                torch.save(self.model.state_dict(), os.path.join(models_dir, 'FlowMatching', f"FM_{self.dataset}.pt"))
+                torch.save(self.ema.state_dict(), os.path.join(models_dir, 'FlowMatching', f"{'LatFM' if self.vae is not None else 'FM'}_{self.dataset}.pt"))
 
     def load_checkpoint(self, checkpoint_path):
         '''
@@ -978,41 +1042,6 @@ class FlowMatching(nn.Module):
         '''
         if checkpoint_path is not None:
             self.model.load_state_dict(torch.load(checkpoint_path))
-    
-    @torch.no_grad()
-    def get_nll(self, x):
-        '''
-        Reverse the flow to get the nll
-        :param x: input image
-        :param t: time
-        '''
-        self.model.eval()
-        def f(t: float, x):
-            return self.forward(x, torch.full(x.shape[:1], t, device=self.device))
-        
-        if self.solver_lib == 'torchdiffeq':
-            if self.solver == 'euler' or self.solver == 'rk4' or self.solver == 'midpoint' or self.solver == 'explicit_adams' or self.solver == 'implicit_adams':
-                z = odeint(f, x, t=torch.linspace(1, 0, 2).to(self.device), options={'step_size': self.step_size}, method=self.solver, rtol=1e-5, atol=1e-5)
-            else:
-                z = odeint(f, x, t=torch.linspace(1, 0, 2).to(self.device), method=self.solver, options={'max_num_steps': 1//self.step_size}, rtol=1e-5, atol=1e-5)
-            z = z[1]
-        elif self.solver_lib == 'zuko':
-            z = zuko.utils.odeint(f, x, 1, 0, phi=self.model.parameters(), atol=1e-5, rtol=1e-5)
-        else:
-            t=1
-            for i in tqdm(range(int(1/self.step_size)), desc='Reverse Flow', leave=False):
-                v = self.forward(x, torch.full(x.shape[:1], t, device=self.device))
-                x = x - self.step_size * v
-                t -= self.step_size
-            z = x
-        k = 256
-        prior_ll = -0.5 * (z ** 2 + np.log(2 * np.pi))
-        prior_ll = prior_ll.view(z.size(0), -1).sum(-1) \
-            - np.log(k) * np.prod(z.size()[1:])
-        ll = prior_ll
-        nll = -ll
-
-        return nll.numpy()
     
     @torch.no_grad()
     def outlier_detection(self, in_loader, out_loader):

@@ -8,31 +8,7 @@ if __name__ == '__main__':
     args = parse_args_FlowMatching()
 
     if args.train:
-        train_loader, input_size, channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, num_workers=args.num_workers)
-        if not args.no_wandb:
-            wandb.init(project='FlowMatching',
-                        config={
-                            "dataset": args.dataset,
-                            "batch_size": args.batch_size,
-                            "n_epochs": args.n_epochs,
-                            "lr": args.lr,
-                            "channels": channels,
-                            "input_size": input_size,
-                            'model_channels': args.model_channels,
-                            'num_res_blocks': args.num_res_blocks,
-                            'attention_resolutions': args.attention_resolutions,
-                            'dropout': args.dropout,
-                            'channel_mult': args.channel_mult,
-                            'conv_resample': args.conv_resample,
-                            'dims': args.dims,
-                            'num_heads': args.num_heads,
-                            'num_head_channels': args.num_head_channels,
-                            'use_scale_shift_norm': args.use_scale_shift_norm,
-                            'resblock_updown': args.resblock_updown,
-                            'use_new_attention_order': args.use_new_attention_order,
-                        },
-
-                        name=f"FlowMatching_{args.dataset}")    
+        train_loader, input_size, channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, num_workers=args.num_workers, size=args.size)
         model = FlowMatching(args, input_size, channels)
         model.train_model(train_loader)
         wandb.finish()

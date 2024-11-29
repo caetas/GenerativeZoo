@@ -597,6 +597,7 @@ class RF(nn.Module):
         
         accelerate.end_training()
 
+    @torch.no_grad()
     def sample(self, num_samples):
         '''
         Generate samples from the model
