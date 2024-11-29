@@ -41,7 +41,7 @@ You can find out more about the parameters by checking [`util.py`](./../src/gene
 
 You can train this model with the following command:
 
-    python RF.py --train --dataset mnist
+    accelerate launch RF.py --train --dataset mnist
 
 ## Sampling
 

@@ -14,6 +14,7 @@ import wandb
 from config import models_dir
 import os
 from torchdiffeq import odeint
+from diffusers.models import AutoencoderKL
 
 from abc import abstractmethod
 

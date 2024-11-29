@@ -16,6 +16,7 @@ from config import models_dir
 import copy
 from collections import OrderedDict
 from diffusers.models import AutoencoderKL
+from accelerate import Accelerator
 
 @torch.no_grad()
 def update_ema(ema_model, model, decay=0.5):
@@ -388,6 +389,7 @@ class RF(nn.Module):
         :param channels: int, number of channels in the image
         :param ln: bool, whether to use layer normalization
         '''
+        self.args = args
         self.conditional = args.conditional
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.vae =  AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-mse").to(self.device) if args.latent else None
@@ -510,6 +512,31 @@ class RF(nn.Module):
         :param train_loader: PyTorch DataLoader object
         :param verbose: bool, whether to display progress bar
         '''
+        accelerate = Accelerator(log_with="wandb")
+        if not self.no_wandb:
+            accelerate.init_trackers(project_name='RectifiedFlows',
+            config = {
+                        "dataset": self.args.dataset,
+                        "batch_size": self.args.batch_size,
+                        "n_epochs": self.args.n_epochs,
+                        "lr": self.args.lr,
+                        "patch_size": self.args.patch_size,
+                        "dim": self.args.dim,
+                        "n_layers": self.args.n_layers,
+                        "n_heads": self.args.n_heads,
+                        "multiple_of": self.args.multiple_of,
+                        "ffn_dim_multiplier": self.args.ffn_dim_multiplier,
+                        "norm_eps": self.args.norm_eps,
+                        "class_dropout_prob": self.args.class_dropout_prob,
+                        "num_classes": self.args.num_classes,
+                        "conditional": self.args.conditional,
+                        "ema_rate": self.args.ema_rate,
+                        "warmup": self.args.warmup,
+                        "latent": self.args.latent,
+                        "decay": self.args.decay,
+                        "size": self.args.size,       
+                },
+                init_kwargs={"wandb":{"name": f"RectifiedFlows_{self.args.dataset}"}})
         
         create_checkpoint_dir()
 
@@ -520,6 +547,8 @@ class RF(nn.Module):
 
         # initialize EMA
         update_ema(self.ema, self.model, 0)
+
+        train_loader, self.model, optimizer, scheduler = accelerate.prepare(train_loader, self.model, optimizer, scheduler)
 
         best_loss = float("inf")
         for epoch in epoch_bar:
@@ -537,19 +566,21 @@ class RF(nn.Module):
                         x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
 
                 optimizer.zero_grad()
+
                 if self.conditional:
                     loss, _ = self.forward(x, cond)
                 else:
                     loss, _ = self.forward(x, torch.zeros_like(cond).long())
-                loss.backward()
+
+                accelerate.backward(loss)
                 optimizer.step()
 
                 train_loss += loss.item()*x.shape[0]
                 update_ema(self.ema, self.model, self.ema_rate)
 
             if not self.no_wandb:
-                wandb.log({"train_loss": train_loss / len(train_loader.dataset)})
-                wandb.log({"lr": scheduler.get_last_lr()[0]})
+                accelerate.log({"train_loss": train_loss / len(train_loader.dataset)})
+                accelerate.log({"lr": scheduler.get_last_lr()[0]})
                 
             epoch_bar.set_postfix(loss=train_loss / len(train_loader.dataset))
             scheduler.step()
@@ -563,6 +594,8 @@ class RF(nn.Module):
                 z = torch.randn(16, self.channels, self.img_size, self.img_size).to(self.device)
                 null_cond = self.num_classes*torch.ones_like(cond).long() if self.conditional else torch.zeros_like(cond).long()
                 self.get_sample(z, cond, train=True, sample_steps=self.sample_steps, cfg=self.cfg, null_cond=null_cond)
+        
+        accelerate.end_training()
 
     def sample(self, num_samples):
         '''
