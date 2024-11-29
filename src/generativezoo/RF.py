@@ -15,7 +15,7 @@ if __name__ == '__main__':
         wandb.finish()
 
     elif args.sample:
-        _, input_size, channels = pick_dataset(args.dataset, batch_size = 1, normalize=True)
+        _, input_size, channels = pick_dataset(args.dataset, batch_size = 1, normalize=True, size=args.size)
         model = RF(args, input_size, channels)
         model.load_checkpoint(args.checkpoint)
         model.sample(16)

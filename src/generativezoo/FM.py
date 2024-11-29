@@ -14,20 +14,20 @@ if __name__ == '__main__':
         wandb.finish()
 
     elif args.sample:
-        _, input_size, channels = pick_dataset(args.dataset, batch_size = 1, normalize=True)
+        _, input_size, channels = pick_dataset(args.dataset, batch_size = 1, normalize=True, size=args.size)
         model = FlowMatching(args, input_size, channels)
         model.load_checkpoint(args.checkpoint)
         model.sample(args.num_samples, train=False)
 
     elif args.outlier_detection:
-        in_loader, input_size, channels = pick_dataset(args.dataset, mode='val', batch_size = args.batch_size, normalize=True)
+        in_loader, input_size, channels = pick_dataset(args.dataset, mode='val', batch_size = args.batch_size, normalize=True, size=args.size)
         out_loader, _, _ = pick_dataset(args.out_dataset, mode='val', batch_size = args.batch_size, normalize=True, size=input_size)
         model = FlowMatching(args, input_size, channels)
         model.load_checkpoint(args.checkpoint)
         model.outlier_detection(in_loader, out_loader)
 
     elif args.interpolation:
-        in_loader, input_size, channels = pick_dataset(args.dataset, mode='val', batch_size = args.batch_size, normalize=True)
+        in_loader, input_size, channels = pick_dataset(args.dataset, mode='val', batch_size = args.batch_size, normalize=True, size=args.size)
         model = FlowMatching(args, input_size, channels)
         model.load_checkpoint(args.checkpoint)
         model.interpolate(in_loader)

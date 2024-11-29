@@ -448,7 +448,7 @@ class RF(nn.Module):
         return batchwise_mse.mean(), ttloss
 
     @torch.no_grad()
-    def get_sample(self, z, cond, null_cond=None, sample_steps=50, cfg=2.0, train=False):
+    def get_sample(self, z, cond, null_cond=None, sample_steps=50, cfg=2.0, train=False, accelerate=None):
         '''
         Generate samples from the model
         :param z: torch.Tensor, random noise
@@ -501,7 +501,7 @@ class RF(nn.Module):
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
         if train:
             if not self.no_wandb:
-                wandb.log({"samples": fig})
+                accelerate.log({"samples": fig})
         else:   
             plt.show()
         plt.close(fig)
@@ -589,11 +589,11 @@ class RF(nn.Module):
                 best_loss = train_loss/len(train_loader.dataset)
                 torch.save(self.ema.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'Lat' if self.vae is not None else ''}{'CondRF' if self.conditional else 'RF'}_{self.dataset}.pt"))
         
-            if epoch ==0 or ((epoch+1) % self.sample_and_save_freq == 0):
+            if epoch == 0 or ((epoch+1) % self.sample_and_save_freq == 0):
                 cond = torch.arange(0, 16).cuda() % self.num_classes
                 z = torch.randn(16, self.channels, self.img_size, self.img_size).to(self.device)
                 null_cond = self.num_classes*torch.ones_like(cond).long() if self.conditional else torch.zeros_like(cond).long()
-                self.get_sample(z, cond, train=True, sample_steps=self.sample_steps, cfg=self.cfg, null_cond=null_cond)
+                self.get_sample(z, cond, train=True, sample_steps=self.sample_steps, cfg=self.cfg, null_cond=null_cond, accelerate=accelerate)
         
         accelerate.end_training()
 

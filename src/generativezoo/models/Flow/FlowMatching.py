@@ -902,7 +902,7 @@ class FlowMatching(nn.Module):
         return (predicted_flow - optimal_flow).square().mean()
     
     @torch.no_grad()
-    def sample(self, n_samples, train=True):
+    def sample(self, n_samples, train=True, accelerate=None):
         '''
         Sample images
         :param n_samples: number of samples
@@ -946,7 +946,7 @@ class FlowMatching(nn.Module):
 
         if train:
             if not self.no_wandb:
-                wandb.log({"samples": fig})
+                accelerate.log({"samples": fig})
         else:
             plt.show()
 
@@ -1029,11 +1029,13 @@ class FlowMatching(nn.Module):
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
                 self.model.eval()
-                self.sample(16)
+                self.sample(16, accelerate=accelerate)
             
             if train_loss < best_loss:
                 best_loss = train_loss
                 torch.save(self.ema.state_dict(), os.path.join(models_dir, 'FlowMatching', f"{'LatFM' if self.vae is not None else 'FM'}_{self.dataset}.pt"))
+
+        accelerate.end_training()
 
     def load_checkpoint(self, checkpoint_path):
         '''
