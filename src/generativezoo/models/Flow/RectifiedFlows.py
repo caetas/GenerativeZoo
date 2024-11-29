@@ -13,6 +13,22 @@ from torchvision.utils import make_grid
 import wandb
 import os
 from config import models_dir
+import copy
+from collections import OrderedDict
+from diffusers.models import AutoencoderKL
+from accelerate import Accelerator
+
+@torch.no_grad()
+def update_ema(ema_model, model, decay=0.5):
+    """
+    Step the EMA model towards the current model.
+    """
+    ema_params = OrderedDict(ema_model.named_parameters())
+    model_params = OrderedDict(model.named_parameters())
+
+    for name, param in model_params.items():
+        # TODO: Consider applying only to params that require_grad to avoid small numerical changes of pos_embed
+        ema_params[name].mul_(decay).add_(param.data, alpha=1 - decay)
 
 
 def modulate(x, shift, scale):
@@ -362,26 +378,60 @@ def create_checkpoint_dir():
     if not os.path.exists(os.path.join(models_dir, "RectifiedFlows")):
         os.makedirs(os.path.join(models_dir, "RectifiedFlows"))
 
-class RF:
+class RF(nn.Module):
+
     def __init__(self, args, img_size, channels, ln=True):
-        self.model = DiT_Llama(channels, img_size, args.patch_size, args.dim, args.n_layers, args.n_heads, args.multiple_of, args.ffn_dim_multiplier, args.norm_eps, args.class_dropout_prob, args.num_classes)
+        super(RF, self).__init__()
+        '''
+        Initialize the model
+        :param args: argparse.ArgumentParser, arguments
+        :param img_size: int, size of the image
+        :param channels: int, number of channels in the image
+        :param ln: bool, whether to use layer normalization
+        '''
+        self.args = args
+        self.conditional = args.conditional
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.vae =  AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-mse").to(self.device) if args.latent else None
+        self.channels = channels
+        self.img_size = img_size
+
+        # If using VAE, change the number of channels and image size accordingly
+        if self.vae is not None:
+            self.channels = 4
+            self.img_size = self.img_size // 8
+
+        if self.conditional:
+            self.model = DiT_Llama(self.channels, self.img_size, args.patch_size, args.dim, args.n_layers, args.n_heads, args.multiple_of, args.ffn_dim_multiplier, args.norm_eps, args.class_dropout_prob, args.num_classes)
+        else:
+            self.model = DiT_Llama(self.channels, self.img_size, args.patch_size, args.dim, args.n_layers, args.n_heads, args.multiple_of, args.ffn_dim_multiplier, args.norm_eps, 0, 1)
         self.ln = ln
         self.n_epochs = args.n_epochs
         self.lr = args.lr
         self.num_classes = args.num_classes
-        self.channels = channels
-        self.img_size = img_size
         self.sample_and_save_freq = args.sample_and_save_freq
         self.dataset = args.dataset
         self.sample_steps = args.sample_steps
         self.cfg = args.cfg
+        self.warmup = args.warmup
+        self.decay = args.decay
         model_size = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         print(f"Number of parameters: {model_size}, {model_size / 1e6}M")
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
         self.no_wandb = args.no_wandb
+        if args.train:
+            self.ema = copy.deepcopy(self.model)
+            self.ema_rate = args.ema_rate
+            for param in self.ema.parameters():
+                param.requires_grad = False
 
     def forward(self, x, cond):
+        '''
+        Forward pass through the model
+        :param x: torch.Tensor, input image
+        :param cond: torch.Tensor, class labels
+        '''
+
         b = x.size(0)
         if self.ln:
             nt = torch.randn((b,)).to(x.device)
@@ -398,24 +448,52 @@ class RF:
         return batchwise_mse.mean(), ttloss
 
     @torch.no_grad()
-    def get_sample(self, z, cond, null_cond=None, sample_steps=50, cfg=2.0, train=False):
+    def get_sample(self, z, cond, null_cond=None, sample_steps=50, cfg=2.0, train=False, accelerate=None):
+        '''
+        Generate samples from the model
+        :param z: torch.Tensor, random noise
+        :param cond: torch.Tensor, class labels
+        :param null_cond: torch.Tensor, class labels for unconditional samples
+        :param sample_steps: int, number of steps to sample
+        :param cfg: float, conditioning factor
+        :param train: bool, whether to log samples to wandb
+        '''
         b = z.size(0)
         dt = 1.0 / sample_steps
         dt = torch.tensor([dt] * b).to(z.device).view([b, *([1] * len(z.shape[1:]))])
         images = [z]
+
+        if self.conditional:
+            cond = torch.cat([cond, null_cond], dim=0)
+
         for i in tqdm(range(sample_steps, 0, -1), desc='Sampling', leave=False):
             t = i / sample_steps
             t = torch.tensor([t] * b).to(z.device)
 
-            vc = self.model(z, t, cond)
-            if null_cond is not None:
-                vu = self.model(z, t, null_cond)
+            if self.conditional:
+                z = z.repeat(2, 1, 1, 1)
+                t = t.repeat(2)
+                if train:
+                    v = self.ema(z, t, cond.long().to(z.device))
+                else:
+                    v = self.model(z, t, cond.long().to(z.device))
+                vc = v[:b]
+                vu = v[b:]
                 vc = vu + cfg * (vc - vu)
+                z = z[:b]
+            
+            else :
+                if train:
+                    vc = self.ema(z, t, torch.zeros_like(cond).long().to(z.device))
+                else:
+                    vc = self.model(z, t, torch.zeros_like(cond).long().to(z.device))
 
             z = z - dt * vc
             images.append(z)
         
         imgs = images[-1]
+        if self.vae is not None:
+            imgs = self.vae.decode(imgs / 0.18215).sample
         imgs = imgs*0.5 + 0.5
         imgs = imgs.clamp(0, 1)
         grid = make_grid(imgs, nrow=4)
@@ -423,19 +501,54 @@ class RF:
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
         if train:
             if not self.no_wandb:
-                wandb.log({"samples": fig})
+                accelerate.log({"samples": fig})
         else:   
             plt.show()
         plt.close(fig)
     
     def train_model(self, train_loader, verbose=True):
+        '''
+        Train the model
+        :param train_loader: PyTorch DataLoader object
+        :param verbose: bool, whether to display progress bar
+        '''
+        accelerate = Accelerator(log_with="wandb")
+        if not self.no_wandb:
+            accelerate.init_trackers(project_name='RectifiedFlows',
+            config = {
+                        "dataset": self.args.dataset,
+                        "batch_size": self.args.batch_size,
+                        "n_epochs": self.args.n_epochs,
+                        "lr": self.args.lr,
+                        "patch_size": self.args.patch_size,
+                        "dim": self.args.dim,
+                        "n_layers": self.args.n_layers,
+                        "n_heads": self.args.n_heads,
+                        "multiple_of": self.args.multiple_of,
+                        "ffn_dim_multiplier": self.args.ffn_dim_multiplier,
+                        "norm_eps": self.args.norm_eps,
+                        "class_dropout_prob": self.args.class_dropout_prob,
+                        "num_classes": self.args.num_classes,
+                        "conditional": self.args.conditional,
+                        "ema_rate": self.args.ema_rate,
+                        "warmup": self.args.warmup,
+                        "latent": self.args.latent,
+                        "decay": self.args.decay,
+                        "size": self.args.size,       
+                },
+                init_kwargs={"wandb":{"name": f"RectifiedFlows_{self.args.dataset}"}})
         
         create_checkpoint_dir()
 
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-        criterion = torch.nn.MSELoss()
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
         epoch_bar = trange(self.n_epochs, desc="Epochs")
+
+        # initialize EMA
+        update_ema(self.ema, self.model, 0)
+
+        train_loader, self.model, optimizer, scheduler = accelerate.prepare(train_loader, self.model, optimizer, scheduler)
 
         best_loss = float("inf")
         for epoch in epoch_bar:
@@ -444,30 +557,62 @@ class RF:
             for (x, cond) in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
                 cond = cond.to(self.device)
+
+                if self.vae is not None:
+                    with torch.no_grad():
+                        # if x has one channel, make it 3 channels
+                        if x.shape[1] == 1:
+                            x = torch.cat((x, x, x), dim=1)
+                        x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
+
                 optimizer.zero_grad()
-                loss, _ = self.forward(x, cond)
-                loss.backward()
+
+                if self.conditional:
+                    loss, _ = self.forward(x, cond)
+                else:
+                    loss, _ = self.forward(x, torch.zeros_like(cond).long())
+
+                accelerate.backward(loss)
                 optimizer.step()
+
                 train_loss += loss.item()*x.shape[0]
-            epoch_bar.set_postfix(loss=train_loss / len(train_loader.dataset))
+                update_ema(self.ema, self.model, self.ema_rate)
+
             if not self.no_wandb:
-                wandb.log({"train_loss": train_loss / len(train_loader.dataset)})
+                accelerate.log({"train_loss": train_loss / len(train_loader.dataset)})
+                accelerate.log({"lr": scheduler.get_last_lr()[0]})
+                
+            epoch_bar.set_postfix(loss=train_loss / len(train_loader.dataset))
+            scheduler.step()
 
             if train_loss/len(train_loader.dataset) < best_loss:
                 best_loss = train_loss/len(train_loader.dataset)
-                torch.save(self.model.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"RF_{self.dataset}.pt"))
+                torch.save(self.ema.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'Lat' if self.vae is not None else ''}{'CondRF' if self.conditional else 'RF'}_{self.dataset}.pt"))
         
-            if epoch ==0 or ((epoch+1) % self.sample_and_save_freq == 0):
+            if epoch == 0 or ((epoch+1) % self.sample_and_save_freq == 0):
                 cond = torch.arange(0, 16).cuda() % self.num_classes
                 z = torch.randn(16, self.channels, self.img_size, self.img_size).to(self.device)
-                self.get_sample(z, cond, train=True, sample_steps=self.sample_steps, cfg=self.cfg)
+                null_cond = self.num_classes*torch.ones_like(cond).long() if self.conditional else torch.zeros_like(cond).long()
+                self.get_sample(z, cond, train=True, sample_steps=self.sample_steps, cfg=self.cfg, null_cond=null_cond, accelerate=accelerate)
+        
+        accelerate.end_training()
 
+    @torch.no_grad()
     def sample(self, num_samples):
+        '''
+        Generate samples from the model
+        :param num_samples: int, number of samples to generate
+        '''
         self.model.eval()
         cond = torch.arange(0, num_samples).cuda() % self.num_classes
         z = torch.randn(num_samples, self.channels, self.img_size, self.img_size).to(self.device)
-        self.get_sample(z, cond, train=False, sample_steps=self.sample_steps, cfg=self.cfg)
+        null_cond = self.num_classes*torch.ones_like(cond).long() if self.conditional else torch.zeros_like(cond).long()
+        self.get_sample(z, cond, train=False, sample_steps=self.sample_steps, cfg=self.cfg, null_cond=null_cond)
 
     def load_checkpoint(self, checkpoint):
+        '''
+        Load a model checkpoint
+        :param checkpoint: str, path to the checkpoint
+        '''
         if checkpoint is not None:
             self.model.load_state_dict(torch.load(checkpoint))

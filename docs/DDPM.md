@@ -1,6 +1,8 @@
-# Vanilla Denoising Diffusion Probabilistic Model (Vanilla DDPM)
+# Denoising Diffusion Probabilistic Model (DDPM)
 
 Denoising Diffusion Probabilistic Models (DDPMs) rely on a diffusion process where noise is progressively added to an image, and a series of denoising steps are applied to recover the original image. Unlike traditional autoregressive models, DDPM directly models the diffusion process, enabling efficient and high-quality image generation.
+
+**This model supports `Accelerate` for Multi-GPU and Mixed Precision Training.**
 
 ## Parameters
 
@@ -38,6 +40,11 @@ Denoising Diffusion Probabilistic Models (DDPMs) rely on a diffusion process whe
 | `--no_wandb`              | `False`                | Disable wandb logging                                                                        |                                                                                                                                          |
 | `--num_workers`           | `0`                    | Number of workers for dataloader                                                            |                                                                                                                                          |
 | `--recon_factor`          | `0.5`                  | Reconstruction factor                                                                       |                                                                                                                                          |
+| `--warmup`                   | `10`                   | Number of warmup epochs                       |                                                                                                              |
+| `--decay`                    | `1e-5`                 | Decay rate                                    |                                                                                                              |
+| `--latent`                   | `False`                | Use latent version                            |                                                                                                              |   
+| `--ema_rate`                 | `0.999`                | Exponential moving average rate               |                                                                                                              |
+| `--size`                     | `None`                 | Size of input image                           |                                                                                                              |
 
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
@@ -54,10 +61,10 @@ During training, a denoiser, typically implemented as a U-Net, is trained to pre
 
 During the sampling process, we begin with a noisy input image and predict the noise at each timestep. This prediction helps remove the noise, resulting in a progressively clearer image. In typical DDPMs, additional noise is often added after each denoising step, introducing stochasticity to the process. However, it's possible to make this process deterministic by opting not to add extra noise, resulting in what's known as a Denoising Diffusion Implicit Model (DDIM). **You can sample from this model as a DDIM by adjusting `--ddpm`**. Regardless of whether the process is stochastic or deterministic, sampling involves iterating through a fixed number of timesteps to generate high-quality output images.
 
-    python VanDDPM.py --sample --dataset cifar10 --checkpoint ./../../models/VanillaDDPM/VanDDPM_cifar10.pt
+    python VanDDPM.py --sample --dataset cifar10 --checkpoint ./../../models/DDPM/VanDDPM_cifar10.pt
 
 ## Outlier Detection
 
 By leveraging the noise prediction error at timestep t=0, we can estimate whether a sample is in-distribution or out-of-distribution. In this context, a "good" sample is one that closely matches the training data distribution. Consequently, such a sample should have a lower error in the noise prediction at timestep t=0 compared to out-of-distribution samples.
 
-    python VanDDPM.py --sample --dataset cifar10 --out_dataset svhn --checkpoint ./../../models/VanillaDDPM/VanDDPM_cifar10.pt
+    python VanDDPM.py --sample --dataset cifar10 --out_dataset svhn --checkpoint ./../../models/DDPM/VanDDPM_cifar10.pt

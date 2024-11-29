@@ -88,7 +88,7 @@ To run the code please remember to always activate both environments:
 
 ### Implemented Models
 
-The listed models are already implemented and fully integrated in the model zoo.
+The listed models are already implemented and fully integrated in the model zoo. Models with 🚀 support Multi-GPU and Mixed Precision training using [`Accelerate`](https://huggingface.co/docs/accelerate/en/index). Models with 📦 support a latent space implementation with the flag `--latent`.
 
 #### VAEs
 
@@ -107,8 +107,8 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 #### DDPMs
 
-- Vanilla DDPM [`Paper`](https://arxiv.org/abs/2006.11239) | [`Code`](src/generativezoo/models/DDPM/VanillaDDPM.py)<sup>7,8,9</sup> | [`Script`](src/generativezoo/VanDDPM.py) | [`Documentation`](docs/VanillaDDPM.md)
-- Conditional DDPM [`Paper`](https://arxiv.org/abs/2207.12598) | [`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)<sup>10</sup> | [`Script`](src/generativezoo/CondDDPM.py) | [`Documentation`](docs/ConditionalDDPM.md)
+- DDPM<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2006.11239) | [`Code`](src/generativezoo/models/DDPM/DDPM.py)<sup>7,8,9,21</sup> | [`Script`](src/generativezoo/DDPM.py) | [`Documentation`](docs/DDPM.md)
+- Conditional DDPM<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2207.12598) | [`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)<sup>10,21</sup> | [`Script`](src/generativezoo/CondDDPM.py) | [`Documentation`](docs/ConditionalDDPM.md)
 - Diffusion AE [`Paper`](https://arxiv.org/abs/2111.15640) | [`Code`](src/generativezoo/models/DDPM/MONAI_DiffAE.py)<sup>11</sup> | [`Script`](src/generativezoo/DAE.py) | [`Documentation`](docs/DiffusionAE.md)
 
 #### SGMs
@@ -128,15 +128,25 @@ The listed models are already implemented and fully integrated in the model zoo.
 - RealNVP [`Paper`](https://arxiv.org/abs/1605.08803) | [`Code`](src/generativezoo/models/Flow/RealNVP.py)<sup>15</sup> | [`Script`](src/generativezoo/RealNVP.py) | [`Documentation`](docs/RealNVP.md)
 - Glow [`Paper`](https://arxiv.org/abs/1807.03039) | [`Code`](src/generativezoo/models/Flow/Glow.py)<sup>16</sup> | [`Script`](src/generativezoo/GLOW.py) | [`Documentation`](docs/Glow.md)
 - Flow++ [`Paper`](https://arxiv.org/abs/1902.00275) | [`Code`](src/generativezoo/models/Flow/FlowPlusPlus.py)<sup>17</sup> | [`Script`](src/generativezoo/FlowPP.py) | [`Documentation`](docs/FlowPlusPlus.md)
-- Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/Flow/FlowMatching.py)<sup>18,21</sup> | [`Script`](src/generativezoo/FM.py) | [`Documentation`](docs/FlowMatching.md)
-- Conditional Flow Matching [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/Flow/CondFlowMatching.py)<sup>8,18</sup> | [`Script`](src/generativezoo/CondFM.py) | [`Documentation`](docs/ConditionalFlowMatching.md)
-- Rectified Flows [`Paper`](https://arxiv.org/abs/2403.03206) | [`Code`](src/generativezoo/models/Flow/RectifiedFlows.py)<sup>19</sup> | [`Script`](src/generativezoo/RF.py) | [`Documentation`](docs/RectifiedFlows.md)
+- Flow Matching<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/Flow/FlowMatching.py)<sup>18,21</sup> | [`Script`](src/generativezoo/FM.py) | [`Documentation`](docs/FlowMatching.md)
+- Conditional Flow Matching<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/Flow/CondFlowMatching.py)<sup>18,21</sup> | [`Script`](src/generativezoo/CondFM.py) | [`Documentation`](docs/ConditionalFlowMatching.md)
+- Rectified Flows<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2403.03206) | [`Code`](src/generativezoo/models/Flow/RectifiedFlows.py)<sup>19</sup> | [`Script`](src/generativezoo/RF.py) | [`Documentation`](docs/RectifiedFlows.md)
 
 #### Stable Diffusion
 
-- Stable Diffusion + LoRA [`Paper`](https://arxiv.org/abs/2106.09685) | [`Code`](src/generativezoo/models/SD/Text2Img_Lora.py)<sup>20</sup> | [`Script`](src/generativezoo/Text2Img_LoRA.py) | [`Documentation`](docs/Text2Img_LoRA.md)
-- ControlNet [`Paper`](https://arxiv.org/abs/2302.05543) | [`Code`](src/generativezoo/models/SD/Text2Img_Controlnet.py)<sup>20</sup> | [`Script`](src/generativezoo/Text2Img_ControlNet.py) | [`Documentation`](docs/Text2Img_ControlNet.md)
-- InstructPix2Pix [`Paper`](https://arxiv.org/abs/2211.09800) | [`Code`](src/generativezoo/models/SD/InstructPix2Pix.py)<sup>20</sup> | [`Script`](src/generativezoo/InstructPix2Pix.py) | [`Documentation`](docs/InstructPix2Pix.md)
+- Stable Diffusion + LoRA<sup>🚀</sup> [`Paper`](https://arxiv.org/abs/2106.09685) | [`Code`](src/generativezoo/models/SD/Text2Img_Lora.py)<sup>20</sup> | [`Script`](src/generativezoo/Text2Img_LoRA.py) | [`Documentation`](docs/Text2Img_LoRA.md)
+- ControlNet<sup>🚀</sup> [`Paper`](https://arxiv.org/abs/2302.05543) | [`Code`](src/generativezoo/models/SD/Text2Img_Controlnet.py)<sup>20</sup> | [`Script`](src/generativezoo/Text2Img_ControlNet.py) | [`Documentation`](docs/Text2Img_ControlNet.md)
+- InstructPix2Pix<sup>🚀</sup> [`Paper`](https://arxiv.org/abs/2211.09800) | [`Code`](src/generativezoo/models/SD/InstructPix2Pix.py)<sup>20</sup> | [`Script`](src/generativezoo/InstructPix2Pix.py) | [`Documentation`](docs/InstructPix2Pix.md)
+
+## Multi-GPU support and Mixed  Precision
+
+[`Accelerate`](https://huggingface.co/docs/accelerate/en/index) should be configured for your hardware setup using:
+
+    accelerate config
+
+The models that support these features should be launched with:
+
+    accelerate launch --multi_gpu --mixed_precision=fp16 --num_processes=2 {script_name.py} {--arg1} {--arg2} ...
 
 ## Datasets
 

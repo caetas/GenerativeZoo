@@ -1,5 +1,7 @@
 # Rectified Flows
 
+**This model supports `Accelerate` for Multi-GPU and Mixed Precision Training.**
+
 ## Parameters
 
 | Argument                     | Description                        | Default           | Choices                                                                                                        |
@@ -24,7 +26,14 @@
 | `--sample_and_save_freq`     | Sample and save frequency          | `5`               |                                                                                                              |
 | `--num_classes`              | Number of classes                  | `10`              |                                                                                                              |
 | `--checkpoint`               | Checkpoint path                    | `None`            |                                                                                                              |
-| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
+| `--num_workers`              | Number of workers for Dataloader   | `0`               |                                                                                                              |
+| `--latent`                   | Use latent version                 | `False`           |                                                                                                              |
+| `--warmup`                   | Number of warmup epochs            | `10`              |                                                                                                              |
+| `--decay`                    | Decay rate                         | `1e-5`            |                                                                                                              |   
+| `--ema_rate`                 | Exponential moving average rate    | `0.999`           |                                                                                                              |
+| `--conditional`              | Conditional model                  | `False`           |                                                                                                              |
+| `--size`                     | Size of input image                | `None`            |                                                                                                              |
+
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 
@@ -34,7 +43,7 @@ You can find out more about the parameters by checking [`util.py`](./../src/gene
 
 You can train this model with the following command:
 
-    python RF.py --train --dataset mnist
+    accelerate launch RF.py --train --dataset mnist
 
 ## Sampling
 
