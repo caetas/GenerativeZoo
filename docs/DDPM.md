@@ -2,6 +2,8 @@
 
 Denoising Diffusion Probabilistic Models (DDPMs) rely on a diffusion process where noise is progressively added to an image, and a series of denoising steps are applied to recover the original image. Unlike traditional autoregressive models, DDPM directly models the diffusion process, enabling efficient and high-quality image generation.
 
+**This model supports `Accelerate` for Multi-GPU and Mixed Precision Training.**
+
 ## Parameters
 
 | **Argument**               | **Default**            | **Help**                                                                                       | **Choices**                                                                                                                                 |
@@ -38,6 +40,11 @@ Denoising Diffusion Probabilistic Models (DDPMs) rely on a diffusion process whe
 | `--no_wandb`              | `False`                | Disable wandb logging                                                                        |                                                                                                                                          |
 | `--num_workers`           | `0`                    | Number of workers for dataloader                                                            |                                                                                                                                          |
 | `--recon_factor`          | `0.5`                  | Reconstruction factor                                                                       |                                                                                                                                          |
+| `--warmup`                   | `10`                   | Number of warmup epochs                       |                                                                                                              |
+| `--decay`                    | `1e-5`                 | Decay rate                                    |                                                                                                              |
+| `--latent`                   | `False`                | Use latent version                            |                                                                                                              |   
+| `--ema_rate`                 | `0.999`                | Exponential moving average rate               |                                                                                                              |
+| `--size`                     | `None`                 | Size of input image                           |                                                                                                              |
 
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
