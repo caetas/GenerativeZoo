@@ -841,7 +841,7 @@ class CondFlowMatching(nn.Module):
             image_size=self.img_size,
             in_channels=self.channels,
             model_channels=args.model_channels,
-            out_channels=in_channels,
+            out_channels=self.channels,
             num_res_blocks=args.num_res_blocks,
             attention_resolutions=args.attention_resolutions,
             dropout=args.dropout,
@@ -1027,6 +1027,14 @@ class CondFlowMatching(nn.Module):
             train_loss = 0.0
             for x, cl in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
+
+                if self.vae is not None:
+                    with torch.no_grad():
+                        # if x has one channel, make it 3 channels
+                        if x.shape[1] == 1:
+                            x = torch.cat((x, x, x), dim=1)
+                        x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
+
                 cl = cl.to(self.device)
                 optimizer.zero_grad()
                 loss = self.conditional_flow_matching_loss(x, cl)

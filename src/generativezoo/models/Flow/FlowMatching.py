@@ -845,7 +845,7 @@ class FlowMatching(nn.Module):
             image_size=self.img_size,
             in_channels=self.channels,
             model_channels=args.model_channels,
-            out_channels=in_channels,
+            out_channels=self.channels,
             num_res_blocks=args.num_res_blocks,
             attention_resolutions=args.attention_resolutions,
             dropout=args.dropout,
