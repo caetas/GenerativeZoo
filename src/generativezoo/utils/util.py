@@ -463,7 +463,7 @@ def parse_args_CDDPM():
     argparser.add_argument('--model_channels', type=int, default = 64, help='number of features')
     argparser.add_argument('--num_res_blocks', type=int, default = 2, help='number of residual blocks per downsample')
     argparser.add_argument('--attention_resolutions', type=int, nargs='+', default = [4], help='downsample rates at which attention will take place')
-    argparser.add_argument('--dropout', type=float, default = 0.0, help='dropout probability')
+    argparser.add_argument('--dropout', type=float, default = 0.0, help='dropout probability of the U-Net')
     argparser.add_argument('--channel_mult', type=int, nargs='+', default = [1, 2, 2], help='channel multiplier for each level of the UNet')
     argparser.add_argument('--conv_resample', type=bool, default = True, help='use learned convolutions for upsampling and downsampling')
     argparser.add_argument('--dims', type=int, default = 2, help='determines if the signal is 1D, 2D, or 3D')
