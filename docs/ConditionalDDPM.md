@@ -4,41 +4,44 @@ The Conditional Denoising Diffusion Probabilistic Model (CDDPM) is akin to the s
 
 ## Parameters
 
-| Parameter              | Description                               | Default | Choices                                                      |
-|------------------------|-------------------------------------------|---------|--------------------------------------------------------------|
-| `--train`              | train model                               | `False` |                                                              |
-| `--sample`             | sample model                              | `False` |                                                              |
-| `--outlier_detection`  | outlier detection                         | `False` |                                                              |
-| `--batch_size`         | batch size                                | `128`   |                                                              |
-| `--n_epochs`           | number of epochs                          | `100`   |                                                              |
-| `--lr`                 | learning rate                             | `0.001` |                                                              |
-| `--timesteps`          | number of timesteps                       | `500`   |                                                              |
-| `--beta_start`         | beta start                                | `0.0001`|                                                              |
-| `--beta_end`           | beta end                                  | `0.02`  |                                                              |
-| `--dataset`            | Dataset name                              | `mnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet`            |
-| `--no_wandb`           | Disable Wandb                             | `False` |                                                              |
-| `--ddpm`               | ddpm                                      | `1.0`   |                                                              |
-| `--checkpoint`         | checkpoint path                           | `None`  |                                                              |
-| `--out_dataset`        | outlier dataset name                      | `fashionmnist` | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet`|
-| `--sample_timesteps`   | number of timesteps for sampling          | `500`   |                                                              |
-| `--model_channels`           | `64`              | Number of features                            |                                                                                                              |
-| `--num_res_blocks`           | `2`               | Number of residual blocks per downsample      |                                                                                                              |
-| `--attention_resolutions`    | `[4]`             | Downsample rates for attention                |                                                                                                              |
-| `--dropout`                  | `0.0`             | Dropout probability                           |                                                                                                              |
-| `--channel_mult`             | `[1, 2, 2]`       | Channel multiplier for UNet levels           |                                                                                                              |
-| `--conv_resample`            | `True`            | Use learned convolutions for resampling       |                                                                                                              |
-| `--dims`                     | `2`               | Signal dimensionality (1D, 2D, 3D)            |                                                                                                              |
-| `--num_heads`                | `4`               | Number of attention heads per layer           |                                                                                                              |
-| `--num_head_channels`        | `32`              | Fixed channel width per attention head        |                                                                                                              |
-| `--use_scale_shift_norm`     | `False`           | Use FiLM-like conditioning mechanism          |                                                                                                              |
-| `--resblock_updown`          | `False`           | Use residual blocks for up/downsampling       |                                                                                                              |
-| `--use_new_attention_order`  | `False`           | Use an alternative attention pattern          |                                                               |
-| `--n_classes`          | number of classes                         | `10`    |                                                              |
-| `--sample_and_save_freq` | sample and save frequency              | `10`    |                                                              |
-| `--drop_prob`          | dropout probability                       | `0.1`   |                                                              |
-| `--guide_w`            | guide weight                              | `0.5`   |                                                              |
-| `--ws_test`            | guidance weights for test                 | `[0.0, 0.5, 2.0]` |                                                |
-| `--num_workers`   | Number of workers for Dataloader   | `0`     |                                                              |
+| **Parameter**           | **Description**                          | **Default**        | **Choices**                                                                                                        |
+|--------------------------|------------------------------------------|--------------------|--------------------------------------------------------------------------------------------------------------------|
+| `--train`               | Train model                              | `False`            |                                                                                                                    |
+| `--sample`              | Sample model                             | `False`            |                                                                                                                    |
+| `--batch_size`          | Batch size                               | `128`              |                                                                                                                    |
+| `--n_epochs`            | Number of epochs                         | `100`              |                                                                                                                    |
+| `--lr`                  | Learning rate                            | `0.001`            |                                                                                                                    |
+| `--timesteps`           | Number of timesteps                      | `500`              |                                                                                                                    |
+| `--beta_start`          | Beta start                               | `0.0001`           |                                                                                                                    |
+| `--beta_end`            | Beta end                                 | `0.02`             |                                                                                                                    |
+| `--dataset`             | Dataset name                             | `mnist`            | `mnist`, `cifar10`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `cifar100`, `places365`, `dtd`, `imagenet` |
+| `--no_wandb`            | Disable Wandb                            | `False`            |                                                                                                                    |
+| `--ddpm`                | DDPM                                     | `1.0`              |                                                                                                                    |
+| `--checkpoint`          | Checkpoint path                          | `None`             |                                                                                                                    |
+| `--sample_timesteps`    | Number of timesteps for sampling          | `500`              |                                                                                                                    |
+| `--model_channels`      | Number of features                       | `64`               |                                                                                                                    |
+| `--num_res_blocks`      | Number of residual blocks per downsample  | `2`                |                                                                                                                    |
+| `--attention_resolutions`| Downsample rates for attention           | `[4]`              |                                                                                                                    |
+| `--dropout`             | Dropout probability                      | `0.0`              |                                                                                                                    |
+| `--channel_mult`        | Channel multiplier for UNet levels        | `[1, 2, 2]`        |                                                                                                                    |
+| `--conv_resample`       | Use learned convolutions for resampling   | `True`             |                                                                                                                    |
+| `--dims`                | Signal dimensionality (1D, 2D, 3D)        | `2`                |                                                                                                                    |
+| `--num_heads`           | Number of attention heads per layer       | `4`                |                                                                                                                    |
+| `--num_head_channels`   | Fixed channel width per attention head    | `32`               |                                                                                                                    |
+| `--use_scale_shift_norm`| Use FiLM-like conditioning mechanism      | `False`            |                                                                                                                    |
+| `--resblock_updown`     | Use residual blocks for up/downsampling   | `False`            |                                                                                                                    |
+| `--use_new_attention_order`| Use an alternative attention pattern    | `False`            |                                                                                                                    |
+| `--n_classes`           | Number of classes                        | `10`               |                                                                                                                    |
+| `--sample_and_save_freq`| Sample and save frequency                 | `10`               |                                                                                                                    |
+| `--drop_prob`           | Dropout probability                      | `0.1`              |                                                                                                                    |
+| `--cfg`             | Guidance weight                          | `0.5`              |                                                                                                                    |
+| `--num_workers`         | Number of workers for Dataloader          | `0`                |                                                                                                                    |
+| `--warmup`                   | `10`                   | Number of warmup epochs                       |                                                                                                              |
+| `--decay`                    | `1e-5`                 | Decay rate                                    |                                                                                                              |
+| `--latent`                   | `False`                | Use latent version                            |                                                                                                              |   
+| `--ema_rate`                 | `0.999`                | Exponential moving average rate               |                                                                                                              |
+| `--size`                     | `None`                 | Size of input image                           |                                                                                                              |
+
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 

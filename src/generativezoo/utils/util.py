@@ -459,7 +459,6 @@ def parse_args_CDDPM():
     argparser.add_argument('--dataset', type=str, default='mnist', help='dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet','imagenet'])
     argparser.add_argument('--ddpm', type=float, default=1.0, help='ddim sampling is 0.0, pure ddpm is 1.0')
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
-    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet','imagenet'])
     argparser.add_argument('--sample_timesteps', type=int, default=500, help='number of timesteps')
     argparser.add_argument('--model_channels', type=int, default = 64, help='number of features')
     argparser.add_argument('--num_res_blocks', type=int, default = 2, help='number of residual blocks per downsample')
@@ -479,7 +478,15 @@ def parse_args_CDDPM():
     argparser.add_argument('--cfg', type=float, default=0.5, help='guide weight')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
     argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
-    return argparser.parse_args()
+    argparser.add_argument('--warmup', type=int, default=10, help='warmup epochs')
+    argparser.add_argument('--decay', type=float, default=1e-7, help='decay rate')
+    argparser.add_argument('--latent', action='store_true', default=False, help='Use latent implementation')
+    argparser.add_argument('--size', type=int, default=None, help='Size of the original image')
+    argparser.add_argument('--ema_rate', type=float, default=0.999, help='ema rate')
+    args = argparser.parse_args()
+    args.channel_mult = tuple(args.channel_mult)
+    args.attention_resolutions = tuple(args.attention_resolutions)
+    return args
 
 def parse_args_DiffAE():
     argparser = argparse.ArgumentParser()

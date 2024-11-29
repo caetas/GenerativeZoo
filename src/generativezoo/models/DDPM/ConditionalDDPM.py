@@ -17,6 +17,10 @@ import os
 import wandb
 from abc import abstractmethod
 import math
+from diffusers.models import AutoencoderKL
+from accelerate import Accelerator
+from collections import OrderedDict
+import copy
 
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
@@ -68,17 +72,17 @@ def avg_pool_nd(dims, *args, **kwargs):
     raise ValueError(f"unsupported dimensions: {dims}")
 
 
-def update_ema(target_params, source_params, rate=0.99):
+@torch.no_grad()
+def update_ema(ema_model, model, decay=0.5):
     """
-    Update target parameters to be closer to those of source parameters using
-    an exponential moving average.
+    Step the EMA model towards the current model.
+    """
+    ema_params = OrderedDict(ema_model.named_parameters())
+    model_params = OrderedDict(model.named_parameters())
 
-    :param target_params: the target parameter sequence.
-    :param source_params: the source parameter sequence.
-    :param rate: the EMA rate (closer to 1 means slower).
-    """
-    for targ, src in zip(target_params, source_params):
-        targ.detach().mul_(rate).add_(src, alpha=1 - rate)
+    for name, param in model_params.items():
+        # TODO: Consider applying only to params that require_grad to avoid small numerical changes of pos_embed
+        ema_params[name].mul_(decay).add_(param.data, alpha=1 - decay)
 
 
 def zero_module(module):
@@ -618,7 +622,7 @@ class UNetModel(nn.Module):
             num_heads_upsample = num_heads
 
         self.image_size = image_size
-        self.in_channels = in_channels
+        self.channels = in_channels
         self.model_channels = model_channels
         self.out_channels = out_channels
         self.num_res_blocks = num_res_blocks
@@ -850,12 +854,22 @@ class ConditionalDDPM(nn.Module):
         '''
         super(ConditionalDDPM, self).__init__()
 
+        self.args = args
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.denoising_model = UNetModel(
-            image_size=input_size,
-            in_channels=in_channels,
+        self.vae =  AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-mse").to(self.device) if args.latent else None
+        self.channels = in_channels
+        self.img_size = input_size
+
+        # If using VAE, change the number of channels and image size accordingly
+        if self.vae is not None:
+            self.channels = 4
+            self.img_size = self.img_size // 8
+
+        self.model = UNetModel(
+            image_size=self.img_size,
+            in_channels=self.channels,
             model_channels=args.model_channels,
-            out_channels=in_channels,
+            out_channels=self.channels,
             num_res_blocks=args.num_res_blocks,
             attention_resolutions=args.attention_resolutions,
             dropout=args.dropout,
@@ -871,6 +885,7 @@ class ConditionalDDPM(nn.Module):
             resblock_updown=args.resblock_updown,
             use_new_attention_order=args.use_new_attention_order
         ).to(self.device)
+
         # register_buffer allows accessing dictionary produced by ddpm_schedules
         # e.g. can access self.sqrtab later
         for k, v in ddpm_schedules(args.beta_start, args.beta_end, args.timesteps).items():
@@ -886,15 +901,20 @@ class ConditionalDDPM(nn.Module):
         self.beta_end = args.beta_end
         self.lr = args.lr
         self.n_epochs = args.n_epochs
-        self.optim = torch.optim.Adam(self.denoising_model.parameters(), lr=self.lr)
         self.ddpm = args.ddpm
         self.n_classes = args.n_classes
-        self.in_channels = in_channels
-        self.input_size = input_size
         self.dataset = args.dataset
         self.sample_and_save_freq = args.sample_and_save_freq
         self.cfg = args.cfg
         self.no_wandb = args.no_wandb
+        self.warmup = args.warmup
+        self.decay = args.decay
+
+        if args.train:
+            self.ema = copy.deepcopy(self.model)
+            self.ema_rate = args.ema_rate
+            for param in self.ema.parameters():
+                param.requires_grad = False
 
     def forward(self, x, _ts, y):
         """
@@ -906,7 +926,7 @@ class ConditionalDDPM(nn.Module):
         Returns:
         loss: torch.Tensor, loss value
         """
-        return self.denoising_model(x, _ts, y)
+        return self.model(x, _ts, y)
     
     def denoising_loss(self, x, y):
         """
@@ -938,41 +958,97 @@ class ConditionalDDPM(nn.Module):
         Args:
         dataloader: torch.utils.data.DataLoader, dataloader for the dataset
         '''
+        accelerate = Accelerator(log_with="wandb")
+        if not self.no_wandb:
+            accelerate.init_trackers(project_name='CondDDPM',
+            config = {
+                        'dataset': self.args.dataset,
+                        'batch_size': self.args.batch_size,
+                        'n_epochs': self.args.n_epochs,
+                        'lr': self.args.lr,
+                        'timesteps': self.args.timesteps,
+                        'beta_start': self.args.beta_start,
+                        'beta_end': self.args.beta_end,
+                        'ddpm': self.args.ddpm,
+                        'input_size': self.img_size,
+                        'channels': self.channels,
+                        'model_channels': self.args.model_channels,
+                        'num_res_blocks': self.args.num_res_blocks,
+                        'attention_resolutions': self.args.attention_resolutions,
+                        'dropout': self.args.dropout,
+                        'channel_mult': self.args.channel_mult,
+                        'conv_resample': self.args.conv_resample,
+                        'dims': self.args.dims,
+                        'num_heads': self.args.num_heads,
+                        'num_head_channels': self.args.num_head_channels,
+                        'use_scale_shift_norm': self.args.use_scale_shift_norm,
+                        'resblock_updown': self.args.resblock_updown,
+                        'use_new_attention_order': self.args.use_new_attention_order, 
+                        "ema_rate": self.args.ema_rate,
+                        "warmup": self.args.warmup,
+                        "latent": self.args.latent,
+                        "decay": self.args.decay,
+                        "size": self.args.size,
+                        "cfg": self.args.cfg,
+                        "drop_prob": self.args.drop_prob,
+                        "n_classes": self.n_classes,  
+                },
+                init_kwargs={"wandb":{"name": f"CondDDPM_{self.args.dataset}"}})
+
         create_checkpoint_dir()
         epoch_bar = trange(self.n_epochs, desc="Epoch")
         best_loss = np.inf
+
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
+
+        update_ema(self.ema, self.model, 0)
+
+        dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
+
         for epoch in epoch_bar:
-            self.denoising_model.train()
+            self.model.train()
             acc_loss = 0.0
             for x, y in tqdm(dataloader, desc="Batch", leave=False, disable=not verbose):
                 
-                self.optim.zero_grad()
+                optimizer.zero_grad()
 
                 x = x.to(self.device)
                 y = y.to(self.device)
+
+                if self.vae is not None:
+                    with torch.no_grad():
+                        # if x has one channel, make it 3 channels
+                        if x.shape[1] == 1:
+                            x = torch.cat((x, x, x), dim=1)
+                        x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
                 
                 loss = self.denoising_loss(x,y)
                 acc_loss += loss.item() * x.shape[0]
                 
-                loss.backward()
-                self.optim.step()
+                accelerate.backward(loss)
+                optimizer.step()
+                update_ema(self.ema, self.model, self.ema_rate)
+
+            if not self.no_wandb:
+                accelerate.log({"CDDPM Loss": acc_loss/len(dataloader.dataset)})
+                accelerate.log({"Learning Rate": scheduler.get_last_lr()[0]})
 
             epoch_bar.set_description(f"loss: {acc_loss/len(dataloader.dataset):.4f}")
-            if not self.no_wandb:
-                wandb.log({"CDDPM Loss": acc_loss/len(dataloader.dataset)})
+            scheduler.step()
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
-                torch.save(self.denoising_model.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f'CondDDPM_{self.dataset}.pt'))
+                torch.save(self.ema.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f"{'LatCondDDPM' if self.vae is not None else 'CondDDPM'}_{self.dataset}.pt"))
 
             # for eval, save an image of currently generated samples (top rows)
             # followed by real images (bottom rows)
             if (epoch + 1) % self.sample_and_save_freq==0 or epoch == 0:
-                self.denoising_model.eval()
-                self.sample(train=True)
+                self.model.eval()
+                self.sample(train=True, accelerate=accelerate)
 
     @torch.no_grad()
-    def gen_samples(self, n_sample):
+    def gen_samples(self, n_sample, train=False):
         """
         This method is used to sample from the model
         Args:
@@ -989,7 +1065,7 @@ class ConditionalDDPM(nn.Module):
         # where w>0 means more guidance
         # if ddpm = 0, we just use DDIM instead
 
-        x_i = torch.randn(n_sample, *(self.in_channels, self.input_size, self.input_size)).to(self.device)  # x_T ~ N(0, 1), sample initial noise
+        x_i = torch.randn(n_sample, *(self.channels, self.img_size, self.img_size)).to(self.device)  # x_T ~ N(0, 1), sample initial noise
         c_i = torch.arange(0,self.n_classes).to(self.device) # context for us just cycles throught the mnist labels
         c_i = c_i.repeat(int(n_sample/c_i.shape[0]))
 
@@ -1005,10 +1081,13 @@ class ConditionalDDPM(nn.Module):
             x_i = x_i.repeat(2,1,1,1)
             t_is = t_is.repeat(n_sample*2)
 
-            z = torch.randn(n_sample, *(self.in_channels, self.input_size, self.input_size)).to(self.device) if i > 1 else 0
+            z = torch.randn(n_sample, *(self.channels, self.img_size, self.img_size)).to(self.device) if i > 1 else 0
 
             # split predictions and compute weight
-            eps = self.forward(x_i, t_is, c_i)
+            if train:
+                eps = self.ema(x_i, t_is, c_i)
+            else:
+                eps = self.forward(x_i, t_is, c_i)
             eps1 = eps[:n_sample]
             eps2 = eps[n_sample:]
 
@@ -1021,11 +1100,14 @@ class ConditionalDDPM(nn.Module):
 
         return x_i
 
-    def sample(self, train=False):
-        self.denoising_model.eval()
-        samples = self.gen_samples(self.n_classes).cpu().detach()
-        samples = torch.clamp(samples, -1, 1)
+    def sample(self, train=False, accelerate=None):
+        self.model.eval()
+        samples = self.gen_samples(self.n_classes, train=train).cpu().detach()
+        if self.vae is not None:
+            samples = self.vae.decode(samples.to(self.device) / 0.18215).sample 
         samples = samples*0.5 + 0.5
+        samples = samples.clamp(0, 1)
+
         # plot using make_grid
         grid = make_grid(samples, nrow=int(np.sqrt(self.n_classes)), padding=0)
         # plot image
@@ -1033,7 +1115,7 @@ class ConditionalDDPM(nn.Module):
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
         plt.axis('off')
         if not self.no_wandb and train:
-            wandb.log({"CDDPM Samples": fig})
+            accelerate.log({"CDDPM Samples": fig})
         else:
             plt.show()
         plt.close(fig)

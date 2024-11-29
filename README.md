@@ -108,7 +108,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 #### DDPMs
 
 - DDPM<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2006.11239) | [`Code`](src/generativezoo/models/DDPM/DDPM.py)<sup>7,8,9,21</sup> | [`Script`](src/generativezoo/DDPM.py) | [`Documentation`](docs/DDPM.md)
-- Conditional DDPM<sup>🚀</sup> [`Paper`](https://arxiv.org/abs/2207.12598) | [`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)<sup>10,21</sup> | [`Script`](src/generativezoo/CondDDPM.py) | [`Documentation`](docs/ConditionalDDPM.md)
+- Conditional DDPM<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2207.12598) | [`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)<sup>10,21</sup> | [`Script`](src/generativezoo/CondDDPM.py) | [`Documentation`](docs/ConditionalDDPM.md)
 - Diffusion AE [`Paper`](https://arxiv.org/abs/2111.15640) | [`Code`](src/generativezoo/models/DDPM/MONAI_DiffAE.py)<sup>11</sup> | [`Script`](src/generativezoo/DAE.py) | [`Documentation`](docs/DiffusionAE.md)
 
 #### SGMs
@@ -139,6 +139,10 @@ The listed models are already implemented and fully integrated in the model zoo.
 - InstructPix2Pix<sup>🚀</sup> [`Paper`](https://arxiv.org/abs/2211.09800) | [`Code`](src/generativezoo/models/SD/InstructPix2Pix.py)<sup>20</sup> | [`Script`](src/generativezoo/InstructPix2Pix.py) | [`Documentation`](docs/InstructPix2Pix.md)
 
 ## Multi-GPU support and Mixed  Precision
+
+[`Accelerate`](https://huggingface.co/docs/accelerate/en/index) should be configured for your hardware setup using:
+
+    accelerate config
 
 The models that support these features should be launched with:
 
