@@ -19,15 +19,19 @@ import wandb
 from sklearn.metrics import roc_auc_score
 from config import models_dir
 from torchvision.transforms import Compose, Lambda, ToPILImage
-from abc import abstractmethod
 from torchvision.utils import make_grid
 from lpips import LPIPS
+from diffusers.models import AutoencoderKL
+from accelerate import Accelerator
+from collections import OrderedDict
+import copy
+from abc import abstractmethod
 
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
     os.makedirs(models_dir)
-  if not os.path.exists(os.path.join(models_dir, 'VanillaDDPM')):
-    os.makedirs(os.path.join(models_dir, 'VanillaDDPM'))
+  if not os.path.exists(os.path.join(models_dir, 'DDPM')):
+    os.makedirs(os.path.join(models_dir, 'DDPM'))
 
 def exists(x):
     return x is not None
@@ -81,17 +85,17 @@ def avg_pool_nd(dims, *args, **kwargs):
     raise ValueError(f"unsupported dimensions: {dims}")
 
 
-def update_ema(target_params, source_params, rate=0.99):
+@torch.no_grad()
+def update_ema(ema_model, model, decay=0.5):
     """
-    Update target parameters to be closer to those of source parameters using
-    an exponential moving average.
+    Step the EMA model towards the current model.
+    """
+    ema_params = OrderedDict(ema_model.named_parameters())
+    model_params = OrderedDict(model.named_parameters())
 
-    :param target_params: the target parameter sequence.
-    :param source_params: the source parameter sequence.
-    :param rate: the EMA rate (closer to 1 means slower).
-    """
-    for targ, src in zip(target_params, source_params):
-        targ.detach().mul_(rate).add_(src, alpha=1 - rate)
+    for name, param in model_params.items():
+        # TODO: Consider applying only to params that require_grad to avoid small numerical changes of pos_embed
+        ema_params[name].mul_(decay).add_(param.data, alpha=1 - decay)
 
 
 def zero_module(module):
@@ -839,10 +843,10 @@ def plot_samples(samples):
     plt.imshow(grid.permute(1, 2, 0))
     plt.show()
 
-class VanillaDDPM(nn.Module):
+class DDPM(nn.Module):
     def __init__(self, args, image_size, channels, with_time_emb=True):
         '''
-        VanillaDDPM module
+        DDPM module
         :param args: arguments
         :param image_size: size of the image
         :param in_channels: number of input channels
@@ -856,12 +860,23 @@ class VanillaDDPM(nn.Module):
                                         Lambda(lambda t: t.numpy().astype(np.uint8)),
                                         ToPILImage(),
                                     ])
+        
+        self.args = args
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.denoising_model = UNetModel(
-            image_size=image_size,
-            in_channels=channels,
+        self.vae =  AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-mse").to(self.device) if args.latent else None
+        self.channels = channels
+        self.img_size = image_size
+
+        # If using VAE, change the number of channels and image size accordingly
+        if self.vae is not None:
+            self.channels = 4
+            self.img_size = self.img_size // 8
+
+        self.model = UNetModel(
+            image_size=self.img_size,
+            in_channels=self.channels,
             model_channels=args.model_channels,
-            out_channels=channels,
+            out_channels=self.channels,
             num_res_blocks=args.num_res_blocks,
             attention_resolutions=args.attention_resolutions,
             dropout=args.dropout,
@@ -877,23 +892,31 @@ class VanillaDDPM(nn.Module):
             resblock_updown=args.resblock_updown,
             use_new_attention_order=args.use_new_attention_order
         ).to(self.device)
+
         self.scheduler = LinearScheduler(args.beta_start, args.beta_end, args.timesteps)
         self.forward_diffusion_model = ForwardDiffusion(self.scheduler.sqrt_alphas_cumprod, self.scheduler.sqrt_one_minus_alphas_cumprod, self.reverse_transform)
         self.sampler = Sampler(self.scheduler.betas, args.timesteps, args.sample_timesteps, args.ddpm, args.recon_factor)
-        self.optimizer = torch.optim.Adam(self.denoising_model.parameters(), lr = args.lr)
         self.criterion = get_loss
         self.n_epochs = args.n_epochs
         self.timesteps = args.timesteps
         self.sample_and_save_freq = args.sample_and_save_freq
         self.loss_type = args.loss_type
-        self.image_size = image_size
-        self.num_channels = channels
         self.dataset = args.dataset
         self.no_wandb = args.no_wandb
+        self.lr = args.lr
+        self.warmup = args.warmup
+        self.decay = args.decay
+
         if args.lpips:
             self.lpips_loss = LPIPS(net='alex').to(self.device)
         else:
             self.lpips_loss = None
+        
+        if args.train:
+            self.ema = copy.deepcopy(self.model)
+            self.ema_rate = args.ema_rate
+            for param in self.ema.parameters():
+                param.requires_grad = False
 
 
     def train_model(self, dataloader, verbose=True):
@@ -901,45 +924,109 @@ class VanillaDDPM(nn.Module):
         Train the model
         :param dataloader: dataloader
         '''
+
+        accelerate = Accelerator(log_with="wandb")
+        if not self.no_wandb:
+            accelerate.init_trackers(project_name='DDPM',
+            config = {
+                        'dataset': self.args.dataset,
+                        'batch_size': self.args.batch_size,
+                        'n_epochs': self.args.n_epochs,
+                        'lr': self.args.lr,
+                        'timesteps': self.args.timesteps,
+                        'beta_start': self.args.beta_start,
+                        'beta_end': self.args.beta_end,
+                        'ddpm': self.args.ddpm,
+                        'input_size': self.img_size,
+                        'channels': self.channels,
+                        'loss_type': self.args.loss_type,
+                        'model_channels': self.args.model_channels,
+                        'num_res_blocks': self.args.num_res_blocks,
+                        'attention_resolutions': self.args.attention_resolutions,
+                        'dropout': self.args.dropout,
+                        'channel_mult': self.args.channel_mult,
+                        'conv_resample': self.args.conv_resample,
+                        'dims': self.args.dims,
+                        'num_heads': self.args.num_heads,
+                        'num_head_channels': self.args.num_head_channels,
+                        'use_scale_shift_norm': self.args.use_scale_shift_norm,
+                        'resblock_updown': self.args.resblock_updown,
+                        'use_new_attention_order': self.args.use_new_attention_order, 
+                        "ema_rate": self.args.ema_rate,
+                        "warmup": self.args.warmup,
+                        "latent": self.args.latent,
+                        "decay": self.args.decay,
+                        "size": self.args.size,   
+                },
+                init_kwargs={"wandb":{"name": f"DDPM_{self.args.dataset}"}})
+
         best_loss = np.inf
         create_checkpoint_dir()
-        for epoch in tqdm(range(self.n_epochs), desc='Training DDPM', leave=True):
+        epoch_bar = tqdm(range(self.n_epochs), desc='Epochs', leave=True)
+
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
+
+        update_ema(self.ema, self.model, 0)
+
+        dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
+
+        for epoch in epoch_bar:
+            self.model.train()
             acc_loss = 0.0
-            with tqdm(dataloader, desc=f'Batches', leave=False, disable=not verbose) as pbar:
-                for step,batch in enumerate(dataloader):
-                    self.optimizer.zero_grad()
-                    batch_size = batch[0].shape[0]
-                    batch = batch[0].to(self.device)
-                    t = torch.randint(0, self.timesteps, (batch_size,), device=self.device).long()
-                    loss = self.criterion(forward_diffusion_model=self.forward_diffusion_model, denoising_model=self.denoising_model, x_start=batch, t=t, loss_type=self.loss_type)
-                    loss.backward()
-                    self.optimizer.step()
-                    acc_loss += loss.item() * batch_size
+            for batch in tqdm(dataloader, desc=f'Batches', leave=False, disable=not verbose):
 
-                    pbar.set_postfix(Epoch=f"{epoch+1}/{self.n_epochs}", Loss=f"{loss:.4f}")
-                    pbar.update()
+                optimizer.zero_grad()
+                batch_size = batch[0].shape[0]
+                batch = batch[0].to(self.device)
 
-                    # save generated images
-                if epoch==0 or (epoch+1 % self.sample_and_save_freq == 0):
-                    samples = self.sampler.sample(model=self.denoising_model, image_size=self.image_size, batch_size=16, channels=self.num_channels)
-                    all_images = samples[-1] 
-                    all_images = (all_images + 1) * 0.5
-                    # all_images is a numpy array, plot 9 images from it
-                    fig = plt.figure(figsize=(10, 10))
-                    n_row = np.sqrt(all_images.shape[0]).astype(int)
-                    n_col = n_row
-                    grid = make_grid(torch.tensor(all_images), nrow=n_row, normalize=False, padding=0)
-                    plt.imshow(grid.permute(1, 2, 0))
-                    #save figure wandb
-                    if not self.no_wandb:
-                        wandb.log({"DDPM Samples": fig})
-                    plt.close(fig)
+                if self.vae is not None:
+                    with torch.no_grad():
+                        # if x has one channel, make it 3 channels
+                        if batch.shape[1] == 1:
+                            batch = torch.cat((batch, batch, batch), dim=1)
+                        batch = self.vae.encode(batch).latent_dist.sample().mul_(0.18215)
+
+                t = torch.randint(0, self.timesteps, (batch_size,), device=self.device).long()
+                loss = self.criterion(forward_diffusion_model=self.forward_diffusion_model, denoising_model=self.model, x_start=batch, t=t, loss_type=self.loss_type)
+                accelerate.backward(loss)
+                
+                optimizer.step()
+                acc_loss += loss.item() * batch_size
+                update_ema(self.ema, self.model, self.ema_rate)
+
+            if not self.no_wandb:
+                accelerate.log({"Train Loss": acc_loss / len(dataloader.dataset)})
+                accelerate.log({"Learning Rate": scheduler.get_last_lr()[0]})
+
+            scheduler.step()
+            epoch_bar.set_postfix({'Loss': acc_loss/len(dataloader.dataset)})   
+
+            print((epoch+1) % self.sample_and_save_freq)
+            # save generated images
+            if epoch == 0 or (epoch+1) % self.sample_and_save_freq == 0:
+                samples = self.sampler.sample(model=self.ema, image_size=self.img_size, batch_size=16, channels=self.channels)
+                all_images = torch.tensor(samples[-1])
+
+                if self.vae is not None:
+                    with torch.no_grad():
+                        all_images = self.vae.decode(all_images.to(self.device) / 0.18215).sample 
+                        all_images = all_images.cpu().detach()
+                
+                all_images = all_images * 0.5 + 0.5
+                all_images = all_images.clamp(0, 1)
+                fig = plt.figure(figsize=(10, 10))
+                grid = make_grid(all_images, nrow=int(np.sqrt(all_images.shape[0])), normalize=False, padding=0)
+                plt.imshow(grid.permute(1, 2, 0))
+                
+                #save figure wandb
+                if not self.no_wandb:
+                    accelerate.log({"DDPM Samples": fig})
+                plt.close(fig)
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
-                torch.save(self.denoising_model.state_dict(), os.path.join(models_dir,'VanillaDDPM',f'VanDDPM_{self.dataset}.pt'))
-            if not self.no_wandb:
-                wandb.log({"DDPM Loss": acc_loss/len(dataloader.dataset)})
+                torch.save(self.ema.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
     
     @torch.no_grad()
     def outlier_score(self, x_start):
@@ -947,12 +1034,26 @@ class VanillaDDPM(nn.Module):
         Compute the outlier score
         :param x_start: input image
         '''
+        if self.vae is not None:
+            with torch.no_grad():
+                # if x has one channel, make it 3 channels
+                if x_start.shape[1] == 1:
+                    x_start = torch.cat((x_start, x_start, x_start), dim=1)
+                x_original = x_start.clone()
+                x_start = self.vae.encode(x_start).latent_dist.sample().mul_(0.18215)
+
         noise = torch.randn_like(x_start)
         t = torch.ones((x_start.shape[0],), device=self.device).long() * (int(self.timesteps*self.sampler.recon_factor)-1)
 
         x_noisy = self.forward_diffusion_model.q_sample(x_start=x_start, t=t, noise=noise)
-        predicted_image = self.sampler.reconstruct_loop(self.denoising_model, self.image_size, x_noisy)[-1]
+        predicted_image = self.sampler.reconstruct_loop(self.model, self.img_size, x_noisy)[-1]
         predicted_image = torch.tensor(predicted_image, device=self.device)
+
+        if self.vae is not None:
+            with torch.no_grad():
+                predicted_image = self.vae.decode(predicted_image.to(self.device) / 0.18215).sample 
+                predicted_image = predicted_image.clamp(0,1).cpu().detach()
+                x_start = x_original
 
         if self.loss_type == 'l1':
             loss = nn.L1Loss(reduction = 'none')
@@ -986,7 +1087,7 @@ class VanillaDDPM(nn.Module):
         :param in_name: name of the in-distribution dataset
         :param out_name: name of the out-of-distribution dataset
         '''
-        self.denoising_model.eval()
+        self.model.eval()
         val_loss = 0.0
         val_scores = []
         for batch in tqdm(val_loader, desc='In-distribution', leave=True):
@@ -1021,7 +1122,7 @@ class VanillaDDPM(nn.Module):
         Sample images
         :param batch_size: batch size
         '''
-        samps = self.sampler.sample(model=self.denoising_model, image_size=self.image_size, batch_size=batch_size, channels=self.num_channels)[-1]
+        samps = self.sampler.sample(model=self.model, image_size=self.img_size, batch_size=batch_size, channels=self.channels)[-1]
         plot_samples(samps)
 
 class LinearScheduler():
