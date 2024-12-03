@@ -113,7 +113,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 #### SGMs
 
-- Vanilla SGM [`Paper`](https://arxiv.org/abs/2006.09011) | [`Code`](src/generativezoo/models/SGM/VanillaSGM.py)<sup>12</sup> | [`Script`](src/generativezoo/VanSGM.py) | [`Documentation`](docs/VanillaSGM.md)
+- SGM<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2006.09011) | [`Code`](src/generativezoo/models/SGM/SGM.py)<sup>12</sup> | [`Script`](src/generativezoo/SGM.py) | [`Documentation`](docs/SGM.md)
 - NCSNv2 [`Paper`](https://arxiv.org/abs/2006.09011) | [`Code`](src/generativezoo/models/SGM/NCSNv2.py)<sup>13</sup> | [`Script`](src/generativezoo/NCSNv2.py) | [`Documentation`](docs/NCSNv2.md)
 
 #### Autoregressive
