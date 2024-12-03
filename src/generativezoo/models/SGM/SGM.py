@@ -935,7 +935,7 @@ class SGM(nn.Module):
 
     create_checkpoint_dir()
 
-    update_ema(self.model, self.ema, 0)
+    update_ema(self.ema, self.model, 0)
 
     dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
 
@@ -960,7 +960,7 @@ class SGM(nn.Module):
             optimizer.step()
 
             avg_loss += loss.item()*x.shape[0]
-            update_ema(self.model, self.ema, self.ema_rate)
+            update_ema(self.ema, self.model, self.ema_rate)
 
         epoch_bar.set_description('Average Loss: {:5f}'.format(avg_loss / len(dataloader.dataset)))
         if not self.no_wandb:
@@ -1070,7 +1070,7 @@ class SGM(nn.Module):
             with torch.no_grad():
                 score_cond = self.model(sample, time_steps, y) if not(train) else self.ema(sample, time_steps, y)
                 score_uncond = self.model(sample, time_steps, torch.full((sample.shape[0],), self.n_classes, device=self.device)) if not(train) else self.ema(sample, time_steps, torch.full((sample.shape[0],), self.n_classes, device=self.device))
-                score = (1+self.cfg)*score_cond - self.cfg*score_uncond
+                score = self.cfg*score_cond + (1-self.cfg)*score_uncond
         else:    
             with torch.no_grad():    
                 score = self.model(sample, time_steps) if not(train) else self.ema(sample, time_steps)
