@@ -1070,7 +1070,7 @@ class SGM(nn.Module):
             with torch.no_grad():
                 score_cond = self.model(sample, time_steps, y) if not(train) else self.ema(sample, time_steps, y)
                 score_uncond = self.model(sample, time_steps, torch.full((sample.shape[0],), self.n_classes, device=self.device)) if not(train) else self.ema(sample, time_steps, torch.full((sample.shape[0],), self.n_classes, device=self.device))
-                score = (1+self.cfg)*score_cond - self.cfg*score_uncond
+                score = self.cfg*score_cond + (1-self.cfg)*score_uncond
         else:    
             with torch.no_grad():    
                 score = self.model(sample, time_steps) if not(train) else self.ema(sample, time_steps)

@@ -6,8 +6,8 @@ Score-based Generative Models (SGMs) model the diffusion process using a Stochas
 
 ## Parameters
 
-| **Parameter**             | **Description**                               | **Default**   | **Choices**                                                                                                        |
-|---------------------------|-----------------------------------------------|---------------|--------------------------------------------------------------------------------------------------------------------|
+| **Parameter**             | **Description**                              | **Default**   | **Choices**                                                                                                        |
+|---------------------------|----------------------------------------------|---------------|--------------------------------------------------------------------------------------------------------------------|
 | `--dataset`               | Dataset name                                 | `mnist`       | `mnist`, `cifar10`, `cifar100`, `places365`, `dtd`, `fashionmnist`, `chestmnist`, `octmnist`, `tissuemnist`, `pneumoniamnist`, `svhn`, `tinyimagenet`, `imagenet` |
 | `--batch_size`            | Batch size                                   | `128`         |                                                                                                                    |
 | `--n_epochs`              | Number of epochs                             | `100`         |                                                                                                                    |
@@ -24,8 +24,8 @@ Score-based Generative Models (SGMs) model the diffusion process using a Stochas
 | `--num_head_channels`     | Fixed channel width per attention head       | `32`          |                                                                                                                    |
 | `--use_scale_shift_norm`  | Use FiLM-like conditioning mechanism         | `False`       |                                                                                                                    |
 | `--resblock_updown`       | Use residual blocks for up/downsampling      | `False`       |                                                                                                                    |
-| `--use_new_attention_order` | Use alternative attention pattern           | `False`       |                                                                                                                    |
-| `--solver`                | Solver for ODE                               | `euler`       | `dopri5`, `rk4`, `dopri8`, `euler`, `bosh3`, `adaptive_heun`, `midpoint`, `explicit_adams`, `implicit_adams`        |
+| `--use_new_attention_order` | Use alternative attention pattern          | `False`       |                                                                                                                    |
+| `--solver`                | Solver for ODE                               | `euler`       | `dopri5`, `rk4`, `dopri8`, `euler`, `bosh3`, `adaptive_heun`, `midpoint`, `explicit_adams`, `implicit_adams`       |
 | `--outlier_detection`     | Outlier detection                            | `False`       |                                                                                                                    |
 | `--atol`                  | Absolute tolerance                           | `1e-6`        |                                                                                                                    |
 | `--rtol`                  | Relative tolerance                           | `1e-6`        |                                                                                                                    |
