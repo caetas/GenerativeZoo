@@ -1,32 +1,26 @@
-##############################################################################################
-############### Code based on: https://github.com/cloneofsimo/minDiffusion ###################
-###############  https://github.com/TeaPearce/Conditional_Diffusion_MNIST  ###################
-##############             https://github.com/ermongroup/ddim              ################### 
-##############################################################################################
+###################################################################################################################
+####### Code based on https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing #######
+###################################################################################################################
 
-from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.utils import make_grid
-import matplotlib.pyplot as plt
 import numpy as np
-from tqdm import tqdm, trange
+import functools
+from tqdm import trange, tqdm
 from config import models_dir
 import os
+from torchdiffeq import odeint
+import matplotlib.pyplot as plt
+from torchvision.utils import make_grid
+from sklearn.metrics import roc_auc_score
 import wandb
-from abc import abstractmethod
-import math
 from diffusers.models import AutoencoderKL
 from accelerate import Accelerator
 from collections import OrderedDict
 import copy
-
-def create_checkpoint_dir():
-  if not os.path.exists(models_dir):
-    os.makedirs(models_dir)
-  if not os.path.exists(os.path.join(models_dir, 'ConditionalDDPM')):
-    os.makedirs(os.path.join(models_dir, 'ConditionalDDPM'))
+from abc import abstractmethod
+import math
 
 # PyTorch 1.7 has SiLU, but we support PyTorch 1.5.
 class SiLU(nn.Module):
@@ -622,7 +616,7 @@ class UNetModel(nn.Module):
             num_heads_upsample = num_heads
 
         self.image_size = image_size
-        self.channels = in_channels
+        self.in_channels = in_channels
         self.model_channels = model_channels
         self.out_channels = out_channels
         self.num_res_blocks = num_res_blocks
@@ -815,57 +809,41 @@ class UNetModel(nn.Module):
             h = module(h, emb)
         h = h.type(x.dtype)
         return self.out(h)
-    
-def ddpm_schedules(beta1, beta2, T):
-    """
-    Returns pre-computed schedules for DDPM sampling, training process.
-    """
-    assert beta1 < beta2 < 1.0, "beta1 and beta2 must be in (0, 1)"
 
-    beta_t = (beta2 - beta1) * torch.arange(0, T + 1, dtype=torch.float32) / T + beta1
-    sqrt_beta_t = torch.sqrt(beta_t)
-    alpha_t = 1 - beta_t
-    log_alpha_t = torch.log(alpha_t)
-    alphabar_t = torch.cumsum(log_alpha_t, dim=0).exp()
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'SGM')):
+    os.makedirs(os.path.join(models_dir, 'SGM'))
 
-    sqrtab = torch.sqrt(alphabar_t)
-    oneover_sqrta = 1 / torch.sqrt(alpha_t)
+class SGM(nn.Module):
+  def __init__(self, args, in_channels=1, input_size=32):
+    '''
+    Vanilla SGM model
+    Args:
+      args: The arguments for the model
+      in_channels: The number of input channels.
+      input_size: The size of the input image.
+    '''
+    super(SGM, self).__init__()
+    self.args = args
+    self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    self.sigma = args.sigma
+    self.n_epochs = args.n_epochs
+    self.lr = args.lr
+    self.in_channels = in_channels
+    self.input_size = input_size
 
-    sqrtmab = torch.sqrt(1 - alphabar_t)
-    mab_over_sqrtmab_inv = (1 - alpha_t) / sqrtmab
+    self.vae =  AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-mse").to(self.device) if args.latent else None
+    self.channels = in_channels
+    self.img_size = input_size
 
-    return {
-        "alpha_t": alpha_t,  # \alpha_t
-        "oneover_sqrta": oneover_sqrta,  # 1/\sqrt{\alpha_t}
-        "sqrt_beta_t": sqrt_beta_t,  # \sqrt{\beta_t}
-        "alphabar_t": alphabar_t,  # \bar{\alpha_t}
-        "sqrtab": sqrtab,  # \sqrt{\bar{\alpha_t}}
-        "sqrtmab": sqrtmab,  # \sqrt{1-\bar{\alpha_t}}
-        "mab_over_sqrtmab": mab_over_sqrtmab_inv,  # (1-\alpha_t)/\sqrt{1-\bar{\alpha_t}}
-    }
+    # If using VAE, change the number of channels and image size accordingly
+    if self.vae is not None:
+        self.channels = 4
+        self.img_size = self.img_size // 8
 
-class ConditionalDDPM(nn.Module):
-    def __init__(self, in_channels, input_size, args):
-        '''Conditional DDPM
-        Args:
-        in_channels: int, number of input channels
-        input_size: int, size of the input image
-        args: argparse.ArgumentParser, arguments containing model hyperparameters
-        '''
-        super(ConditionalDDPM, self).__init__()
-
-        self.args = args
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.vae =  AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-mse").to(self.device) if args.latent else None
-        self.channels = in_channels
-        self.img_size = input_size
-
-        # If using VAE, change the number of channels and image size accordingly
-        if self.vae is not None:
-            self.channels = 4
-            self.img_size = self.img_size // 8
-
-        self.model = UNetModel(
+    self.model = UNetModel(
             image_size=self.img_size,
             in_channels=self.channels,
             model_channels=args.model_channels,
@@ -876,7 +854,7 @@ class ConditionalDDPM(nn.Module):
             channel_mult=args.channel_mult,
             conv_resample=args.conv_resample,
             dims=args.dims,
-            num_classes=args.n_classes + 1,
+            num_classes= args.n_classes + 1 if args.conditional else None,
             use_checkpoint=False,
             num_heads=args.num_heads,
             num_head_channels=args.num_head_channels,
@@ -885,239 +863,346 @@ class ConditionalDDPM(nn.Module):
             resblock_updown=args.resblock_updown,
             use_new_attention_order=args.use_new_attention_order
         ).to(self.device)
+    
+    self.dataset = args.dataset
+    self.sample_and_save_freq = args.sample_and_save_freq
+    self.num_steps = args.num_steps
+    self.solver = args.solver
+    self.atol = args.atol
+    self.rtol = args.rtol
+    self.eps = args.eps
+    self.no_wandb = args.no_wandb
+    self.decay = args.decay
+    self.warmup = args.warmup
+    self.latent = args.latent
+    self.conditional = args.conditional
+    self.n_classes = args.n_classes
+    self.cfg = args.cfg
+    self.drop_prob = args.drop_prob
 
-        # register_buffer allows accessing dictionary produced by ddpm_schedules
-        # e.g. can access self.sqrtab later
-        for k, v in ddpm_schedules(args.beta_start, args.beta_end, args.timesteps).items():
-            self.register_buffer(k, v)
-        self.sqrtab = self.sqrtab.to(self.device)
-        self.sqrtmab = self.sqrtmab.to(self.device)
-        self.n_T = args.timesteps
-        self.n_Tau = args.sample_timesteps
-        self.scaling = args.timesteps//args.sample_timesteps
-        self.drop_prob = args.drop_prob
-        self.loss_mse = nn.MSELoss()
-        self.beta_start = args.beta_start
-        self.beta_end = args.beta_end
-        self.lr = args.lr
-        self.n_epochs = args.n_epochs
-        self.ddpm = args.ddpm
-        self.n_classes = args.n_classes
-        self.dataset = args.dataset
-        self.sample_and_save_freq = args.sample_and_save_freq
-        self.cfg = args.cfg
-        self.no_wandb = args.no_wandb
-        self.warmup = args.warmup
-        self.decay = args.decay
-
-        if args.train:
+    if args.train:
             self.ema = copy.deepcopy(self.model)
             self.ema_rate = args.ema_rate
             for param in self.ema.parameters():
                 param.requires_grad = False
 
-    def forward(self, x, _ts, y):
-        """
-        This method is used in training, so samples t and noise randomly
-        Args:
-        x: torch.Tensor, input image
-        _ts: torch.Tensor, timestep
-        y: torch.Tensor, label
-        Returns:
-        loss: torch.Tensor, loss value
-        """
-        return self.model(x, _ts, y)
-    
-    def denoising_loss(self, x, y):
-        """
-        This method is used in training, so samples noise randomly
-        Args:
-        x: torch.Tensor, input image
-        y: torch.Tensor, label
-        t: torch.Tensor, timestep
-        Returns:
-        loss: torch.Tensor, loss value
-        """
-        _ts = torch.randint(1, self.n_T+1, (x.shape[0],)).to(self.device)  # t ~ Uniform(0, n_T)
-        noise = torch.randn_like(x).to(self.device)  # eps ~ N(0, 1)
+  def train_model(self, dataloader, verbose=True):
+    '''
+    Train the Vanilla SGM model
+    Args:
+      dataloader: A PyTorch dataloader that provides training data.
+    '''
 
-        x_t = (
-            self.sqrtab[_ts, None, None, None] * x
-            + self.sqrtmab[_ts, None, None, None] * noise
-        )  # This is the x_t, which is sqrt(alphabar) x_0 + sqrt(1-alphabar) * eps
+    accelerate = Accelerator(log_with="wandb")
+    if not self.no_wandb:
+        accelerate.init_trackers(project_name='SGM',
+        config = {
+                    'dataset': self.args.dataset,
+                    'batch_size': self.args.batch_size,
+                    'n_epochs': self.args.n_epochs,
+                    'lr': self.args.lr,
+                    'sigma': self.args.sigma,
+                    'input_size': self.img_size,
+                    'channels': self.channels,
+                    'model_channels': self.args.model_channels,
+                    'num_res_blocks': self.args.num_res_blocks,
+                    'attention_resolutions': self.args.attention_resolutions,
+                    'dropout': self.args.dropout,
+                    'channel_mult': self.args.channel_mult,
+                    'conv_resample': self.args.conv_resample,
+                    'dims': self.args.dims,
+                    'num_heads': self.args.num_heads,
+                    'num_head_channels': self.args.num_head_channels,
+                    'use_scale_shift_norm': self.args.use_scale_shift_norm,
+                    'resblock_updown': self.args.resblock_updown,
+                    'use_new_attention_order': self.args.use_new_attention_order, 
+                    "ema_rate": self.args.ema_rate,
+                    "warmup": self.args.warmup,
+                    "latent": self.args.latent,
+                    "decay": self.args.decay,
+                    "size": self.args.size,
+                    "cfg": self.args.cfg,
+                    "drop_prob": self.args.drop_prob,
+                    "n_classes": self.n_classes,  
+            },
+            init_kwargs={"wandb":{"name": f"SGM_{self.args.dataset}"}})
+    
+    epoch_bar = trange(self.n_epochs, desc='Average loss: N/A')
+    best_loss = np.inf
+
+    optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
+
+    create_checkpoint_dir()
+
+    update_ema(self.model, self.ema, 0)
+
+    dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
+
+    for epoch in epoch_bar:
+        avg_loss = 0.0
         
-        y = torch.where(torch.rand(x.shape[0], device=self.device) < self.drop_prob, torch.full((x.shape[0],), self.n_classes, device=self.device), y)
+        for x,y in tqdm(dataloader, desc='Batches', leave=False, disable=not verbose):
+            x = x.to(self.device)
+            y = y.to(self.device)
 
-        return self.loss_mse(noise, self.forward(x_t, _ts, y))
+            if self.vae is not None:
+                with torch.no_grad():
+                    # if x has one channel, make it 3 channels
+                    if x.shape[1] == 1:
+                        x = torch.cat((x, x, x), dim=1)
+                    x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
 
-    
-    
-    def train_model(self,dataloader, verbose = True):
-        '''
-        Trains the Conditional DDPM model
-        Args:
-        dataloader: torch.utils.data.DataLoader, dataloader for the dataset
-        '''
-        accelerate = Accelerator(log_with="wandb")
+            optimizer.zero_grad()
+            loss = self.loss_fn(x, y)
+
+            accelerate.backward(loss)
+            optimizer.step()
+
+            avg_loss += loss.item()*x.shape[0]
+            update_ema(self.model, self.ema, self.ema_rate)
+
+        epoch_bar.set_description('Average Loss: {:5f}'.format(avg_loss / len(dataloader.dataset)))
         if not self.no_wandb:
-            accelerate.init_trackers(project_name='CondDDPM',
-            config = {
-                        'dataset': self.args.dataset,
-                        'batch_size': self.args.batch_size,
-                        'n_epochs': self.args.n_epochs,
-                        'lr': self.args.lr,
-                        'timesteps': self.args.timesteps,
-                        'beta_start': self.args.beta_start,
-                        'beta_end': self.args.beta_end,
-                        'ddpm': self.args.ddpm,
-                        'input_size': self.img_size,
-                        'channels': self.channels,
-                        'model_channels': self.args.model_channels,
-                        'num_res_blocks': self.args.num_res_blocks,
-                        'attention_resolutions': self.args.attention_resolutions,
-                        'dropout': self.args.dropout,
-                        'channel_mult': self.args.channel_mult,
-                        'conv_resample': self.args.conv_resample,
-                        'dims': self.args.dims,
-                        'num_heads': self.args.num_heads,
-                        'num_head_channels': self.args.num_head_channels,
-                        'use_scale_shift_norm': self.args.use_scale_shift_norm,
-                        'resblock_updown': self.args.resblock_updown,
-                        'use_new_attention_order': self.args.use_new_attention_order, 
-                        "ema_rate": self.args.ema_rate,
-                        "warmup": self.args.warmup,
-                        "latent": self.args.latent,
-                        "decay": self.args.decay,
-                        "size": self.args.size,
-                        "cfg": self.args.cfg,
-                        "drop_prob": self.args.drop_prob,
-                        "n_classes": self.n_classes,  
-                },
-                init_kwargs={"wandb":{"name": f"CondDDPM_{self.args.dataset}"}})
+            accelerate.log({'loss': avg_loss / len(dataloader.dataset)}, step = epoch)
+            accelerate.log({'lr': scheduler.get_last_lr()[0]}, step = epoch)
+        
+        scheduler.step()
 
-        create_checkpoint_dir()
-        epoch_bar = trange(self.n_epochs, desc="Epoch")
-        best_loss = np.inf
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            torch.save(self.ema.state_dict(), os.path.join(models_dir,'SGM', f"{'Cond' if self.conditional else ''}{'LatSGM' if self.latent else 'SGM'}_{self.dataset}.pt"))
 
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
+        if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
 
-        update_ema(self.ema, self.model, 0)
+            samples = self.get_samples(16)
+            if self.vae is not None:
+                samples = self.vae.decode(samples.to(self.device) / 0.18215).sample 
+            samples = samples*0.5 + 0.5
+            samples = samples.clamp(0.0, 1.0)
+            sample_grid = make_grid(samples, nrow=int(np.sqrt(16)), padding=0)
 
-        dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
-
-        for epoch in epoch_bar:
-            self.model.train()
-            acc_loss = 0.0
-            for x, y in tqdm(dataloader, desc="Batch", leave=False, disable=not verbose):
-                
-                optimizer.zero_grad()
-
-                x = x.to(self.device)
-                y = y.to(self.device)
-
-                if self.vae is not None:
-                    with torch.no_grad():
-                        # if x has one channel, make it 3 channels
-                        if x.shape[1] == 1:
-                            x = torch.cat((x, x, x), dim=1)
-                        x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
-                
-                loss = self.denoising_loss(x,y)
-                acc_loss += loss.item() * x.shape[0]
-                
-                accelerate.backward(loss)
-                optimizer.step()
-                update_ema(self.ema, self.model, self.ema_rate)
-
+            fig = plt.figure(figsize=(10, 10))
+            plt.imshow(sample_grid.permute(1, 2, 0).cpu().numpy(), vmin=0.0, vmax=1.0)
+            plt.axis('off')
             if not self.no_wandb:
-                accelerate.log({"CDDPM Loss": acc_loss/len(dataloader.dataset)})
-                accelerate.log({"Learning Rate": scheduler.get_last_lr()[0]})
+                accelerate.log({'samples': fig}, step = epoch)
+            plt.close(fig)
 
-            epoch_bar.set_description(f"loss: {acc_loss/len(dataloader.dataset):.4f}")
-            scheduler.step()
+  def marginal_prob_std(self, t):
+    """Compute the mean and standard deviation of $p_{0t}(x(t) | x(0))$.
 
-            if acc_loss/len(dataloader.dataset) < best_loss:
-                best_loss = acc_loss/len(dataloader.dataset)
-                torch.save(self.ema.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f"{'LatCondDDPM' if self.vae is not None else 'CondDDPM'}_{self.dataset}.pt"))
-
-            # for eval, save an image of currently generated samples (top rows)
-            # followed by real images (bottom rows)
-            if (epoch + 1) % self.sample_and_save_freq==0 or epoch == 0:
-                self.model.eval()
-                self.sample(train=True, accelerate=accelerate)
-
-    @torch.no_grad()
-    def gen_samples(self, n_sample, train=False):
-        """
-        This method is used to sample from the model
-        Args:
-        n_sample: int, number of samples to generate
-        guide_w: float, strength of generative guidance
-        Returns:
-        x_i: torch.Tensor, generated samples
-        x_i_store: np.array, generated samples at each sampling timestep
-        """
-        # we follow the guidance sampling scheme described in 'Classifier-Free Diffusion Guidance'
-        # to make the fwd passes efficient, we concat two versions of the dataset,
-        # one with context_mask=0 and the other context_mask=1
-        # we then mix the outputs with the guidance scale, w
-        # where w>0 means more guidance
-        # if ddpm = 0, we just use DDIM instead
-
-        x_i = torch.randn(n_sample, *(self.channels, self.img_size, self.img_size)).to(self.device)  # x_T ~ N(0, 1), sample initial noise
-        c_i = torch.arange(0,self.n_classes).to(self.device) # context for us just cycles throught the mnist labels
-        c_i = c_i.repeat(int(n_sample/c_i.shape[0]))
-
-        # double the batch
-        c_i = c_i.repeat(2)
-        c_i[n_sample:] = self.n_classes # makes second half of batch context free
-
-        for j in trange(self.n_Tau, 0, -1, desc="Sampling Timestep", leave=False):
-            i = j*self.scaling
-            t_is = torch.tensor([i]).to(self.device)
-
-            # double batch
-            x_i = x_i.repeat(2,1,1,1)
-            t_is = t_is.repeat(n_sample*2)
-
-            z = torch.randn(n_sample, *(self.channels, self.img_size, self.img_size)).to(self.device) if i > 1 else 0
-
-            # split predictions and compute weight
-            if train:
-                eps = self.ema(x_i, t_is, c_i)
-            else:
-                eps = self.forward(x_i, t_is, c_i)
-            eps_c = eps[:n_sample]
-            eps_u = eps[n_sample:]
-
-            eps = self.cfg*eps_c + (1-self.cfg)*eps_u
-            c1 = self.ddpm*((1 - self.alphabar_t[i] / self.alphabar_t[i-self.scaling]) * (1-self.alphabar_t[i-self.scaling]) / (1-self.alphabar_t[i])).sqrt()
-            c2  = ((1-self.alphabar_t[i-self.scaling]) - c1**2).sqrt()
-            x_i = x_i[:n_sample]
-            x_0 = (x_i - (1-self.alphabar_t[i]).sqrt()*eps) / self.alphabar_t[i].sqrt()
-            x_i = self.alphabar_t[i-self.scaling].sqrt() * x_0 + c2*eps + c1*z
-
-        return x_i
-
-    def sample(self, train=False, accelerate=None):
-        self.model.eval()
-        samples = self.gen_samples(self.n_classes, train=train).cpu().detach()
-        if self.vae is not None:
-            samples = self.vae.decode(samples.to(self.device) / 0.18215).sample 
-        samples = samples*0.5 + 0.5
-        samples = samples.clamp(0, 1)
-
-        # plot using make_grid
-        grid = make_grid(samples, nrow=int(np.sqrt(self.n_classes)), padding=0)
-        # plot image
-        fig = plt.figure(figsize=(10, 10))
-        plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
-        plt.axis('off')
-        if not self.no_wandb and train:
-            accelerate.log({"CDDPM Samples": fig})
-        else:
-            plt.show()
-        plt.close(fig)
-
+    Args:    
+      t: A vector of time steps.
+      sigma: The $\sigma$ in our SDE.  
     
+    Returns:
+      The standard deviation.
+    """    
+    #t = torch.tensor(t, device=device)
+    t = t.clone().detach().to(self.device)
+    return torch.sqrt((self.sigma**(2 * t) - 1.) / 2. / np.log(self.sigma))
+
+  def diffusion_coeff(self, t):
+    """Compute the diffusion coefficient of our SDE.
+
+    Args:
+      t: A vector of time steps.
+      sigma: The $\sigma$ in our SDE.
+    
+    Returns:
+      The vector of diffusion coefficients.
+    """
+    return (self.sigma**t).to(self.device)
+
+  def loss_fn(self, x, y=None):
+    """The loss function for training score-based generative models.
+
+    Args:
+        model: A PyTorch model instance that represents a 
+        time-dependent score-based model.
+        x: A mini-batch of training data.    
+        marginal_prob_std: A function that gives the standard deviation of 
+        the perturbation kernel.
+        eps: A tolerance value for numerical stability.
+    """
+    random_t = torch.rand(x.shape[0], device=x.device) * (1. - self.eps) + self.eps  
+    z = torch.randn_like(x)
+    std = self.marginal_prob_std(random_t)
+    perturbed_x = x + z * std[:, None, None, None]
+    if self.conditional:
+        y = torch.where(torch.rand(x.shape[0], device=self.device) < self.drop_prob, torch.full((x.shape[0],), self.n_classes, device=self.device), y)
+        score = self.model(perturbed_x, random_t, y)
+    else:
+        score = self.model(perturbed_x, random_t)
+    loss = torch.mean(torch.sum((score * std[:, None, None, None] + z)**2, dim=(1,2,3)))
+    return loss
+
+  @torch.no_grad()
+  def get_samples(self, num_samples=16, train=False):
+    """Generate samples from score-based models with black-box ODE solvers.
+
+    Args:
+        score_model: A PyTorch model that represents the time-dependent score-based model.
+        marginal_prob_std: A function that returns the standard deviation 
+        of the perturbation kernel.
+        diffusion_coeff: A function that returns the diffusion coefficient of the SDE.
+        batch_size: The number of samplers to generate by calling this function once.
+        atol: Tolerance of absolute errors.
+        rtol: Tolerance of relative errors.
+        device: 'cuda' for running on GPUs, and 'cpu' for running on CPUs.
+        z: The latent code that governs the final sample. If None, we start from p_1;
+        otherwise, we start from the given z.
+        eps: The smallest time step for numerical stability.
+    """
+    t = torch.ones(num_samples, device=self.device)
+    # Create the latent code
+    init_x = torch.randn(num_samples, self.channels, self.img_size, self.img_size, device=self.device)* self.marginal_prob_std(t)[:, None, None, None]
+      
+    shape = init_x.shape
+    y = torch.arange(num_samples, device=self.device)%self.n_classes if self.conditional else None
+
+    def score_eval_wrapper(sample, time_steps):
+        """A wrapper of the score-based model for use by the ODE solver."""
+        sample = sample.float().to(self.device).reshape(shape) #torch.tensor(sample, device=self.device, dtype=torch.float32).reshape(shape).clone().detach()
+        time_steps = time_steps.float().to(self.device).reshape((sample.shape[0], )) #torch.tensor(time_steps, device=self.device, dtype=torch.float32).reshape((sample.shape[0], )).clone().detach()
+        if self.conditional:
+            with torch.no_grad():
+                score_cond = self.model(sample, time_steps, y) if not(train) else self.ema(sample, time_steps, y)
+                score_uncond = self.model(sample, time_steps, torch.full((sample.shape[0],), self.n_classes, device=self.device)) if not(train) else self.ema(sample, time_steps, torch.full((sample.shape[0],), self.n_classes, device=self.device))
+                score = (1+self.cfg)*score_cond - self.cfg*score_uncond
+        else:    
+            with torch.no_grad():    
+                score = self.model(sample, time_steps) if not(train) else self.ema(sample, time_steps)
+        return score
+
+    def ode_func(t, x):        
+        """The ODE function for use by the ODE solver."""
+        time_steps = torch.ones((shape[0],), device=t.device) * t    
+        g = self.diffusion_coeff(t)
+        return  -0.5 * (g**2) * score_eval_wrapper(x, time_steps)
+
+    # Run the black-box ODE solver.
+    if self.solver == 'euler' or self.solver == 'rk4' or self.solver == 'midpoint' or self.solver == 'explicit_adams' or self.solver == 'implicit_adams':
+        samples = odeint(ode_func, init_x, t=torch.linspace(1, self.eps, 2).to(self.device), options={'step_size': 1./self.num_steps}, method=self.solver, rtol=self.rtol, atol=self.atol)
+    else:
+        samples = odeint(ode_func, init_x, t=torch.linspace(1, self.eps, 2).to(self.device), method=self.solver, options={'max_num_steps': self.num_steps}, rtol=self.rtol, atol=self.atol)
+    
+    x = samples[1]
+
+    return x
+  
+  @torch.no_grad()
+  def sample(self, num_samples=64):
+    '''
+    Sample from the Vanilla SGM model
+    Args:
+        num_samples: The number of samples to generate.
+        num_steps: The number of sampling steps.
+        snr: The signal-to-noise ratio for the PC sampler.
+        sampler_type: The type of sampler. One of 'EM', 'PC', and 'ODE'.
+    '''
+    self.model.eval()
+    samples = self.get_samples(num_samples)
+    if self.vae is not None:
+        samples = self.vae.decode(samples.to(self.device) / 0.18215).sample 
+    samples = samples*0.5 + 0.5  
+    samples = samples.clamp(0.0, 1.0)
+    sample_grid = make_grid(samples, nrow=int(np.sqrt(num_samples)), padding=0)
+    fig = plt.figure(figsize=(10, 10))
+    plt.imshow(sample_grid.permute(1, 2, 0).cpu().numpy(), vmin=0.0, vmax=1.0)
+    plt.axis('off')
+    plt.show()
+
+
+'''
+def Euler_Maruyama_sampler(score_model, 
+                           marginal_prob_std,
+                           diffusion_coeff, 
+                           batch_size=64, 
+                           num_steps=500, 
+                           device='cuda', 
+                           eps=1e-3,
+                           channels=1,
+                           input_size=28):
+  """Generate samples from score-based models with the Euler-Maruyama solver.
+
+  Args:
+    score_model: A PyTorch model that represents the time-dependent score-based model.
+    marginal_prob_std: A function that gives the standard deviation of
+      the perturbation kernel.
+    diffusion_coeff: A function that gives the diffusion coefficient of the SDE.
+    batch_size: The number of samplers to generate by calling this function once.
+    num_steps: The number of sampling steps. 
+      Equivalent to the number of discretized time steps.
+    device: 'cuda' for running on GPUs, and 'cpu' for running on CPUs.
+    eps: The smallest time step for numerical stability.
+  
+  Returns:
+    Samples.    
+  """
+  t = torch.ones(batch_size, device=device)
+  init_x = torch.randn(batch_size, channels, input_size, input_size, device=device) \
+    * marginal_prob_std(t)[:, None, None, None]
+  time_steps = torch.linspace(1., eps, num_steps, device=device)
+  step_size = time_steps[0] - time_steps[1]
+  x = init_x
+  with torch.no_grad():
+    for time_step in tqdm(time_steps):     
+      batch_time_step = torch.ones(batch_size, device=device) * time_step 
+      g = diffusion_coeff(batch_time_step)
+      mean_x = x + (g**2)[:, None, None, None] * score_model(x, batch_time_step) * step_size
+      x = mean_x + torch.sqrt(step_size) * g[:, None, None, None] * torch.randn_like(x)      
+  # Do not include any noise in the last sampling step.
+  return mean_x
+
+def pc_sampler(score_model, 
+               marginal_prob_std,
+               diffusion_coeff,
+               batch_size=64, 
+               num_steps=500, 
+               snr=0.16,                
+               device='cuda',
+               eps=1e-3,
+               channels=1,
+               input_size=32):
+  """Generate samples from score-based models with Predictor-Corrector method.
+
+  Args:
+    score_model: A PyTorch model that represents the time-dependent score-based model.
+    marginal_prob_std: A function that gives the standard deviation
+      of the perturbation kernel.
+    diffusion_coeff: A function that gives the diffusion coefficient 
+      of the SDE.
+    batch_size: The number of samplers to generate by calling this function once.
+    num_steps: The number of sampling steps. 
+      Equivalent to the number of discretized time steps.    
+    device: 'cuda' for running on GPUs, and 'cpu' for running on CPUs.
+    eps: The smallest time step for numerical stability.
+  
+  Returns: 
+    Samples.
+  """
+  t = torch.ones(batch_size, device=device)
+  init_x = torch.randn(batch_size, channels, input_size, input_size, device=device) * marginal_prob_std(t)[:, None, None, None]
+  time_steps = np.linspace(1., eps, num_steps)
+  step_size = time_steps[0] - time_steps[1]
+  x = init_x
+  with torch.no_grad():
+    for time_step in tqdm(time_steps, desc = 'PC sampling', leave=False):      
+      batch_time_step = torch.ones(batch_size, device=device) * time_step
+      # Corrector step (Langevin MCMC)
+      grad = score_model(x, batch_time_step)
+      grad_norm = torch.norm(grad.reshape(grad.shape[0], -1), dim=-1).mean()
+      noise_norm = np.sqrt(np.prod(x.shape[1:]))
+      langevin_step_size = 2 * (snr * noise_norm / grad_norm)**2
+      x = x + langevin_step_size * grad + torch.sqrt(2 * langevin_step_size) * torch.randn_like(x)      
+
+      # Predictor step (Euler-Maruyama)
+      g = diffusion_coeff(batch_time_step)
+      x_mean = x + (g**2)[:, None, None, None] * score_model(x, batch_time_step) * step_size
+      x = x_mean + torch.sqrt(g**2 * step_size)[:, None, None, None] * torch.randn_like(x)      
+    
+    # The last step does not include any noise
+    return x_mean
+'''
