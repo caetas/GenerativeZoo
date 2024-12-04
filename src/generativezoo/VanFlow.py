@@ -1,4 +1,4 @@
-from models.Flow.VanillaFlow import VanillaFlow
+from models.NF.VanillaFlow import VanillaFlow
 from utils.util import parse_args_VanillaFlow
 from data.Dataloaders import *
 import wandb

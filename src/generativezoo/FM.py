@@ -1,4 +1,4 @@
-from models.Flow.FlowMatching import FlowMatching
+from models.FM.FlowMatching import FlowMatching
 from data.Dataloaders import *
 from utils.util import parse_args_FlowMatching
 import wandb

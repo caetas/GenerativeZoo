@@ -1,4 +1,4 @@
-from models.SGM.NCSNv2 import *
+from models.SM.NCSNv2 import *
 from utils.util import parse_args_NCSNv2
 import torch
 from data.Dataloaders import *

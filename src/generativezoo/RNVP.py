@@ -1,4 +1,4 @@
-from models.Flow.RealNVP import RealNVP
+from models.NF.RealNVP import RealNVP
 from data.Dataloaders import *
 from utils.util import parse_args_RealNVP
 import wandb

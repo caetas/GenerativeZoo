@@ -1,4 +1,4 @@
-from models.SGM.SGM import *
+from models.SM.SGM import *
 from data.Dataloaders import *
 from utils.util import parse_args_SGM
 import torch
