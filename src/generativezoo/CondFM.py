@@ -1,4 +1,4 @@
-from models.Flow.CondFlowMatching import CondFlowMatching
+from models.FM.CondFlowMatching import CondFlowMatching
 from data.Dataloaders import *
 from utils.util import parse_args_CondFlowMatching
 import wandb

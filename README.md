@@ -111,10 +111,10 @@ The listed models are already implemented and fully integrated in the model zoo.
 - Conditional DDPM<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2207.12598) | [`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)<sup>10,21</sup> | [`Script`](src/generativezoo/CondDDPM.py) | [`Documentation`](docs/ConditionalDDPM.md)
 - Diffusion AE [`Paper`](https://arxiv.org/abs/2111.15640) | [`Code`](src/generativezoo/models/DDPM/MONAI_DiffAE.py)<sup>11</sup> | [`Script`](src/generativezoo/DAE.py) | [`Documentation`](docs/DiffusionAE.md)
 
-#### SGMs
+#### SMs
 
-- SGM<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2006.09011) | [`Code`](src/generativezoo/models/SGM/SGM.py)<sup>12</sup> | [`Script`](src/generativezoo/SGM.py) | [`Documentation`](docs/SGM.md)
-- NCSNv2 [`Paper`](https://arxiv.org/abs/2006.09011) | [`Code`](src/generativezoo/models/SGM/NCSNv2.py)<sup>13</sup> | [`Script`](src/generativezoo/NCSNv2.py) | [`Documentation`](docs/NCSNv2.md)
+- SGM<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2006.09011) | [`Code`](src/generativezoo/models/SM/SGM.py)<sup>12</sup> | [`Script`](src/generativezoo/SGM.py) | [`Documentation`](docs/SGM.md)
+- NCSNv2 [`Paper`](https://arxiv.org/abs/2006.09011) | [`Code`](src/generativezoo/models/SM/NCSNv2.py)<sup>13</sup> | [`Script`](src/generativezoo/NCSNv2.py) | [`Documentation`](docs/NCSNv2.md)
 
 #### Autoregressive
 
@@ -122,15 +122,18 @@ The listed models are already implemented and fully integrated in the model zoo.
 - VQ-GAN + Transformer [`Paper`](https://arxiv.org/abs/2012.09841) | [`Code`](src/generativezoo/models/AR/VQGAN_Transformer.py)<sup>11</sup> | [`Script`](src/generativezoo/VQGAN_T.py) | [`Documentation`](docs/VQGAN_Transformer.md)
 - PixelCNN [`Paper`](https://arxiv.org/abs/1606.05328) | [`Code`](src/generativezoo/models/AR/PixelCNN.py)<sup>14</sup> | [`Script`](src/generativezoo/P-CNN.py) | [`Documentation`](docs/PixelCNN.md)
 
-#### Flow
+#### Normalizing Flows
 
-- Vanilla Flow [`Paper`](https://arxiv.org/abs/1505.05770) | [`Code`](src/generativezoo/models/Flow/VanillaFlow.py)<sup>14</sup> | [`Script`](src/generativezoo/VanFlow.py) | [`Documentation`](docs/VanillaFlow.md)
-- RealNVP [`Paper`](https://arxiv.org/abs/1605.08803) | [`Code`](src/generativezoo/models/Flow/RealNVP.py)<sup>15</sup> | [`Script`](src/generativezoo/RealNVP.py) | [`Documentation`](docs/RealNVP.md)
-- Glow [`Paper`](https://arxiv.org/abs/1807.03039) | [`Code`](src/generativezoo/models/Flow/Glow.py)<sup>16</sup> | [`Script`](src/generativezoo/GLOW.py) | [`Documentation`](docs/Glow.md)
-- Flow++ [`Paper`](https://arxiv.org/abs/1902.00275) | [`Code`](src/generativezoo/models/Flow/FlowPlusPlus.py)<sup>17</sup> | [`Script`](src/generativezoo/FlowPP.py) | [`Documentation`](docs/FlowPlusPlus.md)
-- Flow Matching<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/Flow/FlowMatching.py)<sup>18,21</sup> | [`Script`](src/generativezoo/FM.py) | [`Documentation`](docs/FlowMatching.md)
-- Conditional Flow Matching<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/Flow/CondFlowMatching.py)<sup>18,21</sup> | [`Script`](src/generativezoo/CondFM.py) | [`Documentation`](docs/ConditionalFlowMatching.md)
-- Rectified Flows<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2403.03206) | [`Code`](src/generativezoo/models/Flow/RectifiedFlows.py)<sup>19</sup> | [`Script`](src/generativezoo/RF.py) | [`Documentation`](docs/RectifiedFlows.md)
+- Vanilla Flow [`Paper`](https://arxiv.org/abs/1505.05770) | [`Code`](src/generativezoo/models/NF/VanillaFlow.py)<sup>14</sup> | [`Script`](src/generativezoo/VanFlow.py) | [`Documentation`](docs/VanillaFlow.md)
+- RealNVP [`Paper`](https://arxiv.org/abs/1605.08803) | [`Code`](src/generativezoo/models/NF/RealNVP.py)<sup>15</sup> | [`Script`](src/generativezoo/RealNVP.py) | [`Documentation`](docs/RealNVP.md)
+- Glow [`Paper`](https://arxiv.org/abs/1807.03039) | [`Code`](src/generativezoo/models/NF/Glow.py)<sup>16</sup> | [`Script`](src/generativezoo/GLOW.py) | [`Documentation`](docs/Glow.md)
+- Flow++ [`Paper`](https://arxiv.org/abs/1902.00275) | [`Code`](src/generativezoo/models/NF/FlowPlusPlus.py)<sup>17</sup> | [`Script`](src/generativezoo/FlowPP.py) | [`Documentation`](docs/FlowPlusPlus.md)
+
+#### Flow Matching
+
+- Flow Matching<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/FM/FlowMatching.py)<sup>18,21</sup> | [`Script`](src/generativezoo/FM.py) | [`Documentation`](docs/FlowMatching.md)
+- Conditional Flow Matching<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/FM/CondFlowMatching.py)<sup>18,21</sup> | [`Script`](src/generativezoo/CondFM.py) | [`Documentation`](docs/ConditionalFlowMatching.md)
+- Rectified Flows<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2403.03206) | [`Code`](src/generativezoo/models/FM/RectifiedFlows.py)<sup>19</sup> | [`Script`](src/generativezoo/RF.py) | [`Documentation`](docs/RectifiedFlows.md)
 
 #### Stable Diffusion
 

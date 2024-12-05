@@ -1,4 +1,4 @@
-from models.Flow.FlowPlusPlus import *
+from models.NF.FlowPlusPlus import *
 from data.Dataloaders import *
 from utils.util import parse_args_FlowPP
 import wandb

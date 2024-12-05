@@ -1,5 +1,5 @@
 from data.Dataloaders import pick_dataset
-from models.Flow.RectifiedFlows import RF
+from models.FM.RectifiedFlows import RF
 from utils.util import parse_args_RectifiedFlows
 import wandb
 

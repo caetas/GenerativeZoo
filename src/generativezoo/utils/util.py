@@ -391,6 +391,8 @@ def parse_args_SGM():
     argparser.add_argument('--use_scale_shift_norm', type=bool, default = False, help='use a FiLM-like conditioning mechanism')
     argparser.add_argument('--resblock_updown', type=bool, default = False, help='use residual blocks for up/downsampling')
     argparser.add_argument('--use_new_attention_order', type=bool, default = False, help='use a different attention pattern for potentially increased efficiency')
+    argparser.add_argument('--sampler', type=str, default='ode', help='sampler for SGM', choices=['em', 'pc', 'ode'])
+    argparser.add_argument('--snr', type=float, default=0.16, help='signal to noise ratio')
     argparser.add_argument('--solver', type=str, default='euler', help='solver for ODE', choices=['dopri5', 'rk4', 'dopri8', 'euler', 'bosh3', 'adaptive_heun', 'midpoint', 'explicit_adams', 'implicit_adams'])
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--atol', type=float, default=1e-6, help='absolute tolerance')

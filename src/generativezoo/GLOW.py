@@ -1,4 +1,4 @@
-from models.Flow.Glow import *
+from models.NF.Glow import *
 from data.Dataloaders import *
 from utils.util import parse_args_Glow
 import wandb
