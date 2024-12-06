@@ -1002,7 +1002,6 @@ class DDPM(nn.Module):
             scheduler.step()
             epoch_bar.set_postfix({'Loss': acc_loss/len(dataloader.dataset)})   
 
-            print((epoch+1) % self.sample_and_save_freq)
             # save generated images
             if epoch == 0 or (epoch+1) % self.sample_and_save_freq == 0:
                 samples = self.sampler.sample(model=self.ema, image_size=self.img_size, batch_size=16, channels=self.channels)
