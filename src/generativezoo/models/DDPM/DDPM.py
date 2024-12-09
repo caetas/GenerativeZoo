@@ -1124,6 +1124,31 @@ class DDPM(nn.Module):
         samps = self.sampler.sample(model=self.model, image_size=self.img_size, batch_size=batch_size, channels=self.channels)[-1]
         plot_samples(samps)
 
+    @torch.no_grad()
+    def fid_sample(self, batch_size=16):
+        '''
+        Sample images for FID calculation
+        :param batch_size: batch size
+        '''
+        if not os.path.exists('./../../fid_samples'):
+            os.makedirs('./../../fid_samples')
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}")
+        #add ddpm factor and timesteps
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}")
+        cnt = 0
+        for i in tqdm(range(50000//batch_size), desc='FID Sampling', leave=True):
+            samps = self.sampler.sample(model=self.model, image_size=self.img_size, batch_size=batch_size, channels=self.channels)[-1]
+            samps = samps * 0.5 + 0.5
+            samps = samps.clip(0, 1)
+            for samp in samps:
+                # save image with plt
+                plt.imshow(samp.transpose(1, 2, 0))
+                plt.savefig(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png")
+                cnt += 1
+                plt.close()    
+
 class LinearScheduler():
     def __init__(self, beta_start=0.0001, beta_end=0.02, timesteps=1000):
         '''
@@ -1280,6 +1305,19 @@ class Sampler():
         :param channels: number of channels
         '''
         return self.p_sample_loop(model, shape=(batch_size, channels, image_size, image_size))
+    
+    @torch.no_grad()
+    def fid_samples(self, model, image_size, batch_size=16, channels=3):
+        '''
+        Sample 50k images for FID calculation
+        :param model: model
+        :param image_size: size of the image
+        :param batch_size: batch size
+        :param channels: number of channels
+        '''
+        for i in range(50000//batch_size):
+            samples = self.sample(model, image_size, batch_size, channels)
+
 
 def get_loss(forward_diffusion_model, denoising_model, x_start, t, noise=None, loss_type="l2"):
     '''

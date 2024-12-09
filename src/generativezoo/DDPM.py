@@ -28,6 +28,11 @@ if __name__ == '__main__':
           model.denoising_model.load_state_dict(torch.load(args.checkpoint, weights_only=False))
           dataloader_b, input_size_b, channels_b = pick_dataset(args.out_dataset, 'val', args.batch_size, normalize=normalize, good = False, size=input_size)
           model.outlier_detection(dataloader_a,dataloader_b, args.dataset, args.out_dataset)
-
+     elif args.fid:
+          _, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize, size=args.size)
+          model = DDPM(args, channels=channels, image_size=input_size)
+          if args.checkpoint is not None:
+               model.model.load_state_dict(torch.load(args.checkpoint, weights_only=False))
+          model.fid_sample(args.num_samples)
      else:
           raise ValueError('Please specify at least one of the following: train, sample, outlier_detection')
