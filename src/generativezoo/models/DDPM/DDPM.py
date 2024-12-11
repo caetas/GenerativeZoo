@@ -26,6 +26,7 @@ from accelerate import Accelerator
 from collections import OrderedDict
 import copy
 from abc import abstractmethod
+import cv2
 
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
@@ -1144,10 +1145,10 @@ class DDPM(nn.Module):
             samps = samps.clip(0, 1)
             for samp in samps:
                 # save image with plt
-                plt.imshow(samp.transpose(1, 2, 0))
-                plt.savefig(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png")
+                cv2.imwrite(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png", cv2.cvtColor(samp.transpose(1,2,0), cv2.COLOR_RGB2BGR))
+                #plt.savefig(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png")
                 cnt += 1
-                plt.close()    
+                #plt.close()    
 
 class LinearScheduler():
     def __init__(self, beta_start=0.0001, beta_end=0.02, timesteps=1000):
