@@ -1143,8 +1143,8 @@ class DDPM(nn.Module):
             samps = self.sampler.sample(model=self.model, image_size=self.img_size, batch_size=batch_size, channels=self.channels)[-1]
             samps = samps * 0.5 + 0.5
             samps = samps.clip(0, 1)
-            samples = samples.transpose(0,2,3,1)
-            samples = (samples*255).astype(np.uint8)
+            samps = samps.transpose(0,2,3,1)
+            samps = (samps*255).astype(np.uint8)
             for samp in samps:
                 cv2.imwrite(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png", cv2.cvtColor(samp, cv2.COLOR_RGB2BGR))
                 cnt += 1  
