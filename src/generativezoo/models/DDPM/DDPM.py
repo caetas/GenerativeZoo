@@ -16,7 +16,7 @@ from tqdm import tqdm, trange
 import numpy as np
 import matplotlib.pyplot as plt
 import wandb
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
 from config import models_dir
 from torchvision.transforms import Compose, Lambda, ToPILImage
 from torchvision.utils import make_grid
@@ -1107,13 +1107,16 @@ class DDPM(nn.Module):
         y_true = np.concatenate([np.zeros_like(val_scores), np.ones_like(out_scores)], axis=0)
         y_score = np.concatenate([val_scores, out_scores], axis=0)
         auc_score = roc_auc_score(y_true, y_score)
+        fpr, tpr, _ = roc_curve([0]*len(val_scores) + [1]*len(out_scores), np.concatenate([val_scores, out_scores]))
+        fpr95 = fpr[np.argmax(tpr >= 0.95)]
 
-        print('AUC score: {:.5f}'.format(auc_score))
+        print('AUC score: {:.5f}'.format(auc_score), 'FPR95: {:.5f}'.format(fpr95))
 
-        plt.hist(val_scores, bins=100, alpha=0.5, label='In')
-        plt.hist(out_scores, bins=100, alpha=0.5, label='Out')
-        plt.legend(loc='upper right')
-        plt.title('{} vs {} AUC: {:.4f}'.format(in_name, out_name, auc_score))
+        plt.hist(val_scores, bins=100, alpha=0.5, label='In-distribution')
+        plt.hist(out_scores, bins=100, alpha=0.5, label='Out-of-distribution')
+        # legend below the plot
+        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), shadow=True, ncol=2)
+        plt.title('{} vs {} AUC: {:.2f} FPR95: {:.2f}'.format(in_name, out_name, 100*auc_score, 100*fpr95))
         plt.show()
     
     @torch.no_grad()
@@ -1146,7 +1149,7 @@ class DDPM(nn.Module):
             samps = samps.transpose(0,2,3,1)
             samps = (samps*255).astype(np.uint8)
             for samp in samps:
-                cv2.imwrite(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png", cv2.cvtColor(samp, cv2.COLOR_RGB2BGR))
+                cv2.imwrite(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png", cv2.cvtColor(samp, cv2.COLOR_RGB2BGR) if samp.shape[-1] == 3 else samp)
                 cnt += 1  
 
 class LinearScheduler():

@@ -18,8 +18,16 @@ if __name__ == '__main__':
     elif args.sample:
         _, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize, size=args.size)
         model = ConditionalDDPM(in_channels=channels, input_size=input_size, args=args)
-        model.denoising_model.load_state_dict(torch.load(args.checkpoint))
+        if args.checkpoint is not None:
+            model.model.load_state_dict(torch.load(args.checkpoint))
         model.sample()
+
+    elif args.fid:
+        _, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize, size=args.size)
+        model = ConditionalDDPM(in_channels=channels, input_size=input_size, args=args)
+        if args.checkpoint is not None:
+            model.model.load_state_dict(torch.load(args.checkpoint))
+        model.fid_sample()
 
     else:
         raise ValueError('Please specify at least one of the following: train, sample')
