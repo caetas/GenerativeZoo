@@ -1143,12 +1143,11 @@ class DDPM(nn.Module):
             samps = self.sampler.sample(model=self.model, image_size=self.img_size, batch_size=batch_size, channels=self.channels)[-1]
             samps = samps * 0.5 + 0.5
             samps = samps.clip(0, 1)
+            samples = samples.transpose(0,2,3,1)
+            samples = (samples*255).astype(np.uint8)
             for samp in samps:
-                # save image with plt
-                cv2.imwrite(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png", cv2.cvtColor(samp.transpose(1,2,0), cv2.COLOR_RGB2BGR))
-                #plt.savefig(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png")
-                cnt += 1
-                #plt.close()    
+                cv2.imwrite(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png", cv2.cvtColor(samp, cv2.COLOR_RGB2BGR))
+                cnt += 1  
 
 class LinearScheduler():
     def __init__(self, beta_start=0.0001, beta_end=0.02, timesteps=1000):
