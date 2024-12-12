@@ -1,4 +1,4 @@
-# Vanilla Generative Adversarial Network (Vanilla GAN)
+# Deep Convolutional Generative Adversarial Network (DC-GAN)
 
 A Generative Adversarial Network (GAN) comprises two neural networks: a **Generator** and a **Discriminator**, engaged in a minimax game. The generator fabricates synthetic images out of a noisy input, while the discriminator evaluates the authenticity of these samples, distinguishing between real data and the generated ones. Through iterative training, the generator learns to produce increasingly realistic outputs that deceive the discriminator, while the discriminator enhances its ability to differentiate genuine from fake data.
 
@@ -30,22 +30,22 @@ A Generative Adversarial Network (GAN) comprises two neural networks: a **Genera
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 
-    python VanGAN.py --help
+    python DCGAN.py --help
 
 ## Training
 
 Adversarial losses are used during training. The generator is encouraged to generate images that fool the discriminator into classifying them as real, while the discriminator is trained as a binary classifier to distinguish between real and generated images. The model can be trained using the following command:
 
-    python VanGAN.py --train --dataset svhn
+    python DCGAN.py --train --dataset svhn
 
 ## Sampling
 
 To sample from a GAN, you input a noisy latent vector of a predefined size into the generator network. This latent vector serves as a random seed that the generator uses to generate synthetic data samples.
 
-    python VanGan.py --sample --dataset svhn --checkpoint ./../../models/VanillaGAN/VanGAN_svhn.pt
+    python DCGAN.py --sample --dataset svhn --checkpoint ./../../models/DCGAN/DCGAN_svhn.pt
 
 ## Outlier Detection
 
 To perform outlier detection, only the Discriminator will be used:
 
-    python VanGan.py --outlier_detection --dataset svhn --out_dataset cifar10 --discriminator_checkpoint ./../../models/VanillaGAN/VanDisc_svhn.pt
+    python DCGAN.py --outlier_detection --dataset svhn --out_dataset cifar10 --discriminator_checkpoint ./../../models/DCGAN/DCDisc_svhn.pt

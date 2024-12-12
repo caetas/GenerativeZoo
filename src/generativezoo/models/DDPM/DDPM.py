@@ -1111,11 +1111,13 @@ class DDPM(nn.Module):
         fpr95 = fpr[np.argmax(tpr >= 0.95)]
 
         print('AUC score: {:.5f}'.format(auc_score), 'FPR95: {:.5f}'.format(fpr95))
-
+        plt.figure(figsize=(10, 6))
         plt.hist(val_scores, bins=100, alpha=0.5, label='In-distribution')
         plt.hist(out_scores, bins=100, alpha=0.5, label='Out-of-distribution')
-        # legend below the plot
-        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), shadow=True, ncol=2)
+        plt.xlabel('Anomaly Score')
+        plt.ylabel('Frequency')
+        # legend top right corner
+        plt.legend(loc='upper right')
         plt.title('{} vs {} AUC: {:.2f} FPR95: {:.2f}'.format(in_name, out_name, 100*auc_score, 100*fpr95))
         plt.show()
     
@@ -1144,6 +1146,12 @@ class DDPM(nn.Module):
         cnt = 0
         for i in tqdm(range(50000//batch_size), desc='FID Sampling', leave=True):
             samps = self.sampler.sample(model=self.model, image_size=self.img_size, batch_size=batch_size, channels=self.channels)[-1]
+
+            if self.vae is not None:
+                samps = torch.tensor(samps, device=self.device)
+                samps = self.vae.decode(samps / 0.18215).sample 
+                samps = samps.cpu().detach().numpy()
+
             samps = samps * 0.5 + 0.5
             samps = samps.clip(0, 1)
             samps = samps.transpose(0,2,3,1)
@@ -1308,18 +1316,6 @@ class Sampler():
         :param channels: number of channels
         '''
         return self.p_sample_loop(model, shape=(batch_size, channels, image_size, image_size))
-    
-    @torch.no_grad()
-    def fid_samples(self, model, image_size, batch_size=16, channels=3):
-        '''
-        Sample 50k images for FID calculation
-        :param model: model
-        :param image_size: size of the image
-        :param batch_size: batch size
-        :param channels: number of channels
-        '''
-        for i in range(50000//batch_size):
-            samples = self.sample(model, image_size, batch_size, channels)
 
 
 def get_loss(forward_diffusion_model, denoising_model, x_start, t, noise=None, loss_type="l2"):

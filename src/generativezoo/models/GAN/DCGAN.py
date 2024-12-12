@@ -17,8 +17,8 @@ from sklearn.metrics import roc_auc_score, roc_curve
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
     os.makedirs(models_dir)
-  if not os.path.exists(os.path.join(models_dir, 'VanillaGAN')):
-    os.makedirs(os.path.join(models_dir, 'VanillaGAN'))
+  if not os.path.exists(os.path.join(models_dir, 'DCGAN')):
+    os.makedirs(os.path.join(models_dir, 'DCGAN'))
 
 def weights_init_normal(m):
     classname = m.__class__.__name__
@@ -289,15 +289,15 @@ class Discriminator(nn.Module):
 
         return auroc, fpr95, in_array, np.mean(out_array)
     
-class VanillaGAN(nn.Module):
+class DCGAN(nn.Module):
     def __init__(self, args, channels=3, img_size = 32):
         '''
-        Vanilla GAN model
+        DC-GAN model
         :param args: arguments
         :param channels: number of channels in the image
         :param img_size: size of the image
         '''
-        super(VanillaGAN, self).__init__()
+        super(DCGAN, self).__init__()
         self.n_epochs = args.n_epochs
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.generator = Generator(latent_dim = args.latent_dim, channels=channels, imgSize=img_size, d=args.d).to(self.device)
@@ -394,8 +394,8 @@ class VanillaGAN(nn.Module):
             
             if acc_g_loss/len(dataloader.dataset) < best_loss and epoch >= 20:
                 best_loss = acc_g_loss/len(dataloader.dataset)
-                torch.save(self.generator.state_dict(), os.path.join(models_dir, 'VanillaGAN', f"VanGAN_{self.dataset}.pt"))
-                torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'VanillaGAN', f"VanDisc_{self.dataset}.pt"))
+                torch.save(self.generator.state_dict(), os.path.join(models_dir, 'DCGAN', f"DCGAN_{self.dataset}.pt"))
+                torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'DCGAN', f"DCDisc_{self.dataset}.pt"))
 
             if epoch % self.sample_and_save_freq == 0:
                 # create row of n_classes images
@@ -413,4 +413,4 @@ class VanillaGAN(nn.Module):
                 if not self.no_wandb:
                     wandb.log({"Generated Images": fig})
                 plt.close(fig)
-                torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'VanillaGAN', f"VanDisc_{self.dataset}_{epoch}.pt"))
+                torch.save(self.discriminator.state_dict(), os.path.join(models_dir, 'DCGAN', f"DCDisc_{self.dataset}_{epoch}.pt"))

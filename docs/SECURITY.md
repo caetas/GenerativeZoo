@@ -27,7 +27,7 @@ This project is under active development, and we do our best to support the late
 
 | Version | Supported          |
 | ------- | ------------------ |
-| latest  |                    |
+| latest  |        1.3.0       |
 
 ## Reporting a Vulnerability or Security Issues
 

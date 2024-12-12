@@ -574,7 +574,7 @@ def parse_args_CondGAN():
     argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
     return argparser.parse_args()
 
-def parse_args_VanillaGAN():
+def parse_args_DCGAN():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--train', action='store_true', default=False, help='train model')
     argparser.add_argument('--sample', action='store_true', default=False, help='sample from model')
