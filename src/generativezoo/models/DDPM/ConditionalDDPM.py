@@ -21,6 +21,7 @@ from diffusers.models import AutoencoderKL
 from accelerate import Accelerator
 from collections import OrderedDict
 import copy
+import cv2
 
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
@@ -938,8 +939,8 @@ class ConditionalDDPM(nn.Module):
         Returns:
         loss: torch.Tensor, loss value
         """
-        _ts = torch.randint(1, self.n_T+1, (x.shape[0],)).to(self.device)  # t ~ Uniform(0, n_T)
-        noise = torch.randn_like(x).to(self.device)  # eps ~ N(0, 1)
+        _ts = torch.randint(1, self.n_T+1, (x.shape[0],), device=self.device)  # t ~ Uniform(0, n_T)
+        noise = torch.randn_like(x, device = self.device)  # eps ~ N(0, 1)
 
         x_t = (
             self.sqrtab[_ts, None, None, None] * x
@@ -1048,7 +1049,7 @@ class ConditionalDDPM(nn.Module):
                 self.sample(train=True, accelerate=accelerate)
 
     @torch.no_grad()
-    def gen_samples(self, n_sample, train=False):
+    def gen_samples(self, n_sample, train=False, label=None):
         """
         This method is used to sample from the model
         Args:
@@ -1066,8 +1067,10 @@ class ConditionalDDPM(nn.Module):
         # if ddpm = 0, we just use DDIM instead
 
         x_i = torch.randn(n_sample, *(self.channels, self.img_size, self.img_size)).to(self.device)  # x_T ~ N(0, 1), sample initial noise
-        c_i = torch.arange(0,self.n_classes).to(self.device) # context for us just cycles throught the mnist labels
-        c_i = c_i.repeat(int(n_sample/c_i.shape[0]))
+        if label is None:
+            c_i = torch.arange(0,n_sample, device=self.device)%self.n_classes # iterates over possible labels
+        else:
+            c_i = torch.ones(n_sample, device=self.device).long()*label
 
         # double the batch
         c_i = c_i.repeat(2)
@@ -1099,17 +1102,18 @@ class ConditionalDDPM(nn.Module):
             x_i = self.alphabar_t[i-self.scaling].sqrt() * x_0 + c2*eps + c1*z
 
         return x_i
-
-    def sample(self, train=False, accelerate=None):
+    
+    @torch.no_grad()
+    def sample(self, train=False, accelerate=None, num_samples=16):
         self.model.eval()
-        samples = self.gen_samples(self.n_classes, train=train).cpu().detach()
+        samples = self.gen_samples(num_samples, train=train).cpu().detach()
         if self.vae is not None:
             samples = self.vae.decode(samples.to(self.device) / 0.18215).sample 
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
 
         # plot using make_grid
-        grid = make_grid(samples, nrow=int(np.sqrt(self.n_classes)), padding=0)
+        grid = make_grid(samples, nrow=int(np.sqrt(num_samples)), padding=0)
         # plot image
         fig = plt.figure(figsize=(10, 10))
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
@@ -1119,5 +1123,33 @@ class ConditionalDDPM(nn.Module):
         else:
             plt.show()
         plt.close(fig)
-
     
+    @torch.no_grad()
+    def fid_sample(self):
+
+        if not os.path.exists('./../../fid_samples'):
+            os.makedirs('./../../fid_samples')
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}")
+        #add ddpm factor and timesteps
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}/condddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}/condddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}")
+        cnt = 0
+
+        self.model.eval()
+        samp_per_class = 50000//self.n_classes
+        its_per_class = samp_per_class//self.args.batch_size
+
+        for c in tqdm(range(self.n_classes), desc="Class", leave=True):
+            for i in tqdm(range(its_per_class), desc="Iteration", leave=False):
+                samples = self.gen_samples(self.args.batch_size, train=False, label=c).cpu().detach()
+                if self.vae is not None:
+                    samples = self.vae.decode(samples.to(self.device) / 0.18215).sample 
+                samples = samples*0.5 + 0.5
+                samples = samples.clamp(0, 1)
+                samples = samples.permute(0,2,3,1).cpu().numpy()
+                samples = (samples*255).astype(np.uint8)
+                for s in samples:
+                    cv2.imwrite(f"./../../fid_samples/{self.dataset}/condddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png", cv2.cvtColor(s, cv2.COLOR_RGB2BGR) if s.shape[-1]==3 else s)
+                    cnt += 1
+        

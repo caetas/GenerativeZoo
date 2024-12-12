@@ -10,6 +10,7 @@ The Conditional Denoising Diffusion Probabilistic Model (CDDPM) is akin to the s
 |--------------------------|------------------------------------------|--------------------|--------------------------------------------------------------------------------------------------------------------|
 | `--train`               | Train model                              | `False`            |                                                                                                                    |
 | `--sample`              | Sample model                             | `False`            |                                                                                                                    |
+| `--fid`                 | Sample for FID                               | `False`            |                                                                                                                    |
 | `--batch_size`          | Batch size                               | `128`              |                                                                                                                    |
 | `--n_epochs`            | Number of epochs                         | `100`              |                                                                                                                    |
 | `--lr`                  | Learning rate                            | `0.001`            |                                                                                                                    |
@@ -61,3 +62,9 @@ The training process is similar to the one described in [`VanillaDDPM.md`](Vanil
 The sampling process is also similar to a typical DDPm, although the class embedding is also provided at each timestep. Conditional DDPMs can also be adjusted to sample in a deterministic manner:
 
     python CondDDPM.py --sample --dataset mnist --n_classes 10 --checkpoint ./../../models/ConditionalDDPM/CondDDPM_mnist.pt
+
+## FID Sampling
+
+To sample 50K images for FID computation:
+
+    python CondDDPM.py --fid --batch_size 200 --dataset cifar10 --checkpoint ./../../models/ConditionalDDPM/CondDDPM_cifar10.pt

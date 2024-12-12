@@ -16,7 +16,7 @@ from tqdm import tqdm, trange
 import numpy as np
 import matplotlib.pyplot as plt
 import wandb
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
 from config import models_dir
 from torchvision.transforms import Compose, Lambda, ToPILImage
 from torchvision.utils import make_grid
@@ -26,6 +26,7 @@ from accelerate import Accelerator
 from collections import OrderedDict
 import copy
 from abc import abstractmethod
+import cv2
 
 def create_checkpoint_dir():
   if not os.path.exists(models_dir):
@@ -1002,7 +1003,6 @@ class DDPM(nn.Module):
             scheduler.step()
             epoch_bar.set_postfix({'Loss': acc_loss/len(dataloader.dataset)})   
 
-            print((epoch+1) % self.sample_and_save_freq)
             # save generated images
             if epoch == 0 or (epoch+1) % self.sample_and_save_freq == 0:
                 samples = self.sampler.sample(model=self.ema, image_size=self.img_size, batch_size=16, channels=self.channels)
@@ -1107,13 +1107,18 @@ class DDPM(nn.Module):
         y_true = np.concatenate([np.zeros_like(val_scores), np.ones_like(out_scores)], axis=0)
         y_score = np.concatenate([val_scores, out_scores], axis=0)
         auc_score = roc_auc_score(y_true, y_score)
+        fpr, tpr, _ = roc_curve([0]*len(val_scores) + [1]*len(out_scores), np.concatenate([val_scores, out_scores]))
+        fpr95 = fpr[np.argmax(tpr >= 0.95)]
 
-        print('AUC score: {:.5f}'.format(auc_score))
-
-        plt.hist(val_scores, bins=100, alpha=0.5, label='In')
-        plt.hist(out_scores, bins=100, alpha=0.5, label='Out')
+        print('AUC score: {:.5f}'.format(auc_score), 'FPR95: {:.5f}'.format(fpr95))
+        plt.figure(figsize=(10, 6))
+        plt.hist(val_scores, bins=100, alpha=0.5, label='In-distribution')
+        plt.hist(out_scores, bins=100, alpha=0.5, label='Out-of-distribution')
+        plt.xlabel('Anomaly Score')
+        plt.ylabel('Frequency')
+        # legend top right corner
         plt.legend(loc='upper right')
-        plt.title('{} vs {} AUC: {:.4f}'.format(in_name, out_name, auc_score))
+        plt.title('{} vs {} AUC: {:.2f} FPR95: {:.2f}'.format(in_name, out_name, 100*auc_score, 100*fpr95))
         plt.show()
     
     @torch.no_grad()
@@ -1124,6 +1129,36 @@ class DDPM(nn.Module):
         '''
         samps = self.sampler.sample(model=self.model, image_size=self.img_size, batch_size=batch_size, channels=self.channels)[-1]
         plot_samples(samps)
+
+    @torch.no_grad()
+    def fid_sample(self, batch_size=16):
+        '''
+        Sample images for FID calculation
+        :param batch_size: batch size
+        '''
+        if not os.path.exists('./../../fid_samples'):
+            os.makedirs('./../../fid_samples')
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}")
+        #add ddpm factor and timesteps
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}")
+        cnt = 0
+        for i in tqdm(range(50000//batch_size), desc='FID Sampling', leave=True):
+            samps = self.sampler.sample(model=self.model, image_size=self.img_size, batch_size=batch_size, channels=self.channels)[-1]
+
+            if self.vae is not None:
+                samps = torch.tensor(samps, device=self.device)
+                samps = self.vae.decode(samps / 0.18215).sample 
+                samps = samps.cpu().detach().numpy()
+
+            samps = samps * 0.5 + 0.5
+            samps = samps.clip(0, 1)
+            samps = samps.transpose(0,2,3,1)
+            samps = (samps*255).astype(np.uint8)
+            for samp in samps:
+                cv2.imwrite(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png", cv2.cvtColor(samp, cv2.COLOR_RGB2BGR) if samp.shape[-1] == 3 else samp)
+                cnt += 1  
 
 class LinearScheduler():
     def __init__(self, beta_start=0.0001, beta_end=0.02, timesteps=1000):
@@ -1281,6 +1316,7 @@ class Sampler():
         :param channels: number of channels
         '''
         return self.p_sample_loop(model, shape=(batch_size, channels, image_size, image_size))
+
 
 def get_loss(forward_diffusion_model, denoising_model, x_start, t, noise=None, loss_type="l2"):
     '''

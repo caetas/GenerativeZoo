@@ -99,7 +99,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 #### GANs
 
 - Adversarial VAE [`Paper`](https://arxiv.org/abs/1511.05644) | [`Code`](src/generativezoo/models/GAN/AdversarialVAE.py)<sup>1</sup> | [`Script`](src/generativezoo/AdvVAE.py) | [`Documentation`](docs/AdversarialVAE.md)
-- Vanilla GAN [`Paper`](https://arxiv.org/abs/1511.06434) | [`Code`](src/generativezoo/models/GAN/VanillaGAN.py)<sup>3</sup> | [`Script`](src/generativezoo/VanGAN.py) | [`Documentation`](docs/VanillaGAN.md)
+- DC-GAN [`Paper`](https://arxiv.org/abs/1511.06434) | [`Code`](src/generativezoo/models/GAN/DCGAN.py)<sup>3</sup> | [`Script`](src/generativezoo/DCGAN.py) | [`Documentation`](docs/DCGAN.md)
 - Conditional GAN [`Paper`](https://arxiv.org/abs/1411.1784) | [`Code`](src/generativezoo/models/GAN/ConditionalGAN.py)<sup>3</sup> | [`Script`](src/generativezoo/CondGAN.py) | [`Documentation`](docs/ConditionalGAN.md)
 - CycleGAN [`Paper`](https://arxiv.org/abs/1703.10593) | [`Code`](src/generativezoo/models/GAN/CycleGAN.py)<sup>4</sup> | [`Script`](src/generativezoo/CycGAN.py) | [`Documentation`](docs/CycleGAN.md)
 - Prescribed GAN [`Paper`](https://arxiv.org/abs/1910.04302) | [`Code`](src/generativezoo/models/GAN/PrescribedGAN.py)<sup>5</sup> | [`Script`](src/generativezoo/PresGAN.py) | [`Documentation`](docs/PrescribedGAN.md)
@@ -111,9 +111,9 @@ The listed models are already implemented and fully integrated in the model zoo.
 - Conditional DDPM<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2207.12598) | [`Code`](src/generativezoo/models/DDPM/ConditionalDDPM.py)<sup>10,21</sup> | [`Script`](src/generativezoo/CondDDPM.py) | [`Documentation`](docs/ConditionalDDPM.md)
 - Diffusion AE [`Paper`](https://arxiv.org/abs/2111.15640) | [`Code`](src/generativezoo/models/DDPM/MONAI_DiffAE.py)<sup>11</sup> | [`Script`](src/generativezoo/DAE.py) | [`Documentation`](docs/DiffusionAE.md)
 
-#### SMs
+#### Score Matching
 
-- SGM<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2006.09011) | [`Code`](src/generativezoo/models/SM/SGM.py)<sup>12</sup> | [`Script`](src/generativezoo/SGM.py) | [`Documentation`](docs/SGM.md)
+- SGM<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2006.09011) | [`Code`](src/generativezoo/models/SM/SGM.py)<sup>12,21</sup> | [`Script`](src/generativezoo/SGM.py) | [`Documentation`](docs/SGM.md)
 - NCSNv2 [`Paper`](https://arxiv.org/abs/2006.09011) | [`Code`](src/generativezoo/models/SM/NCSNv2.py)<sup>13</sup> | [`Script`](src/generativezoo/NCSNv2.py) | [`Documentation`](docs/NCSNv2.md)
 
 #### Autoregressive
@@ -215,10 +215,6 @@ Contributions of any kind are welcome. Please read [CONTRIBUTING.md](docs/CONTRI
 the process for submitting pull requests to us.
 
 **Please read [MODELRULES.md](docs/MODELRULES.md) for details on how you should build your models for this repository.**
-
-### Changelog
-
-See the [Changelog](CHANGELOG.md) for more information.
 
 ### Security
 

@@ -11,6 +11,7 @@ Denoising Diffusion Probabilistic Models (DDPMs) rely on a diffusion process whe
 | `--train`               | Train model                                  | `False`            |                                                                                                                    |
 | `--sample`              | Sample model                                 | `False`            |                                                                                                                    |
 | `--outlier_detection`   | Outlier detection                            | `False`            |                                                                                                                    |
+| `--fid`                 | Sample for FID                               | `False`            |                                                                                                                    |
 | `--batch_size`          | Batch size                                   | `128`              |                                                                                                                    |
 | `--n_epochs`            | Number of epochs                             | `100`              |                                                                                                                    |
 | `--lr`                  | Learning rate                                | `1e-3`             |                                                                                                                    |
@@ -38,6 +39,7 @@ Denoising Diffusion Probabilistic Models (DDPMs) rely on a diffusion process whe
 | `--loss_type`           | Loss type                                    | `huber`            | `huber`, `l2`, `l1`                                                                                               |
 | `--sample_timesteps`    | Number of timesteps for sampling              | `300`              |                                                                                                                    |
 | `--no_wandb`            | Disable wandb logging                        | `False`            |                                                                                                                    |
+| `--lpips`               | Use LPIPS for OOD                            | `False`            |                                                                                                                    |
 | `--num_workers`         | Number of workers for Dataloader             | `0`                |                                                                                                                    |
 | `--recon_factor`        | Reconstruction factor                        | `0.5`              |                                                                                                                    |
 | `--warmup`              | Number of warmup epochs                      | `10`               |                                                                                                                    |
@@ -50,22 +52,28 @@ Denoising Diffusion Probabilistic Models (DDPMs) rely on a diffusion process whe
 
 You can find out more about the parameters by checking [`util.py`](./../src/generativezoo/utils/util.py) or by running the following command on the example script:
 
-    python VanDDPM.py --help
+    python DDPM.py --help
 
 ## Training
 
 During training, a denoiser, typically implemented as a U-Net, is trained to predict the noise added to an image at a given timestep during the forward diffusion process. The quality of this prediction is evaluated using the Mean Squared Error (MSE) between the predicted noise and the actual noise added to the image. By optimizing the denoiser to minimize this MSE loss, DDPM learns to accurately model the diffusion process.
 
-    python VanDDPM.py --train --dataset cifar10
+    python DDPM.py --train --dataset cifar10
 
 ## Sampling
 
 During the sampling process, we begin with a noisy input image and predict the noise at each timestep. This prediction helps remove the noise, resulting in a progressively clearer image. In typical DDPMs, additional noise is often added after each denoising step, introducing stochasticity to the process. However, it's possible to make this process deterministic by opting not to add extra noise, resulting in what's known as a Denoising Diffusion Implicit Model (DDIM). **You can sample from this model as a DDIM by adjusting `--ddpm`**. Regardless of whether the process is stochastic or deterministic, sampling involves iterating through a fixed number of timesteps to generate high-quality output images.
 
-    python VanDDPM.py --sample --dataset cifar10 --checkpoint ./../../models/DDPM/VanDDPM_cifar10.pt
+    python DDPM.py --sample --dataset cifar10 --checkpoint ./../../models/DDPM/DDPM_cifar10.pt
 
 ## Outlier Detection
 
-By leveraging the noise prediction error at timestep t=0, we can estimate whether a sample is in-distribution or out-of-distribution. In this context, a "good" sample is one that closely matches the training data distribution. Consequently, such a sample should have a lower error in the noise prediction at timestep t=0 compared to out-of-distribution samples.
+By leveraging the reconstruction error and the perceptual loss between the reconstruction and the input image we can produce an anomaly score to perform OOD detection.
 
-    python VanDDPM.py --sample --dataset cifar10 --out_dataset svhn --checkpoint ./../../models/DDPM/VanDDPM_cifar10.pt
+    python DDPM.py --outlier_detection --lpips --dataset cifar10 --out_dataset svhn --checkpoint ./../../models/DDPM/DDPM_cifar10.pt
+
+## FID Sampling
+
+To sample 50K images for FID computation:
+
+    python DDPM.py --fid --num_samples 200 --dataset cifar10 --checkpoint ./../../models/DDPM/DDPM_cifar10.pt
