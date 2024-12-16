@@ -545,10 +545,13 @@ class RF(nn.Module):
 
         epoch_bar = trange(self.n_epochs, desc="Epochs")
 
-        # initialize EMA
-        update_ema(self.ema, self.model, 0)
-
         train_loader, self.model, optimizer, scheduler = accelerate.prepare(train_loader, self.model, optimizer, scheduler)
+
+        self.ema = copy.deepcopy(self.model)
+        for param in self.ema.parameters():
+            param.requires_grad = False
+
+        update_ema(self.ema, self.model, 0)
 
         best_loss = float("inf")
         for epoch in epoch_bar:
@@ -587,7 +590,8 @@ class RF(nn.Module):
 
             if train_loss/len(train_loader.dataset) < best_loss:
                 best_loss = train_loss/len(train_loader.dataset)
-                torch.save(self.ema.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'Lat' if self.vae is not None else ''}{'CondRF' if self.conditional else 'RF'}_{self.dataset}.pt"))
+                if accelerate.is_main_process:
+                    torch.save(self.ema.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'Lat' if self.vae is not None else ''}{'CondRF' if self.conditional else 'RF'}_{self.dataset}.pt"))
         
             if epoch == 0 or ((epoch+1) % self.sample_and_save_freq == 0):
                 cond = torch.arange(0, 16).cuda() % self.num_classes

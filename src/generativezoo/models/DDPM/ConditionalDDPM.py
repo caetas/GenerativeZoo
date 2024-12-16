@@ -1003,9 +1003,13 @@ class ConditionalDDPM(nn.Module):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
-        update_ema(self.ema, self.model, 0)
-
         dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
+
+        self.ema = copy.deepcopy(self.model)
+        for param in self.ema.parameters():
+            param.requires_grad = False
+
+        update_ema(self.ema, self.model, 0)
 
         for epoch in epoch_bar:
             self.model.train()
@@ -1040,7 +1044,8 @@ class ConditionalDDPM(nn.Module):
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
-                torch.save(self.ema.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f"{'LatCondDDPM' if self.vae is not None else 'CondDDPM'}_{self.dataset}.pt"))
+                if accelerate.is_main_process:
+                    torch.save(self.ema.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f"{'LatCondDDPM' if self.vae is not None else 'CondDDPM'}_{self.dataset}.pt"))
 
             # for eval, save an image of currently generated samples (top rows)
             # followed by real images (bottom rows)

@@ -968,9 +968,14 @@ class DDPM(nn.Module):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
+        dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
+
+        self.ema = copy.deepcopy(self.model)
+        for param in self.ema.parameters():
+            param.requires_grad = False
+
         update_ema(self.ema, self.model, 0)
 
-        dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
 
         for epoch in epoch_bar:
             self.model.train()
@@ -1018,6 +1023,8 @@ class DDPM(nn.Module):
                 fig = plt.figure(figsize=(10, 10))
                 grid = make_grid(all_images, nrow=int(np.sqrt(all_images.shape[0])), normalize=False, padding=0)
                 plt.imshow(grid.permute(1, 2, 0))
+                plt.xticks([])
+                plt.yticks([])
                 
                 #save figure wandb
                 if not self.no_wandb:
@@ -1026,7 +1033,8 @@ class DDPM(nn.Module):
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
-                torch.save(self.ema.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
+                if accelerate.is_main_process:
+                    torch.save(self.ema.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
     
     @torch.no_grad()
     def outlier_score(self, x_start):
