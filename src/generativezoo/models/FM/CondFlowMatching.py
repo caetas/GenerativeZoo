@@ -1018,9 +1018,13 @@ class CondFlowMatching(nn.Module):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
-        update_ema(self.ema, self.model, 0)
-
         train_loader, self.model, optimizer, scheduler = accelerate.prepare(train_loader, self.model, optimizer, scheduler)
+
+        self.ema = copy.deepcopy(self.model)
+        for param in self.ema.parameters():
+            param.requires_grad = False
+
+        update_ema(self.ema, self.model, 0)
 
         for epoch in epoch_bar:
             self.model.train()
@@ -1056,7 +1060,8 @@ class CondFlowMatching(nn.Module):
             
             if train_loss < best_loss:
                 best_loss = train_loss
-                torch.save(self.ema.state_dict(), os.path.join(models_dir, 'CondFlowMatching', f"{'LatCondFM' if self.vae is not None else 'CondFM'}_{self.dataset}.pt"))
+                if accelerate.is_main_process:
+                    torch.save(self.ema.state_dict(), os.path.join(models_dir, 'CondFlowMatching', f"{'LatCondFM' if self.vae is not None else 'CondFM'}_{self.dataset}.pt"))
 
         accelerate.end_training()
 

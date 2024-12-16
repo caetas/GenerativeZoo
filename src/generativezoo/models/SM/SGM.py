@@ -937,9 +937,13 @@ class SGM(nn.Module):
 
         create_checkpoint_dir()
 
-        update_ema(self.ema, self.model, 0)
-
         dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
+
+        self.ema = copy.deepcopy(self.model)
+        for param in self.ema.parameters():
+            param.requires_grad = False
+
+        update_ema(self.ema, self.model, 0)
 
         for epoch in epoch_bar:
             avg_loss = 0.0
@@ -973,7 +977,8 @@ class SGM(nn.Module):
 
             if avg_loss < best_loss:
                 best_loss = avg_loss
-                torch.save(self.ema.state_dict(), os.path.join(models_dir,'SGM', f"{'Cond' if self.conditional else ''}{'LatSGM' if self.latent else 'SGM'}_{self.dataset}.pt"))
+                if accelerate.is_main_process:
+                    torch.save(self.ema.state_dict(), os.path.join(models_dir,'SGM', f"{'Cond' if self.conditional else ''}{'LatSGM' if self.latent else 'SGM'}_{self.dataset}.pt"))
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
 
