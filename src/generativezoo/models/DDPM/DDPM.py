@@ -1023,6 +1023,8 @@ class DDPM(nn.Module):
                 fig = plt.figure(figsize=(10, 10))
                 grid = make_grid(all_images, nrow=int(np.sqrt(all_images.shape[0])), normalize=False, padding=0)
                 plt.imshow(grid.permute(1, 2, 0))
+                plt.xticks([])
+                plt.yticks([])
                 
                 #save figure wandb
                 if not self.no_wandb:
@@ -1031,7 +1033,8 @@ class DDPM(nn.Module):
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
-                torch.save(self.ema.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
+                if accelerate.is_main_process:
+                    torch.save(self.ema.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
     
     @torch.no_grad()
     def outlier_score(self, x_start):
