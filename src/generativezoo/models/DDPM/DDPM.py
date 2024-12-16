@@ -968,9 +968,14 @@ class DDPM(nn.Module):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
+        dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
+
+        self.ema = copy.deepcopy(self.model)
+        for param in self.ema.parameters():
+            param.requires_grad = False
+
         update_ema(self.ema, self.model, 0)
 
-        dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
 
         for epoch in epoch_bar:
             self.model.train()

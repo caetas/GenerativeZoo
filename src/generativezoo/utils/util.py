@@ -449,7 +449,7 @@ def parse_args_DDPM():
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--num_samples', type=int, default=16, help='number of samples')
     argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'svhn', 'tinyimagenet','imagenet'])
-    argparser.add_argument('--loss_type', type=str, default='huber', help='loss type', choices=['huber','l2', 'l1'])
+    argparser.add_argument('--loss_type', type=str, default='l2', help='loss type', choices=['huber','l2', 'l1'])
     argparser.add_argument('--sample_timesteps', type=int, default=300, help='number of timesteps')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
     argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
