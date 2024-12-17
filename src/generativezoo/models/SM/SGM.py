@@ -973,7 +973,8 @@ class SGM(nn.Module):
                 accelerate.log({'loss': avg_loss / len(dataloader.dataset)}, step = epoch)
                 accelerate.log({'lr': scheduler.get_last_lr()[0]}, step = epoch)
             
-            scheduler.step()
+            if accelerate.is_main_process:
+                scheduler.step()
 
             if avg_loss < best_loss:
                 best_loss = avg_loss

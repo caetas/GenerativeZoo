@@ -1000,12 +1000,14 @@ class DDPM(nn.Module):
                 optimizer.step()
                 acc_loss += loss.item() * batch_size
                 update_ema(self.ema, self.model, self.ema_rate)
+                break
 
             if not self.no_wandb:
                 accelerate.log({"Train Loss": acc_loss / len(dataloader.dataset)})
                 accelerate.log({"Learning Rate": scheduler.get_last_lr()[0]})
-
-            scheduler.step()
+            
+            if accelerate.is_main_process:
+                scheduler.step()
             epoch_bar.set_postfix({'Loss': acc_loss/len(dataloader.dataset)})   
 
             # save generated images

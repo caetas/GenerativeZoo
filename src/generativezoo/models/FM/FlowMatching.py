@@ -1028,7 +1028,8 @@ class FlowMatching(nn.Module):
                 accelerate.log({"Train Loss": train_loss / len(train_loader.dataset)})
                 accelerate.log({"Learning Rate": scheduler.get_last_lr()[0]})
 
-            scheduler.step()
+            if accelerate.is_main_process:
+                scheduler.step()
             epoch_bar.set_postfix({'Loss': train_loss / len(train_loader.dataset)})
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:

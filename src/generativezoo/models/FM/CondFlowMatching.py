@@ -1052,7 +1052,8 @@ class CondFlowMatching(nn.Module):
                 accelerate.log({"Learning Rate": scheduler.get_last_lr()[0]})
 
             epoch_bar.set_postfix({'Loss': train_loss / len(train_loader.dataset)})
-            scheduler.step()
+            if accelerate.is_main_process:
+                scheduler.step()
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
                 self.model.eval()

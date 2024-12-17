@@ -1040,7 +1040,8 @@ class ConditionalDDPM(nn.Module):
                 accelerate.log({"Learning Rate": scheduler.get_last_lr()[0]})
 
             epoch_bar.set_description(f"loss: {acc_loss/len(dataloader.dataset):.4f}")
-            scheduler.step()
+            if accelerate.is_main_process:
+                scheduler.step()
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)

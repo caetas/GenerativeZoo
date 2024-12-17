@@ -586,7 +586,9 @@ class RF(nn.Module):
                 accelerate.log({"lr": scheduler.get_last_lr()[0]})
                 
             epoch_bar.set_postfix(loss=train_loss / len(train_loader.dataset))
-            scheduler.step()
+
+            if accelerate.is_main_process:
+                scheduler.step()
 
             if train_loss/len(train_loader.dataset) < best_loss:
                 best_loss = train_loss/len(train_loader.dataset)
