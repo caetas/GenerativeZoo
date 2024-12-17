@@ -74,8 +74,11 @@ def update_ema(ema_model, model, decay=0.5):
     """
     ema_params = OrderedDict(ema_model.named_parameters())
     model_params = OrderedDict(model.named_parameters())
-
+    
     for name, param in model_params.items():
+        # if name contains "module" then remove module
+        if "module" in name:
+            name = name.replace("module.", "")
         # TODO: Consider applying only to params that require_grad to avoid small numerical changes of pos_embed
         ema_params[name].mul_(decay).add_(param.data, alpha=1 - decay)
 
@@ -996,11 +999,7 @@ class FlowMatching(nn.Module):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
-        train_loader, self.model, optimizer, scheduler = accelerate.prepare(train_loader, self.model, optimizer, scheduler)
-
-        self.ema = copy.deepcopy(self.model)
-        for param in self.ema.parameters():
-            param.requires_grad = False
+        train_loader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(train_loader, self.model, optimizer, scheduler, self.ema)
 
         update_ema(self.ema, self.model, 0)
 
@@ -1039,7 +1038,8 @@ class FlowMatching(nn.Module):
             if train_loss < best_loss:
                 best_loss = train_loss
                 if accelerate.is_main_process:
-                    torch.save(self.ema.state_dict(), os.path.join(models_dir, 'FlowMatching', f"{'LatFM' if self.vae is not None else 'FM'}_{self.dataset}.pt"))
+                    ema_to_save = accelerate.unwrap_model(self.ema)
+                    accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, 'FlowMatching', f"{'LatFM' if self.vae is not None else 'FM'}_{self.dataset}.pt"))
 
         accelerate.end_training()
 

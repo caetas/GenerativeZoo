@@ -94,11 +94,6 @@ def update_ema(ema_model, model, decay=0.5):
     ema_params = OrderedDict(ema_model.named_parameters())
     model_params = OrderedDict(model.named_parameters())
 
-    '''
-    for ema_param, model_param in zip(ema_model.parameters(), model.parameters()):
-            # print param names
-            ema_param.data.mul_(decay).add_(model_param.data, alpha=(1.0 - decay))
-    '''
     for name, param in model_params.items():
         # if name contains "module" then remove module
         if "module" in name:
@@ -1039,12 +1034,9 @@ class DDPM(nn.Module):
                 best_loss = acc_loss/len(dataloader.dataset)
                 
                 if accelerate.is_main_process:
-                #unwrapped_model = accelerate.unwrap_model(self.ema)
-                    # Unwrap EMA model before saving
                     ema_to_save = accelerate.unwrap_model(self.ema)
                     accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
-                #accelerate.save_model(self.ema, os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
-                #torch.save(self.ema.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
+
     
     @torch.no_grad()
     def outlier_score(self, x_start):

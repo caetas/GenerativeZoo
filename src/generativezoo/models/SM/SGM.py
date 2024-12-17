@@ -73,8 +73,11 @@ def update_ema(ema_model, model, decay=0.5):
     """
     ema_params = OrderedDict(ema_model.named_parameters())
     model_params = OrderedDict(model.named_parameters())
-
+    
     for name, param in model_params.items():
+        # if name contains "module" then remove module
+        if "module" in name:
+            name = name.replace("module.", "")
         # TODO: Consider applying only to params that require_grad to avoid small numerical changes of pos_embed
         ema_params[name].mul_(decay).add_(param.data, alpha=1 - decay)
 
@@ -937,7 +940,7 @@ class SGM(nn.Module):
 
         create_checkpoint_dir()
 
-        dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
+        dataloader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(dataloader, self.model, optimizer, scheduler, self.ema)
 
         self.ema = copy.deepcopy(self.model)
         for param in self.ema.parameters():
@@ -979,7 +982,8 @@ class SGM(nn.Module):
             if avg_loss < best_loss:
                 best_loss = avg_loss
                 if accelerate.is_main_process:
-                    torch.save(self.ema.state_dict(), os.path.join(models_dir,'SGM', f"{'Cond' if self.conditional else ''}{'LatSGM' if self.latent else 'SGM'}_{self.dataset}.pt"))
+                    ema_to_save = accelerate.unwrap_model(self.ema)
+                    accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir,'SGM', f"{'Cond' if self.conditional else ''}{'LatSGM' if self.latent else 'SGM'}_{self.dataset}.pt"))
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
 
