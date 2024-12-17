@@ -1036,7 +1036,8 @@ class DDPM(nn.Module):
                 best_loss = acc_loss/len(dataloader.dataset)
                 
                 accelerate.wait_for_everyone()
-                accelerate.save_model(self.ema, os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
+                accelerate.save(self.ema.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
+                #accelerate.save_model(self.ema, os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
                 #torch.save(self.ema.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
     
     @torch.no_grad()
