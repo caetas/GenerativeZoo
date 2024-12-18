@@ -972,6 +972,10 @@ class DDPM(nn.Module):
 
         dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
 
+        self.ema = copy.deepcopy(self.model)
+        for param in self.ema.parameters():
+            param.requires_grad = False
+
         update_ema(self.ema, self.model, 0)
 
 
