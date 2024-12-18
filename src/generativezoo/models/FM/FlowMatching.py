@@ -996,8 +996,8 @@ class FlowMatching(nn.Module):
 
         best_loss = float('inf')
 
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=self.decay)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs*len(train_loader), pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
         train_loader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(train_loader, self.model, optimizer, scheduler, self.ema)
 
@@ -1020,15 +1020,16 @@ class FlowMatching(nn.Module):
                 loss = self.conditional_flow_matching_loss(x)
                 accelerate.backward(loss)
                 optimizer.step()
+                scheduler.step()
                 train_loss += loss.item()*x.size(0)
                 update_ema(self.ema, self.model, self.ema_rate)
             
+            accelerate.wait_for_everyone()
+
             if not self.no_wandb:
                 accelerate.log({"Train Loss": train_loss / len(train_loader.dataset)})
                 accelerate.log({"Learning Rate": scheduler.get_last_lr()[0]})
 
-            if accelerate.is_main_process:
-                scheduler.step()
             epoch_bar.set_postfix({'Loss': train_loss / len(train_loader.dataset)})
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
@@ -1037,9 +1038,8 @@ class FlowMatching(nn.Module):
             
             if train_loss < best_loss:
                 best_loss = train_loss
-                if accelerate.is_main_process:
-                    ema_to_save = accelerate.unwrap_model(self.ema)
-                    accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, 'FlowMatching', f"{'LatFM' if self.vae is not None else 'FM'}_{self.dataset}.pt"))
+                ema_to_save = accelerate.unwrap_model(self.ema)
+                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, 'FlowMatching', f"{'LatFM' if self.vae is not None else 'FM'}_{self.dataset}.pt"))
 
         accelerate.end_training()
 

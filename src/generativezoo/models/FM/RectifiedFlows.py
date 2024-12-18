@@ -543,8 +543,8 @@ class RF(nn.Module):
         
         create_checkpoint_dir()
 
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=self.decay)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs*len(train_loader), pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
         epoch_bar = trange(self.n_epochs, desc="Epochs")
 
@@ -576,24 +576,23 @@ class RF(nn.Module):
 
                 accelerate.backward(loss)
                 optimizer.step()
+                scheduler.step()
 
                 train_loss += loss.item()*x.shape[0]
                 update_ema(self.ema, self.model, self.ema_rate)
 
+            accelerate.wait_for_everyone()
+            
             if not self.no_wandb:
                 accelerate.log({"train_loss": train_loss / len(train_loader.dataset)})
                 accelerate.log({"lr": scheduler.get_last_lr()[0]})
                 
             epoch_bar.set_postfix(loss=train_loss / len(train_loader.dataset))
 
-            if accelerate.is_main_process:
-                scheduler.step()
-
             if train_loss/len(train_loader.dataset) < best_loss:
                 best_loss = train_loss/len(train_loader.dataset)
-                if accelerate.is_main_process:
-                    ema_to_save = accelerate.unwrap_model(self.ema)
-                    accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'Lat' if self.vae is not None else ''}{'CondRF' if self.conditional else 'RF'}_{self.dataset}.pt"))
+                ema_to_save = accelerate.unwrap_model(self.ema)
+                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'Lat' if self.vae is not None else ''}{'CondRF' if self.conditional else 'RF'}_{self.dataset}.pt"))
         
             if epoch == 0 or ((epoch+1) % self.sample_and_save_freq == 0):
                 cond = torch.arange(0, 16).cuda() % self.num_classes
