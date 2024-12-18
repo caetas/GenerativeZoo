@@ -96,6 +96,8 @@ def update_ema(ema_model, model, decay=0.5):
 
     for name, param in model_params.items():
         # if name contains "module" then remove module
+        print(name)
+        print(ema_params.keys())
         if "module" in name:
             name = name.replace("module.", "")
         # TODO: Consider applying only to params that require_grad to avoid small numerical changes of pos_embed
@@ -967,7 +969,7 @@ class DDPM(nn.Module):
         create_checkpoint_dir()
         epoch_bar = tqdm(range(self.n_epochs), desc='Epochs', leave=True)
 
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=self.decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
         dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
