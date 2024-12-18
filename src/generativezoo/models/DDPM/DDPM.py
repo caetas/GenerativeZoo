@@ -965,7 +965,7 @@ class DDPM(nn.Module):
         epoch_bar = tqdm(range(self.n_epochs), desc='Epochs', leave=True)
 
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=self.decay)
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs*len(dataloader), pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
         dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
 
@@ -997,6 +997,7 @@ class DDPM(nn.Module):
                 accelerate.backward(loss)
                 
                 optimizer.step()
+                scheduler.step()
                 acc_loss += loss.item() * batch_size
                 update_ema(self.ema, self.model, self.ema_rate)
             
@@ -1006,8 +1007,6 @@ class DDPM(nn.Module):
                 accelerate.log({"Train Loss": acc_loss / len(dataloader.dataset)})
                 accelerate.log({"Learning Rate": scheduler.get_last_lr()[0]})
             
-            if accelerate.is_main_process:
-                scheduler.step()
             epoch_bar.set_postfix({'Loss': acc_loss/len(dataloader.dataset)})   
 
             # save generated images
