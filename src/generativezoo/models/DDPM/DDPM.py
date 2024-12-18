@@ -95,6 +95,9 @@ def update_ema(ema_model, model, decay=0.5):
     model_params = OrderedDict(model.named_parameters())
 
     for name, param in model_params.items():
+        # if name contains "module" then remove module
+        if "module" in name:
+            name = name.replace("module.", "")
         # TODO: Consider applying only to params that require_grad to avoid small numerical changes of pos_embed
         ema_params[name].mul_(decay).add_(param.data, alpha=1 - decay)
 
