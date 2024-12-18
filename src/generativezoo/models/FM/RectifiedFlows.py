@@ -502,6 +502,7 @@ class RF(nn.Module):
         grid = make_grid(imgs, nrow=4)
         fig = plt.figure(figsize=(10, 10))
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
+        plt.axis('off')
         if train:
             if not self.no_wandb:
                 accelerate.log({"samples": fig})
