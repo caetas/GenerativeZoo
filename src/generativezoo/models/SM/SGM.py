@@ -73,8 +73,11 @@ def update_ema(ema_model, model, decay=0.5):
     """
     ema_params = OrderedDict(ema_model.named_parameters())
     model_params = OrderedDict(model.named_parameters())
-
+    
     for name, param in model_params.items():
+        # if name contains "module" then remove module
+        if "module" in name:
+            name = name.replace("module.", "")
         # TODO: Consider applying only to params that require_grad to avoid small numerical changes of pos_embed
         ema_params[name].mul_(decay).add_(param.data, alpha=1 - decay)
 
@@ -932,16 +935,12 @@ class SGM(nn.Module):
         epoch_bar = trange(self.n_epochs, desc='Average loss: N/A')
         best_loss = np.inf
 
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=self.decay)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs*len(dataloader), pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
         create_checkpoint_dir()
 
-        dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
-
-        self.ema = copy.deepcopy(self.model)
-        for param in self.ema.parameters():
-            param.requires_grad = False
+        dataloader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(dataloader, self.model, optimizer, scheduler, self.ema)
 
         update_ema(self.ema, self.model, 0)
 
@@ -964,21 +963,22 @@ class SGM(nn.Module):
 
                 accelerate.backward(loss)
                 optimizer.step()
+                scheduler.step()
 
                 avg_loss += loss.item()*x.shape[0]
                 update_ema(self.ema, self.model, self.ema_rate)
+
+            accelerate.wait_for_everyone()
 
             epoch_bar.set_description('Average Loss: {:5f}'.format(avg_loss / len(dataloader.dataset)))
             if not self.no_wandb:
                 accelerate.log({'loss': avg_loss / len(dataloader.dataset)}, step = epoch)
                 accelerate.log({'lr': scheduler.get_last_lr()[0]}, step = epoch)
-            
-            scheduler.step()
 
             if avg_loss < best_loss:
                 best_loss = avg_loss
-                if accelerate.is_main_process:
-                    torch.save(self.ema.state_dict(), os.path.join(models_dir,'SGM', f"{'Cond' if self.conditional else ''}{'LatSGM' if self.latent else 'SGM'}_{self.dataset}.pt"))
+                ema_to_save = accelerate.unwrap_model(self.ema)
+                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir,'SGM', f"{'Cond' if self.conditional else ''}{'LatSGM' if self.latent else 'SGM'}_{self.dataset}.pt"))
 
             if (epoch+1) % self.sample_and_save_freq == 0 or epoch == 0:
 

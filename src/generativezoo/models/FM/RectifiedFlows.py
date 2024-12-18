@@ -25,8 +25,11 @@ def update_ema(ema_model, model, decay=0.5):
     """
     ema_params = OrderedDict(ema_model.named_parameters())
     model_params = OrderedDict(model.named_parameters())
-
+    
     for name, param in model_params.items():
+        # if name contains "module" then remove module
+        if "module" in name:
+            name = name.replace("module.", "")
         # TODO: Consider applying only to params that require_grad to avoid small numerical changes of pos_embed
         ema_params[name].mul_(decay).add_(param.data, alpha=1 - decay)
 
@@ -499,6 +502,7 @@ class RF(nn.Module):
         grid = make_grid(imgs, nrow=4)
         fig = plt.figure(figsize=(10, 10))
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
+        plt.axis('off')
         if train:
             if not self.no_wandb:
                 accelerate.log({"samples": fig})
@@ -540,16 +544,12 @@ class RF(nn.Module):
         
         create_checkpoint_dir()
 
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=self.decay)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs*len(train_loader), pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
         epoch_bar = trange(self.n_epochs, desc="Epochs")
 
-        train_loader, self.model, optimizer, scheduler = accelerate.prepare(train_loader, self.model, optimizer, scheduler)
-
-        self.ema = copy.deepcopy(self.model)
-        for param in self.ema.parameters():
-            param.requires_grad = False
+        train_loader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(train_loader, self.model, optimizer, scheduler, self.ema)
 
         update_ema(self.ema, self.model, 0)
 
@@ -577,21 +577,23 @@ class RF(nn.Module):
 
                 accelerate.backward(loss)
                 optimizer.step()
+                scheduler.step()
 
                 train_loss += loss.item()*x.shape[0]
                 update_ema(self.ema, self.model, self.ema_rate)
 
+            accelerate.wait_for_everyone()
+            
             if not self.no_wandb:
                 accelerate.log({"train_loss": train_loss / len(train_loader.dataset)})
                 accelerate.log({"lr": scheduler.get_last_lr()[0]})
                 
             epoch_bar.set_postfix(loss=train_loss / len(train_loader.dataset))
-            scheduler.step()
 
             if train_loss/len(train_loader.dataset) < best_loss:
                 best_loss = train_loss/len(train_loader.dataset)
-                if accelerate.is_main_process:
-                    torch.save(self.ema.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'Lat' if self.vae is not None else ''}{'CondRF' if self.conditional else 'RF'}_{self.dataset}.pt"))
+                ema_to_save = accelerate.unwrap_model(self.ema)
+                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'Lat' if self.vae is not None else ''}{'CondRF' if self.conditional else 'RF'}_{self.dataset}.pt"))
         
             if epoch == 0 or ((epoch+1) % self.sample_and_save_freq == 0):
                 cond = torch.arange(0, 16).cuda() % self.num_classes

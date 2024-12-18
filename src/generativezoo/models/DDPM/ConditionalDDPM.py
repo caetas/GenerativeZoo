@@ -80,8 +80,11 @@ def update_ema(ema_model, model, decay=0.5):
     """
     ema_params = OrderedDict(ema_model.named_parameters())
     model_params = OrderedDict(model.named_parameters())
-
+    
     for name, param in model_params.items():
+        # if name contains "module" then remove module
+        if "module" in name:
+            name = name.replace("module.", "")
         # TODO: Consider applying only to params that require_grad to avoid small numerical changes of pos_embed
         ema_params[name].mul_(decay).add_(param.data, alpha=1 - decay)
 
@@ -1000,14 +1003,10 @@ class ConditionalDDPM(nn.Module):
         epoch_bar = trange(self.n_epochs, desc="Epoch")
         best_loss = np.inf
 
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=self.decay)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs*len(dataloader), pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
-        dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
-
-        self.ema = copy.deepcopy(self.model)
-        for param in self.ema.parameters():
-            param.requires_grad = False
+        dataloader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(dataloader, self.model, optimizer, scheduler, self.ema)
 
         update_ema(self.ema, self.model, 0)
 
@@ -1033,25 +1032,28 @@ class ConditionalDDPM(nn.Module):
                 
                 accelerate.backward(loss)
                 optimizer.step()
+                scheduler.step()
                 update_ema(self.ema, self.model, self.ema_rate)
+
+            accelerate.wait_for_everyone()
 
             if not self.no_wandb:
                 accelerate.log({"CDDPM Loss": acc_loss/len(dataloader.dataset)})
                 accelerate.log({"Learning Rate": scheduler.get_last_lr()[0]})
 
             epoch_bar.set_description(f"loss: {acc_loss/len(dataloader.dataset):.4f}")
-            scheduler.step()
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
-                if accelerate.is_main_process:
-                    torch.save(self.ema.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f"{'LatCondDDPM' if self.vae is not None else 'CondDDPM'}_{self.dataset}.pt"))
+                ema_to_save = accelerate.unwrap_model(self.ema)
+                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f"{'LatCondDDPM' if self.vae is not None else 'CondDDPM'}_{self.dataset}.pt"))
 
             # for eval, save an image of currently generated samples (top rows)
             # followed by real images (bottom rows)
             if (epoch + 1) % self.sample_and_save_freq==0 or epoch == 0:
                 self.model.eval()
                 self.sample(train=True, accelerate=accelerate)
+
 
     @torch.no_grad()
     def gen_samples(self, n_sample, train=False, label=None):
