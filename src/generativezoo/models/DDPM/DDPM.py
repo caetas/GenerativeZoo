@@ -844,6 +844,7 @@ def plot_samples(samples):
     grid = make_grid(torch.tensor(samples), nrow=n_rows, normalize=False, padding=0)
     plt.figure(figsize=(10, 10))
     plt.imshow(grid.permute(1, 2, 0))
+    plt.axis('off')
     plt.show()
 
 class DDPM(nn.Module):
