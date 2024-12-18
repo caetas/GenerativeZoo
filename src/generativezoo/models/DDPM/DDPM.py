@@ -848,13 +848,12 @@ def plot_samples(samples):
     plt.show()
 
 class DDPM(nn.Module):
-    def __init__(self, args, image_size, channels, with_time_emb=True):
+    def __init__(self, args, image_size, channels):
         '''
         DDPM module
         :param args: arguments
         :param image_size: size of the image
         :param in_channels: number of input channels
-        :param with_time_emb: whether to use time embeddings
         '''
         super().__init__()
         self.reverse_transform = Compose([
