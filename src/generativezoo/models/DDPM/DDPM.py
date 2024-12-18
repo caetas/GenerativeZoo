@@ -970,7 +970,7 @@ class DDPM(nn.Module):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, weight_decay=self.decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs, pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
-        dataloader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(dataloader, self.model, optimizer, scheduler, self.ema)
+        dataloader, self.model, optimizer, scheduler = accelerate.prepare(dataloader, self.model, optimizer, scheduler)
 
         update_ema(self.ema, self.model, 0)
 
@@ -998,6 +998,8 @@ class DDPM(nn.Module):
                 optimizer.step()
                 acc_loss += loss.item() * batch_size
                 update_ema(self.ema, self.model, self.ema_rate)
+            
+            accelerate.wait_for_everyone()
 
             if not self.no_wandb:
                 accelerate.log({"Train Loss": acc_loss / len(dataloader.dataset)})
@@ -1032,11 +1034,12 @@ class DDPM(nn.Module):
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
-                
+                torch.save(self.ema.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
+                '''
                 if accelerate.is_main_process:
                     ema_to_save = accelerate.unwrap_model(self.ema)
                     accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
-
+                '''
     
     @torch.no_grad()
     def outlier_score(self, x_start):
