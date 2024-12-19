@@ -995,7 +995,8 @@ class DDPM(nn.Module):
                         batch = self.vae.module.encode(batch).latent_dist.sample().mul_(0.18215)
 
                 t = torch.randint(0, self.timesteps, (batch_size,), device=self.device).long()
-                loss = self.criterion(forward_diffusion_model=self.forward_diffusion_model, denoising_model=self.model, x_start=batch, t=t, loss_type=self.loss_type)
+                with accelerate.autocast():
+                    loss = self.criterion(forward_diffusion_model=self.forward_diffusion_model, denoising_model=self.model, x_start=batch, t=t, loss_type=self.loss_type)
                 accelerate.backward(loss)
                 
                 optimizer.step()
