@@ -985,7 +985,7 @@ class DDPM(nn.Module):
 
                 optimizer.zero_grad()
                 batch_size = batch[0].shape[0]
-                batch = batch[0].to(self.device)
+                batch = batch[0].to(accelerate.device)
 
                 if self.vae is not None:
                     with torch.no_grad():
