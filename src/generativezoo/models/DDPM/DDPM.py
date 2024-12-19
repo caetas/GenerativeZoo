@@ -970,7 +970,10 @@ class DDPM(nn.Module):
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=self.decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs*len(dataloader), pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
-        dataloader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(dataloader, self.model, optimizer, scheduler, self.ema) 
+        if self.vae is not None:
+            dataloader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(dataloader, self.model, optimizer, scheduler, self.ema)
+        else:
+            dataloader, self.model, optimizer, scheduler, self.ema, self.vae = accelerate.prepare(dataloader, self.model, optimizer, scheduler, self.ema, self.vae) 
 
         update_ema(self.ema, self.model, 0)
 
@@ -1017,7 +1020,7 @@ class DDPM(nn.Module):
                     with torch.no_grad():
                         all_images = self.vae.decode(all_images.to(self.device) / 0.18215).sample 
                         all_images = all_images.cpu().detach()
-                        
+
                 all_images = all_images * 0.5 + 0.5
                 all_images = all_images.clamp(0, 1)
                 fig = plt.figure(figsize=(10, 10))
