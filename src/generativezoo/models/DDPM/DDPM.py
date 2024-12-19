@@ -1017,7 +1017,7 @@ class DDPM(nn.Module):
                     with torch.no_grad():
                         all_images = self.vae.decode(all_images.to(self.device) / 0.18215).sample 
                         all_images = all_images.cpu().detach()
-                
+                        
                 all_images = all_images * 0.5 + 0.5
                 all_images = all_images.clamp(0, 1)
                 fig = plt.figure(figsize=(10, 10))
