@@ -992,7 +992,7 @@ class DDPM(nn.Module):
                         # if x has one channel, make it 3 channels
                         if batch.shape[1] == 1:
                             batch = torch.cat((batch, batch, batch), dim=1)
-                        batch = self.vae.encode(batch).latent_dist.sample().mul_(0.18215)
+                        batch = self.vae.module.encode(batch).latent_dist.sample().mul_(0.18215)
 
                 t = torch.randint(0, self.timesteps, (batch_size,), device=self.device).long()
                 loss = self.criterion(forward_diffusion_model=self.forward_diffusion_model, denoising_model=self.model, x_start=batch, t=t, loss_type=self.loss_type)
