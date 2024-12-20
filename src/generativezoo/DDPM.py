@@ -22,6 +22,12 @@ if __name__ == '__main__':
           model.model.load_state_dict(torch.load(args.checkpoint, weights_only=False))
           model.sample(args.num_samples)
 
+     if args.inpaint:
+          dataloader, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize, size=args.size)
+          model = DDPM(args, channels=channels, image_size=input_size)
+          model.model.load_state_dict(torch.load(args.checkpoint, weights_only=False))
+          model.inpaint(dataloader)
+
      elif args.outlier_detection:
           dataloader_a, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize, size=args.size)
           model = DDPM(args, channels=channels, image_size=input_size)

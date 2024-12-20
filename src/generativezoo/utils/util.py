@@ -425,6 +425,7 @@ def parse_args_DDPM():
     argparser.add_argument('--train', action='store_true', default=False, help='train model')
     argparser.add_argument('--sample', action='store_true', default=False, help='sample model')
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
+    argparser.add_argument('--inpaint', action='store_true', default=False, help='inpainting')
     argparser.add_argument('--batch_size', type=int, default=128, help='batch size')
     argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
     argparser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
