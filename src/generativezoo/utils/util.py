@@ -461,6 +461,7 @@ def parse_args_DDPM():
     argparser.add_argument('--size', type=int, default=None, help='Size of the original image')
     argparser.add_argument('--ema_rate', type=float, default=0.999, help='ema rate')
     argparser.add_argument('--fid', action='store_true', default=False, help='Sample for FID calculation')
+    argparser.add_argument('--snapshot', type=int, default=10, help='how many snapshots during training')
     args = argparser.parse_args()
     args.channel_mult = tuple(args.channel_mult)
     args.attention_resolutions = tuple(args.attention_resolutions)

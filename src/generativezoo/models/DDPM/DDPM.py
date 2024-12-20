@@ -909,6 +909,7 @@ class DDPM(nn.Module):
         self.lr = args.lr
         self.warmup = args.warmup
         self.decay = args.decay
+        self.snapshot = args.n_epochs//args.snapshot # take the snapshot every x epochs
 
         if args.lpips:
             self.lpips_loss = LPIPS(net='alex').to(self.device)
@@ -1036,9 +1037,11 @@ class DDPM(nn.Module):
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
+
+            if (epoch+1) % self.snapshot == 0:
                 #torch.save(self.ema.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
                 ema_to_save = accelerate.unwrap_model(self.ema)
-                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
+                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}_epoch{epoch+1}.pt"))
     
     @torch.no_grad()
     def outlier_score(self, x_start):
