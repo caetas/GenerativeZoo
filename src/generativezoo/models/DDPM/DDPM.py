@@ -1384,7 +1384,7 @@ class Sampler():
         img = torch.randn(shape, device=device)
         imgs = []
 
-        for i in tqdm(range(self.timesteps-1,-self.scaling,-self.scaling), desc="Sampling", leave=False):
+        for i in tqdm(range(self.timesteps-1,-1,-self.scaling), desc="Sampling", leave=False):
             if i<0:
                 i = 0
             img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
@@ -1415,7 +1415,7 @@ class Sampler():
         noise = img.clone()
         img = mask * forward.q_sample(x, torch.full((b,), self.timesteps-1, device=device, dtype=torch.long), noise) + (1-mask) * img
 
-        for i in tqdm(range(self.timesteps-1,-self.scaling,-self.scaling), desc="Sampling", leave=False):
+        for i in tqdm(range(self.timesteps-1,-1,-self.scaling), desc="Sampling", leave=False):
             if i<0:
                 i = 0
             img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
@@ -1443,7 +1443,7 @@ class Sampler():
         imgs = []
         initial_t = int(self.recon_factor*self.timesteps)
         
-        for i in tqdm(range(initial_t-1,-self.scaling,-self.scaling), desc="Reconstructing", leave=False):
+        for i in tqdm(range(initial_t-1,-1,-self.scaling), desc="Reconstructing", leave=False):
             if i<0:
                 i = 0
             img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
