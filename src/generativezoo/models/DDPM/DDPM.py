@@ -1358,13 +1358,10 @@ class Sampler():
         alpha_t = extract_time_index(self.alphas, t, x.shape)
         x0_t = (x - (1-alpha_t).sqrt()*model(x, t))/alpha_t.sqrt()
 
-        if tau_index <= 0:
+        if tau_index == (self.scaling-1): # last step
             return x0_t
         else:
-            if tau_index < self.scaling:
-                alpha_prev_t = torch.tensor(1.0).to(t.device)
-            else:
-                alpha_prev_t = extract_time_index(self.alphas, t-self.scaling, x.shape)
+            alpha_prev_t = extract_time_index(self.alphas, t-self.scaling, x.shape)
             c1 = self.ddpm*((1 - alpha_t/alpha_prev_t) * (1-alpha_prev_t) / (1 - alpha_t)).sqrt()
             c2  = ((1-alpha_prev_t) - c1**2).sqrt()
             noise = torch.randn_like(x)
