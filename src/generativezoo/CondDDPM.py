@@ -19,14 +19,14 @@ if __name__ == '__main__':
         _, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize, size=args.size)
         model = ConditionalDDPM(in_channels=channels, input_size=input_size, args=args)
         if args.checkpoint is not None:
-            model.model.load_state_dict(torch.load(args.checkpoint))
+            model.model.load_state_dict(torch.load(args.checkpoint, weights_only=False))
         model.sample()
 
     elif args.fid:
         _, input_size, channels = pick_dataset(args.dataset, 'train', args.batch_size, normalize=normalize, size=args.size)
         model = ConditionalDDPM(in_channels=channels, input_size=input_size, args=args)
         if args.checkpoint is not None:
-            model.model.load_state_dict(torch.load(args.checkpoint))
+            model.model.load_state_dict(torch.load(args.checkpoint, weights_only=False))
         model.fid_sample()
 
     else:

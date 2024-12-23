@@ -22,7 +22,7 @@ if __name__ == '__main__':
           model.model.load_state_dict(torch.load(args.checkpoint, weights_only=False))
           model.sample(args.num_samples)
 
-     if args.inpaint:
+     elif args.inpaint:
           dataloader, input_size, channels = pick_dataset(args.dataset, 'val', args.batch_size, normalize=normalize, size=args.size)
           model = DDPM(args, channels=channels, image_size=input_size)
           model.model.load_state_dict(torch.load(args.checkpoint, weights_only=False))
@@ -41,6 +41,6 @@ if __name__ == '__main__':
           if args.checkpoint is not None:
                model.model.load_state_dict(torch.load(args.checkpoint, weights_only=False))
           model.fid_sample(args.num_samples)
-          
+
      else:
           raise ValueError('Please specify at least one of the following: train, sample, outlier_detection')

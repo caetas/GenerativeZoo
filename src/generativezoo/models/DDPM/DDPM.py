@@ -944,7 +944,7 @@ class DDPM(nn.Module):
         self.lr = args.lr
         self.warmup = args.warmup
         self.decay = args.decay
-        self.snapshot = args.n_epochs//args.snapshot # take the snapshot every x epochs
+        self.snapshot = args.n_epochs//args.snapshots # take the snapshot every x epochs
 
         if args.lpips:
             self.lpips_loss = LPIPS(net='alex').to(self.device)
@@ -1382,8 +1382,6 @@ class Sampler():
         imgs = []
 
         for i in tqdm(range(self.timesteps-1,-1,-self.scaling), desc="Sampling", leave=False):
-            if i<0:
-                i = 0
             img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
             imgs.append(img.cpu().numpy())
         return imgs
@@ -1413,8 +1411,6 @@ class Sampler():
         img = mask * forward.q_sample(x, torch.full((b,), self.timesteps-1, device=device, dtype=torch.long), noise) + (1-mask) * img
 
         for i in tqdm(range(self.timesteps-1,-1,-self.scaling), desc="Sampling", leave=False):
-            if i<0:
-                i = 0
             img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
             if i>0:
                 x_i = forward.q_sample(x, torch.full((b,), max(0,i-self.scaling), device=device, dtype=torch.long), noise)
@@ -1441,8 +1437,6 @@ class Sampler():
         initial_t = int(self.recon_factor*self.timesteps)
         
         for i in tqdm(range(initial_t-1,-1,-self.scaling), desc="Reconstructing", leave=False):
-            if i<0:
-                i = 0
             img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
             imgs.append(img.cpu().numpy())
         return imgs
