@@ -943,14 +943,15 @@ class ConditionalDDPM(nn.Module):
         Returns:
         loss: torch.Tensor, loss value
         """
-        _ts = torch.randint(0, self.n_T, (x.shape[0],), device=self.device)  # t ~ Uniform(0, n_T)
+        _ts = torch.randint(0, self.n_T, (x.shape[0],))  # t ~ Uniform(0, n_T)
         noise = torch.randn_like(x, device = self.device)  # eps ~ N(0, 1)
 
         x_t = (
-            (self.sqrtab[_ts, None, None, None]).to(self.device) * x
-            + (self.sqrtmab[_ts, None, None, None]).to(self.device) * noise
+            self.sqrtab[_ts, None, None, None] * x
+            + self.sqrtmab[_ts, None, None, None] * noise
         )  # This is the x_t, which is sqrt(alphabar) x_0 + sqrt(1-alphabar) * eps
         
+        _ts = _ts.to(self.device)
         y = torch.where(torch.rand(x.shape[0], device=self.device) < self.drop_prob, torch.full((x.shape[0],), self.n_classes, device=self.device), y)
 
         return self.loss_mse(noise, self.forward(x_t, _ts, y))
