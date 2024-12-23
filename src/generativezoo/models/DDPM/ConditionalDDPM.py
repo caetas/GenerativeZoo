@@ -948,7 +948,7 @@ class ConditionalDDPM(nn.Module):
 
         x_t = (
             (self.sqrtab[_ts, None, None, None]).to(x.device) * x
-            + (self.sqrtmab[_ts, None, None, None]).to_(x.device) * noise
+            + (self.sqrtmab[_ts, None, None, None]).to(x.device) * noise
         )  # This is the x_t, which is sqrt(alphabar) x_0 + sqrt(1-alphabar) * eps
         
         _ts = _ts.to(self.device)
