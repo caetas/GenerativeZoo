@@ -947,8 +947,8 @@ class ConditionalDDPM(nn.Module):
         noise = torch.randn_like(x, device = self.device)  # eps ~ N(0, 1)
 
         x_t = (
-            self.sqrtab[_ts, None, None, None] * x
-            + self.sqrtmab[_ts, None, None, None] * noise
+            (self.sqrtab[_ts, None, None, None]).to(self.device) * x
+            + (self.sqrtmab[_ts, None, None, None]).to(self.device) * noise
         )  # This is the x_t, which is sqrt(alphabar) x_0 + sqrt(1-alphabar) * eps
         
         y = torch.where(torch.rand(x.shape[0], device=self.device) < self.drop_prob, torch.full((x.shape[0],), self.n_classes, device=self.device), y)
