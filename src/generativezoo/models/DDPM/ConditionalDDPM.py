@@ -894,8 +894,8 @@ class ConditionalDDPM(nn.Module):
         # e.g. can access self.sqrtab later
         for k, v in ddpm_schedules(args.beta_start, args.beta_end, args.timesteps).items():
             self.register_buffer(k, v)
-        self.sqrtab = self.sqrtab.to(self.device)
-        self.sqrtmab = self.sqrtmab.to(self.device)
+        self.sqrtab = self.sqrtab
+        self.sqrtmab = self.sqrtmab
         self.n_T = args.timesteps
         self.n_Tau = args.sample_timesteps
         self.scaling = args.timesteps//args.sample_timesteps
