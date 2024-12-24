@@ -40,7 +40,7 @@ if __name__ == '__main__':
           model = DDPM(args, channels=channels, image_size=input_size)
           if args.checkpoint is not None:
                model.model.load_state_dict(torch.load(args.checkpoint, weights_only=False))
-          model.fid_sample(args.num_samples)
+          model.fid_sample(args.batch_size)
 
      else:
           raise ValueError('Please specify at least one of the following: train, sample, outlier_detection')
