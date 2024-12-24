@@ -148,6 +148,7 @@ def parse_args_FlowMatching():
     argparser.add_argument('--latent', action='store_true', default=False, help='Use latent implementation')
     argparser.add_argument('--size', type=int, default=None, help='Size of the original image')
     argparser.add_argument('--ema_rate', type=float, default=0.999, help='ema rate')
+    argparser.add_argument('--snapshots', type=int, default=10, help='how many snapshots during training')
     args = argparser.parse_args()
     args.channel_mult = tuple(args.channel_mult)
     args.attention_resolutions = tuple(args.attention_resolutions)
@@ -189,6 +190,7 @@ def parse_args_CondFlowMatching():
     argparser.add_argument('--latent', action='store_true', default=False, help='Use latent implementation')
     argparser.add_argument('--size', type=int, default=None, help='Size of the original image')
     argparser.add_argument('--ema_rate', type=float, default=0.999, help='ema rate')
+    argparser.add_argument('--snapshots', type=int, default=10, help='how many snapshots during training')
     args = argparser.parse_args()
     args.channel_mult = tuple(args.channel_mult)
     args.attention_resolutions = tuple(args.attention_resolutions)
@@ -225,6 +227,7 @@ def parse_args_RectifiedFlows():
     argparser.add_argument('--decay', type=float, default=0.0, help='weight decay rate')
     argparser.add_argument('--latent', action='store_true', default=False, help='Use latent implementation')
     argparser.add_argument('--size', type=int, default=None, help='Size of the original image')
+    argparser.add_argument('--snapshots', type=int, default=10, help='how many snapshots during training')
     return argparser.parse_args()
 
 def parse_args_VanillaFlow():

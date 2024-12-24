@@ -1031,7 +1031,7 @@ class ConditionalDDPM(nn.Module):
                             # if x has one channel, make it 3 channels
                             if x.shape[1] == 1:
                                 x = torch.cat((x, x, x), dim=1)
-                            x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
+                            x = self.vae.module.encode(x).latent_dist.sample().mul_(0.18215)
                     
                     loss = self.denoising_loss(x,y)
                     acc_loss += loss.item() * x.shape[0]
@@ -1054,7 +1054,7 @@ class ConditionalDDPM(nn.Module):
 
             if (epoch + 1) % self.snapshot == 0:
                 ema_to_save = accelerate.unwrap_model(self.ema)
-                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f"{'LatCondDDPM' if self.vae is not None else 'CondDDPM'}_{self.dataset}.pt"))
+                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f"{'LatCondDDPM' if self.vae is not None else 'CondDDPM'}_{self.dataset}_epoch{epoch+1}.pt"))
 
             # for eval, save an image of currently generated samples (top rows)
             # followed by real images (bottom rows)
@@ -1130,7 +1130,10 @@ class ConditionalDDPM(nn.Module):
         self.model.eval()
         samples = self.gen_samples(num_samples, train=train).cpu().detach()
         if self.vae is not None:
-            samples = self.vae.decode(samples.to(self.device) / 0.18215).sample 
+            if train:
+                samples = self.vae.module.decode(samples.to(self.device) / 0.18215).sample
+            else:
+                samples = self.vae.decode(samples.to(self.device) / 0.18215).sample 
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
 

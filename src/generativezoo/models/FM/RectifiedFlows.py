@@ -422,6 +422,7 @@ class RF(nn.Module):
         print(f"Number of parameters: {model_size}, {model_size / 1e6}M")
         self.model.to(self.device)
         self.no_wandb = args.no_wandb
+        self.snapshot = args.n_epochs//args.snapshots
         if args.train:
             self.ema = copy.deepcopy(self.model)
             self.ema_rate = args.ema_rate
@@ -496,7 +497,10 @@ class RF(nn.Module):
         
         imgs = images[-1]
         if self.vae is not None:
-            imgs = self.vae.decode(imgs / 0.18215).sample
+            if train:
+                imgs = self.vae.module.decode(imgs / 0.18215).sample
+            else:
+                imgs = self.vae.decode(imgs / 0.18215).sample
         imgs = imgs*0.5 + 0.5
         imgs = imgs.clamp(0, 1)
         grid = make_grid(imgs, nrow=4)
@@ -549,7 +553,10 @@ class RF(nn.Module):
 
         epoch_bar = trange(self.n_epochs, desc="Epochs")
 
-        train_loader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(train_loader, self.model, optimizer, scheduler, self.ema)
+        if self.vae is None:
+            train_loader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(train_loader, self.model, optimizer, scheduler, self.ema)
+        else:
+            train_loader, self.model, optimizer, scheduler, self.ema, self.vae = accelerate.prepare(train_loader, self.model, optimizer, scheduler, self.ema, self.vae)
 
         update_ema(self.ema, self.model, 0)
 
@@ -561,21 +568,23 @@ class RF(nn.Module):
                 x = x.to(self.device)
                 cond = cond.to(self.device)
 
-                if self.vae is not None:
-                    with torch.no_grad():
-                        # if x has one channel, make it 3 channels
-                        if x.shape[1] == 1:
-                            x = torch.cat((x, x, x), dim=1)
-                        x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
+                with accelerate.autocast():
 
-                optimizer.zero_grad()
+                    if self.vae is not None:
+                        with torch.no_grad():
+                            # if x has one channel, make it 3 channels
+                            if x.shape[1] == 1:
+                                x = torch.cat((x, x, x), dim=1)
+                            x = self.vae.module.encode(x).latent_dist.sample().mul_(0.18215)
 
-                if self.conditional:
-                    loss, _ = self.forward(x, cond)
-                else:
-                    loss, _ = self.forward(x, torch.zeros_like(cond).long())
+                    optimizer.zero_grad()
 
-                accelerate.backward(loss)
+                    if self.conditional:
+                        loss, _ = self.forward(x, cond)
+                    else:
+                        loss, _ = self.forward(x, torch.zeros_like(cond).long())
+
+                    accelerate.backward(loss)
                 optimizer.step()
                 scheduler.step()
 
@@ -592,8 +601,10 @@ class RF(nn.Module):
 
             if train_loss/len(train_loader.dataset) < best_loss:
                 best_loss = train_loss/len(train_loader.dataset)
+
+            if (epoch+1) % self.snapshot == 0:
                 ema_to_save = accelerate.unwrap_model(self.ema)
-                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'Lat' if self.vae is not None else ''}{'CondRF' if self.conditional else 'RF'}_{self.dataset}.pt"))
+                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'Lat' if self.vae is not None else ''}{'CondRF' if self.conditional else 'RF'}_{self.dataset}_epoch{epoch+1}.pt"))
         
             if epoch == 0 or ((epoch+1) % self.sample_and_save_freq == 0):
                 cond = torch.arange(0, 16).cuda() % self.num_classes
