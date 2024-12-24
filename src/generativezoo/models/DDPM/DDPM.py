@@ -847,6 +847,41 @@ def plot_samples(samples):
     plt.axis('off')
     plt.show()
 
+def plot_inpainting(original, masks, inpainted):
+    '''
+    Plot inpainting results
+    :param original: original images
+    :param masks: masks
+    :param inpainted: inpainted images
+    '''
+    n_rows = int(np.sqrt(original.shape[0]))
+    original = original * 0.5 + 0.5
+    original = np.clip(original, 0, 1)
+    inpainted = inpainted * 0.5 + 0.5
+    inpainted = np.clip(inpainted, 0, 1)
+    
+    if masks.shape[1]!=original.shape[1]:
+        masks = masks[:, :original.shape[1], :, :] # remove extra channel
+        # upscale masks to shape[2] and shape[3]
+        masks = F.interpolate(masks, size=(original.shape[2], original.shape[3]), mode='nearest')
+    masks = masks.cpu().numpy()
+
+    
+    # multiply masks with original images
+    masked = original * masks
+
+    grid_og = make_grid(torch.tensor(masked), nrow=n_rows, normalize=False, padding=0)
+    grid_inp = make_grid(torch.tensor(inpainted), nrow=n_rows, normalize=False, padding=0)
+    # plot both side by side
+    fig, ax = plt.subplots(1, 2, figsize=(20, 10))
+    ax[0].imshow(grid_og.permute(1, 2, 0))
+    ax[0].axis('off')
+    ax[0].set_title('Original images with masks')
+    ax[1].imshow(grid_inp.permute(1, 2, 0))
+    ax[1].axis('off')
+    ax[1].set_title('Inpainted images')
+    plt.show()
+
 class DDPM(nn.Module):
     def __init__(self, args, image_size, channels):
         '''
@@ -909,6 +944,7 @@ class DDPM(nn.Module):
         self.lr = args.lr
         self.warmup = args.warmup
         self.decay = args.decay
+        self.snapshot = args.n_epochs//args.snapshots # take the snapshot every x epochs
 
         if args.lpips:
             self.lpips_loss = LPIPS(net='alex').to(self.device)
@@ -970,7 +1006,10 @@ class DDPM(nn.Module):
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=self.decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs*len(dataloader), pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
-        dataloader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(dataloader, self.model, optimizer, scheduler, self.ema) 
+        if self.vae is None:
+            dataloader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(dataloader, self.model, optimizer, scheduler, self.ema)
+        else:
+            dataloader, self.model, optimizer, scheduler, self.ema, self.vae = accelerate.prepare(dataloader, self.model, optimizer, scheduler, self.ema, self.vae) 
 
         update_ema(self.ema, self.model, 0)
 
@@ -979,21 +1018,21 @@ class DDPM(nn.Module):
             self.model.train()
             acc_loss = 0.0
             for batch in tqdm(dataloader, desc=f'Batches', leave=False, disable=not verbose):
-
                 optimizer.zero_grad()
                 batch_size = batch[0].shape[0]
                 batch = batch[0].to(self.device)
 
-                if self.vae is not None:
-                    with torch.no_grad():
-                        # if x has one channel, make it 3 channels
-                        if batch.shape[1] == 1:
-                            batch = torch.cat((batch, batch, batch), dim=1)
-                        batch = self.vae.encode(batch).latent_dist.sample().mul_(0.18215)
+                with accelerate.autocast():
+                    if self.vae is not None:
+                        with torch.no_grad():
+                            # if x has one channel, make it 3 channels
+                            if batch.shape[1] == 1:
+                                batch = torch.cat((batch, batch, batch), dim=1)
+                            batch = self.vae.module.encode(batch).latent_dist.sample().mul_(0.18215)
 
-                t = torch.randint(0, self.timesteps, (batch_size,), device=self.device).long()
-                loss = self.criterion(forward_diffusion_model=self.forward_diffusion_model, denoising_model=self.model, x_start=batch, t=t, loss_type=self.loss_type)
-                accelerate.backward(loss)
+                    t = torch.randint(0, self.timesteps, (batch_size,), device=self.device).long()
+                    loss = self.criterion(forward_diffusion_model=self.forward_diffusion_model, denoising_model=self.model, x_start=batch, t=t, loss_type=self.loss_type)
+                    accelerate.backward(loss)
                 
                 optimizer.step()
                 scheduler.step()
@@ -1015,9 +1054,9 @@ class DDPM(nn.Module):
 
                 if self.vae is not None:
                     with torch.no_grad():
-                        all_images = self.vae.decode(all_images.to(self.device) / 0.18215).sample 
+                        all_images = self.vae.module.decode(all_images.to(self.device) / 0.18215).sample 
                         all_images = all_images.cpu().detach()
-                
+
                 all_images = all_images * 0.5 + 0.5
                 all_images = all_images.clamp(0, 1)
                 fig = plt.figure(figsize=(10, 10))
@@ -1033,9 +1072,11 @@ class DDPM(nn.Module):
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
+
+            if (epoch+1) % self.snapshot == 0:
                 #torch.save(self.ema.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
                 ema_to_save = accelerate.unwrap_model(self.ema)
-                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}.pt"))
+                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir,'DDPM',f"{'LatDDPM' if self.vae is not None else 'DDPM'}_{self.dataset}_epoch{epoch+1}.pt"))
     
     @torch.no_grad()
     def outlier_score(self, x_start):
@@ -1061,7 +1102,7 @@ class DDPM(nn.Module):
         if self.vae is not None:
             with torch.no_grad():
                 predicted_image = self.vae.decode(predicted_image.to(self.device) / 0.18215).sample 
-                predicted_image = predicted_image.clamp(0,1).cpu().detach()
+                predicted_image = predicted_image.cpu().detach()
                 x_start = x_original
 
         if self.loss_type == 'l1':
@@ -1129,6 +1170,54 @@ class DDPM(nn.Module):
         plt.legend(loc='upper right')
         plt.title('{} vs {} AUC: {:.2f} FPR95: {:.2f}'.format(in_name, out_name, 100*auc_score, 100*fpr95))
         plt.show()
+
+    def create_masks(self, batch_size):
+        '''
+        Create masks for inpainting
+        :param batch_size: batch size
+        '''
+        masks = torch.ones((batch_size, self.channels, self.img_size, self.img_size), device=self.device)
+        startx = torch.randint(0, self.img_size//2, (batch_size,), device=self.device)
+        starty = torch.randint(0, self.img_size//2, (batch_size,), device=self.device)
+        endx = startx + torch.randint(self.img_size//4, self.img_size//2, (batch_size,), device=self.device)
+        endy = starty + torch.randint(self.img_size//4, self.img_size//2, (batch_size,), device=self.device)
+        for i in range(batch_size):
+            masks[i, :, startx[i]:endx[i], starty[i]:endy[i]] = 0
+        return masks
+
+    @torch.no_grad()
+    def inpaint(self, dataloader):
+        '''
+        Inpaint images
+        :param dataloader: dataloader
+        '''
+
+        self.model.eval()
+        for batch in tqdm(dataloader, desc='Inpainting', leave=True):
+            # generate random rectangular masks with max size of half img_size
+            batch = batch[0].to(self.device)
+            original = batch.clone().cpu().numpy()
+            if self.vae is not None:
+                with torch.no_grad():
+                    # if x has one channel, make it 3 channels
+                    if batch.shape[1] == 1:
+                        batch = torch.cat((batch, batch, batch), dim=1)
+                    batch = self.vae.encode(batch).latent_dist.sample().mul_(0.18215)
+
+            masks = self.create_masks(batch.shape[0])
+            inpainted_images = self.sampler.inpaint_loop(self.model, batch, masks, self.forward_diffusion_model)
+            
+            if self.vae is not None:
+                with torch.no_grad():
+                    inpainted_images = self.vae.decode(inpainted_images.to(self.device) / 0.18215).sample 
+            inpainted_images = inpainted_images.cpu().detach().numpy()
+
+            break
+                    
+        plot_inpainting(original, masks, inpainted_images)
+        
+
+
     
     @torch.no_grad()
     def sample(self, batch_size=16):
@@ -1137,6 +1226,11 @@ class DDPM(nn.Module):
         :param batch_size: batch size
         '''
         samps = self.sampler.sample(model=self.model, image_size=self.img_size, batch_size=batch_size, channels=self.channels)[-1]
+        if self.vae is not None:
+            with torch.no_grad():
+                samps = torch.tensor(samps, device=self.device)
+                samps = self.vae.decode(samps / 0.18215).sample 
+                samps = samps.cpu().detach().numpy()
         plot_samples(samps)
 
     @torch.no_grad()
@@ -1264,7 +1358,7 @@ class Sampler():
         alpha_t = extract_time_index(self.alphas, t, x.shape)
         x0_t = (x - (1-alpha_t).sqrt()*model(x, t))/alpha_t.sqrt()
 
-        if tau_index == 0:
+        if tau_index == (self.scaling-1): # last step
             return x0_t
         else:
             alpha_prev_t = extract_time_index(self.alphas, t-self.scaling, x.shape)
@@ -1286,13 +1380,46 @@ class Sampler():
         # start from pure noise (for each example in the batch)
         img = torch.randn(shape, device=device)
         imgs = []
+
+        for i in tqdm(range(self.timesteps-1,-1,-self.scaling), desc="Sampling", leave=False):
+            img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
+            imgs.append(img.cpu().numpy())
+        return imgs
         
+        '''
         for i in tqdm(range(self.sample_timesteps-1,-1,-1), desc="Sampling", leave=False):
             scaled_i = i*self.scaling
             img = self.p_sample(model, img, torch.full((b,), scaled_i, device=device, dtype=torch.long), i)
             imgs.append(img.cpu().numpy())
         return imgs
+        '''
     
+    @torch.no_grad
+    def inpaint_loop(self, model, x, mask, forward):
+        '''
+        Inpaint the image
+        :param model: model
+        :param x: input image
+        :param mask: mask
+        '''
+        device = next(model.parameters()).device
+
+        b = x.shape[0]
+        # start from pure noise (for each example in the batch)
+        img = torch.randn_like(x)
+        noise = img.clone()
+        img = mask * forward.q_sample(x, torch.full((b,), self.timesteps-1, device=device, dtype=torch.long), noise) + (1-mask) * img
+
+        for i in tqdm(range(self.timesteps-1,-1,-self.scaling), desc="Sampling", leave=False):
+            img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
+            if i>0:
+                x_i = forward.q_sample(x, torch.full((b,), max(0,i-self.scaling), device=device, dtype=torch.long), noise)
+                img = mask * x_i + (1-mask) * img
+            else:
+                img = mask * x + (1-mask) * img
+
+        return img
+
     @torch.no_grad
     def reconstruct_loop(self, model, shape, x):
         '''
@@ -1307,11 +1434,10 @@ class Sampler():
         # start from pure noise (for each example in the batch)
         img = x
         imgs = []
-        initial_t = int(self.recon_factor*self.sample_timesteps)
+        initial_t = int(self.recon_factor*self.timesteps)
         
-        for i in tqdm(range(initial_t-1,-1,-1), desc="Reconstructing", leave=False):
-            scaled_i = i*self.scaling
-            img = self.p_sample(model, img, torch.full((b,), scaled_i, device=device, dtype=torch.long), i)
+        for i in tqdm(range(initial_t-1,-1,-self.scaling), desc="Reconstructing", leave=False):
+            img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
             imgs.append(img.cpu().numpy())
         return imgs
     

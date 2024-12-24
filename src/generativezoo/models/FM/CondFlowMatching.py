@@ -875,6 +875,7 @@ class CondFlowMatching(nn.Module):
         self.warmup = args.warmup
         self.decay = args.decay
         self.num_samples = args.num_samples
+        self.snapshot = args.n_epochs // args.snapshots
         if args.train:
             self.ema = copy.deepcopy(self.model)
             self.ema_rate = args.ema_rate
@@ -958,7 +959,10 @@ class CondFlowMatching(nn.Module):
             samples = x_0
 
         if self.vae is not None:
-            samples = self.vae.decode(samples / 0.18215).sample
+            if train:
+                samples = self.vae.module.decode(samples / 0.18215).sample
+            else:
+                samples = self.vae.decode(samples / 0.18215).sample
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
         fig = plt.figure(figsize=(10, 10))
@@ -1021,7 +1025,10 @@ class CondFlowMatching(nn.Module):
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=self.decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs*len(train_loader), pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
-        train_loader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(train_loader, self.model, optimizer, scheduler, self.ema)
+        if  self.vae is None:
+            train_loader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(train_loader, self.model, optimizer, scheduler, self.ema)
+        else:
+            train_loader, self.model, optimizer, scheduler, self.ema, self.vae = accelerate.prepare(train_loader, self.model, optimizer, scheduler, self.ema, self.vae)
 
         update_ema(self.ema, self.model, 0)
 
@@ -1031,17 +1038,19 @@ class CondFlowMatching(nn.Module):
             for x, cl in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
 
-                if self.vae is not None:
-                    with torch.no_grad():
-                        # if x has one channel, make it 3 channels
-                        if x.shape[1] == 1:
-                            x = torch.cat((x, x, x), dim=1)
-                        x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
+                with accelerate.autocast():
 
-                cl = cl.to(self.device)
-                optimizer.zero_grad()
-                loss = self.conditional_flow_matching_loss(x, cl)
-                accelerate.backward(loss)
+                    if self.vae is not None:
+                        with torch.no_grad():
+                            # if x has one channel, make it 3 channels
+                            if x.shape[1] == 1:
+                                x = torch.cat((x, x, x), dim=1)
+                            x = self.vae.module.encode(x).latent_dist.sample().mul_(0.18215)
+
+                    cl = cl.to(x.device)
+                    optimizer.zero_grad()
+                    loss = self.conditional_flow_matching_loss(x, cl)
+                    accelerate.backward(loss)
                 optimizer.step()
                 scheduler.step()
                 train_loss += loss.item()*x.size(0)
@@ -1061,8 +1070,10 @@ class CondFlowMatching(nn.Module):
             
             if train_loss < best_loss:
                 best_loss = train_loss
+            
+            if (epoch+1) % self.snapshot == 0:
                 ema_to_save = accelerate.unwrap_model(self.ema)
-                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, 'CondFlowMatching', f"{'LatCondFM' if self.vae is not None else 'CondFM'}_{self.dataset}.pt"))
+                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, 'CondFlowMatching', f"{'LatCondFM' if self.vae is not None else 'CondFM'}_{self.dataset}_epoch{epoch+1}.pt"))
 
         accelerate.end_training()
 

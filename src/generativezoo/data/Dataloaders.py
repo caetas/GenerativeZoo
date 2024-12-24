@@ -814,6 +814,85 @@ def dtd_test_loader(batch_size, normalize = False, input_shape = None, num_worke
         return test_loader, input_shape, 3
     else:
         return test_loader, 128, 3
+    
+class CelebA(Dataset):
+    def __init__(self, transform_fn, train = False):
+
+        self.dataset = load_dataset('korexyz/celeba-hq-256x256')
+        self.transform_fn = transform_fn
+        self.train = train
+        self.dataset.set_transform(self.transform_fn)
+        self.dataset = self.dataset['train' if train else 'validation']
+
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, idx):
+        return self.dataset[idx]['pixel_values'], self.dataset[idx]['label']
+
+def celeba_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
+    
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+            transforms.ToTensor(),
+        ])
+
+    # Define a function to apply transformations to each dataset sample
+    def transform_fn(examples):
+        examples['pixel_values'] = [transform(image) for image in examples['image']]
+        return examples
+
+    dataset = CelebA(transform_fn, train = True)
+
+    training_loader = DataLoader(dataset,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True,
+                                num_workers = num_workers)
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 3
+    else:
+        return training_loader, 256, 3
+    
+def celeba_val_loader(batch_size, normalize = False, input_shape = None):
+    
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize((input_shape,input_shape)) if input_shape is not None else transforms.Resize((256,256)),
+            transforms.ToTensor(),
+        ])
+
+    # Define a function to apply transformations to each dataset sample
+    def transform_fn(examples):
+        examples['pixel_values'] = [transform(image) for image in examples['image']]
+        return examples
+
+    dataset = CelebA(transform_fn, train = False)
+
+    validation_loader = DataLoader(dataset,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True,
+                                num_workers = 0)
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 3
+    else:
+        return validation_loader, 256, 3
 
 class ImageNetDataset(Dataset):
     def __init__(self, transform_fn, train = False):
@@ -1061,6 +1140,11 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return imagenet_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
             return imagenet_val_loader(batch_size, normalize, size)
+    elif dataset_name == 'celeba':
+        if mode == 'train':
+            return celeba_train_loader(batch_size, normalize, size, num_workers)
+        elif mode == 'val':
+            return celeba_val_loader(batch_size, normalize, size)
     elif dataset_name == 'imagenetpatch':
         if mode == 'train':
             return imagenetpatch_train_loader(batch_size, normalize, size, num_workers, n_patches)

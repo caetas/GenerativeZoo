@@ -826,7 +826,7 @@ def ddpm_schedules(beta1, beta2, T):
     """
     assert beta1 < beta2 < 1.0, "beta1 and beta2 must be in (0, 1)"
 
-    beta_t = (beta2 - beta1) * torch.arange(0, T + 1, dtype=torch.float32) / T + beta1
+    beta_t = torch.linspace(beta1,beta2,T)
     sqrt_beta_t = torch.sqrt(beta_t)
     alpha_t = 1 - beta_t
     log_alpha_t = torch.log(alpha_t)
@@ -894,8 +894,8 @@ class ConditionalDDPM(nn.Module):
         # e.g. can access self.sqrtab later
         for k, v in ddpm_schedules(args.beta_start, args.beta_end, args.timesteps).items():
             self.register_buffer(k, v)
-        self.sqrtab = self.sqrtab.to(self.device)
-        self.sqrtmab = self.sqrtmab.to(self.device)
+        self.sqrtab = self.sqrtab
+        self.sqrtmab = self.sqrtmab
         self.n_T = args.timesteps
         self.n_Tau = args.sample_timesteps
         self.scaling = args.timesteps//args.sample_timesteps
@@ -913,6 +913,7 @@ class ConditionalDDPM(nn.Module):
         self.no_wandb = args.no_wandb
         self.warmup = args.warmup
         self.decay = args.decay
+        self.snapshot = args.n_epochs//args.snapshots # take the snapshot every x epochs
 
         if args.train:
             self.ema = copy.deepcopy(self.model)
@@ -942,15 +943,16 @@ class ConditionalDDPM(nn.Module):
         Returns:
         loss: torch.Tensor, loss value
         """
-        _ts = torch.randint(1, self.n_T+1, (x.shape[0],), device=self.device)  # t ~ Uniform(0, n_T)
-        noise = torch.randn_like(x, device = self.device)  # eps ~ N(0, 1)
+        _ts = torch.randint(0, self.n_T, (x.shape[0],))  # t ~ Uniform(0, n_T)
+        noise = torch.randn_like(x, device = x.device)  # eps ~ N(0, 1)
 
         x_t = (
-            self.sqrtab[_ts, None, None, None] * x
-            + self.sqrtmab[_ts, None, None, None] * noise
+            (self.sqrtab[_ts, None, None, None]).to(x.device) * x
+            + (self.sqrtmab[_ts, None, None, None]).to(x.device) * noise
         )  # This is the x_t, which is sqrt(alphabar) x_0 + sqrt(1-alphabar) * eps
         
-        y = torch.where(torch.rand(x.shape[0], device=self.device) < self.drop_prob, torch.full((x.shape[0],), self.n_classes, device=self.device), y)
+        _ts = _ts.to(self.device)
+        y = torch.where(torch.rand(x.shape[0], device=y.device) < self.drop_prob, torch.full((x.shape[0],), self.n_classes, device=y.device), y)
 
         return self.loss_mse(noise, self.forward(x_t, _ts, y))
 
@@ -1006,7 +1008,10 @@ class ConditionalDDPM(nn.Module):
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=self.decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, total_steps=self.n_epochs*len(dataloader), pct_start=self.warmup/self.n_epochs, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
-        dataloader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(dataloader, self.model, optimizer, scheduler, self.ema)
+        if self.vae is None:
+            dataloader, self.model, optimizer, scheduler, self.ema = accelerate.prepare(dataloader, self.model, optimizer, scheduler, self.ema)
+        else:
+            dataloader, self.model, optimizer, scheduler, self.ema, self.vae = accelerate.prepare(dataloader, self.model, optimizer, scheduler, self.ema, self.vae)
 
         update_ema(self.ema, self.model, 0)
 
@@ -1020,17 +1025,18 @@ class ConditionalDDPM(nn.Module):
                 x = x.to(self.device)
                 y = y.to(self.device)
 
-                if self.vae is not None:
-                    with torch.no_grad():
-                        # if x has one channel, make it 3 channels
-                        if x.shape[1] == 1:
-                            x = torch.cat((x, x, x), dim=1)
-                        x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
-                
-                loss = self.denoising_loss(x,y)
-                acc_loss += loss.item() * x.shape[0]
-                
-                accelerate.backward(loss)
+                with accelerate.autocast():
+                    if self.vae is not None:
+                        with torch.no_grad():
+                            # if x has one channel, make it 3 channels
+                            if x.shape[1] == 1:
+                                x = torch.cat((x, x, x), dim=1)
+                            x = self.vae.module.encode(x).latent_dist.sample().mul_(0.18215)
+                    
+                    loss = self.denoising_loss(x,y)
+                    acc_loss += loss.item() * x.shape[0]
+                    
+                    accelerate.backward(loss)
                 optimizer.step()
                 scheduler.step()
                 update_ema(self.ema, self.model, self.ema_rate)
@@ -1045,8 +1051,10 @@ class ConditionalDDPM(nn.Module):
 
             if acc_loss/len(dataloader.dataset) < best_loss:
                 best_loss = acc_loss/len(dataloader.dataset)
+
+            if (epoch + 1) % self.snapshot == 0:
                 ema_to_save = accelerate.unwrap_model(self.ema)
-                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f"{'LatCondDDPM' if self.vae is not None else 'CondDDPM'}_{self.dataset}.pt"))
+                accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, 'ConditionalDDPM', f"{'LatCondDDPM' if self.vae is not None else 'CondDDPM'}_{self.dataset}_epoch{epoch+1}.pt"))
 
             # for eval, save an image of currently generated samples (top rows)
             # followed by real images (bottom rows)
@@ -1083,15 +1091,15 @@ class ConditionalDDPM(nn.Module):
         c_i = c_i.repeat(2)
         c_i[n_sample:] = self.n_classes # makes second half of batch context free
 
-        for j in trange(self.n_Tau, 0, -1, desc="Sampling Timestep", leave=False):
-            i = j*self.scaling
+        for i in trange(self.n_T-1, -1, -self.scaling, desc="Sampling Timestep", leave=False):
+
             t_is = torch.tensor([i]).to(self.device)
 
             # double batch
             x_i = x_i.repeat(2,1,1,1)
             t_is = t_is.repeat(n_sample*2)
 
-            z = torch.randn(n_sample, *(self.channels, self.img_size, self.img_size)).to(self.device) if i > 1 else 0
+            z = torch.randn(n_sample, *(self.channels, self.img_size, self.img_size)).to(self.device) if i >= 1 else 0
 
             # split predictions and compute weight
             if train:
@@ -1100,22 +1108,32 @@ class ConditionalDDPM(nn.Module):
                 eps = self.forward(x_i, t_is, c_i)
             eps_c = eps[:n_sample]
             eps_u = eps[n_sample:]
+            x_i = x_i[:n_sample]
 
             eps = self.cfg*eps_c + (1-self.cfg)*eps_u
-            c1 = self.ddpm*((1 - self.alphabar_t[i] / self.alphabar_t[i-self.scaling]) * (1-self.alphabar_t[i-self.scaling]) / (1-self.alphabar_t[i])).sqrt()
-            c2  = ((1-self.alphabar_t[i-self.scaling]) - c1**2).sqrt()
-            x_i = x_i[:n_sample]
-            x_0 = (x_i - (1-self.alphabar_t[i]).sqrt()*eps) / self.alphabar_t[i].sqrt()
-            x_i = self.alphabar_t[i-self.scaling].sqrt() * x_0 + c2*eps + c1*z
 
-        return x_i
-    
+            alpha_t = self.alphabar_t[i]
+
+            x0_t = (x_i - (1-alpha_t).sqrt()*eps)/alpha_t.sqrt()
+
+            if i == (self.scaling-1): # last step
+                return x0_t
+            else:
+                alpha_prev_t = self.alphabar_t[i-self.scaling]
+                c1 = self.ddpm*((1 - alpha_t/alpha_prev_t) * (1-alpha_prev_t) / (1 - alpha_t)).sqrt()
+                c2  = ((1-alpha_prev_t) - c1**2).sqrt()
+                noise = torch.randn_like(x_i)
+                x_i = x0_t*alpha_prev_t.sqrt() + c2*eps +  c1* noise
+
     @torch.no_grad()
     def sample(self, train=False, accelerate=None, num_samples=16):
         self.model.eval()
         samples = self.gen_samples(num_samples, train=train).cpu().detach()
         if self.vae is not None:
-            samples = self.vae.decode(samples.to(self.device) / 0.18215).sample 
+            if train:
+                samples = self.vae.module.decode(samples.to(self.device) / 0.18215).sample
+            else:
+                samples = self.vae.decode(samples.to(self.device) / 0.18215).sample 
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
 
