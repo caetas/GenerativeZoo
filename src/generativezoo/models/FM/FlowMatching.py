@@ -1161,7 +1161,9 @@ class FlowMatching(nn.Module):
             os.makedirs(f"./../../fid_samples/{self.dataset}/fm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}")
         cnt = 0
         for i in tqdm(range(50000//batch_size), desc='FID Sampling', leave=True):
-            samps = self.sample(batch_size, train=False, fid=True)
+            samps = self.sample(batch_size, train=False, fid=True).cpu().numpy()
+            samps = (samps*255).astype(np.uint8)
+            samps = samps.transpose(0, 2, 3, 1)
             for samp in samps:
                 cv2.imwrite(f"./../../fid_samples/{self.dataset}/fm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}/{cnt}.png", cv2.cvtColor(samp, cv2.COLOR_RGB2BGR) if samp.shape[-1] == 3 else samp)
                 cnt += 1 
