@@ -22,6 +22,7 @@ from accelerate import Accelerator
 from collections import OrderedDict
 import copy
 from abc import abstractmethod
+import cv2
 
 # PyTorch 1.7 has SiLU, but we support PyTorch 1.5.
 class SiLU(nn.Module):
@@ -906,10 +907,13 @@ class FlowMatching(nn.Module):
         return (predicted_flow - optimal_flow).square().mean()
     
     @torch.no_grad()
-    def sample(self, n_samples, train=True, accelerate=None):
+    def sample(self, n_samples, train=True, accelerate=None, fid=False):
         '''
         Sample images
         :param n_samples: number of samples
+        :param train: if True, sample during training
+        :param accelerate: Accelerator object
+        :param fid: if True, return the samples
         '''
         x_0 = torch.randn(n_samples, self.channels, self.img_size, self.img_size, device=self.device)
 
@@ -946,6 +950,8 @@ class FlowMatching(nn.Module):
                 samples = self.vae.decode(samples / 0.18215).sample
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
+        if fid:
+            return samples
         fig = plt.figure(figsize=(10, 10))
         grid = make_grid(samples, nrow=4)
         plt.imshow(grid.permute(1, 2, 0).cpu().detach().numpy())
@@ -1139,6 +1145,26 @@ class FlowMatching(nn.Module):
         plt.imshow(grid.permute(1, 2, 0).cpu().detach().numpy())
         plt.axis('off')
         plt.show()
+
+    @torch.no_grad()
+    def fid_sample(self, batch_size=16):
+        '''
+        Sample images for FID calculation
+        :param batch_size: batch size
+        '''
+        if not os.path.exists('./../../fid_samples'):
+            os.makedirs('./../../fid_samples')
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}")
+        #add solverlib, solver, stepsize
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}/fm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}/fm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}")
+        cnt = 0
+        for i in tqdm(range(50000//batch_size), desc='FID Sampling', leave=True):
+            samps = self.sample(batch_size, train=False, fid=True)
+            for samp in samps:
+                cv2.imwrite(f"./../../fid_samples/{self.dataset}/fm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}/{cnt}.png", cv2.cvtColor(samp, cv2.COLOR_RGB2BGR) if samp.shape[-1] == 3 else samp)
+                cnt += 1 
 
 
 
