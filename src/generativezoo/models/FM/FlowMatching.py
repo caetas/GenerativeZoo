@@ -1066,7 +1066,7 @@ class FlowMatching(nn.Module):
         :param checkpoint_path: path to the checkpoint
         '''
         if checkpoint_path is not None:
-            self.model.load_state_dict(torch.load(checkpoint_path))
+            self.model.load_state_dict(torch.load(checkpoint_path, weights_only=False))
     
     @torch.no_grad()
     def outlier_detection(self, in_loader, out_loader):
