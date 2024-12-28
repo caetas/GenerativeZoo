@@ -953,7 +953,7 @@ class FlowMatching(nn.Module):
         if fid:
             return samples
         fig = plt.figure(figsize=(10, 10))
-        grid = make_grid(samples, nrow=4)
+        grid = make_grid(samples, nrow=int(n_samples**0.5), padding=0)
         plt.imshow(grid.permute(1, 2, 0).cpu().detach().numpy())
         plt.axis('off')
 
