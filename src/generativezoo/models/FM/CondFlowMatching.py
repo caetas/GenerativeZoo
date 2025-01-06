@@ -1094,13 +1094,20 @@ class CondFlowMatching(nn.Module):
     @torch.no_grad()
     def fid_sample(self):
 
+        # if self.args.checkpoint contains epoch number, ep = epoch number
+        # else, ep = 0
+        if 'epoch' in self.args.checkpoint:
+            ep = int(self.args.checkpoint.split('epoch')[1].split('.')[0])
+        else:
+            ep = 0
+
         if not os.path.exists('./../../fid_samples'):
             os.makedirs('./../../fid_samples')
         if not os.path.exists(f"./../../fid_samples/{self.dataset}"):
             os.makedirs(f"./../../fid_samples/{self.dataset}")
         #add ddpm factor and timesteps
-        if not os.path.exists(f"./../../fid_samples/{self.dataset}/condfm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}"):
-            os.makedirs(f"./../../fid_samples/{self.dataset}/condfm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}")
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}/condfm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}_ep{ep}_w{self.cfg}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}/condfm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}_ep{ep}_w{self.cfg}")
         cnt = 0
 
         self.model.eval()
@@ -1113,5 +1120,5 @@ class CondFlowMatching(nn.Module):
                 samples = samples.permute(0,2,3,1).cpu().numpy()
                 samples = (samples*255).astype(np.uint8)
                 for samp in samples:
-                    cv2.imwrite(f"./../../fid_samples/{self.dataset}/condfm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}/{cnt}.png", cv2.cvtColor(samp, cv2.COLOR_RGB2BGR) if samp.shape[-1] == 3 else samp)
+                    cv2.imwrite(f"./../../fid_samples/{self.dataset}/condfm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}_ep{ep}_w{self.cfg}/{cnt}.png", cv2.cvtColor(samp, cv2.COLOR_RGB2BGR) if samp.shape[-1] == 3 else samp)
                     cnt += 1 
