@@ -32,5 +32,5 @@ if __name__ == '__main__':
         _, img_size, channels = pick_dataset(args.dataset, mode='val', size=size, batch_size=args.batch_size, num_workers=args.num_workers)
         model = HierarchicalVAE(args.latent_dim, (img_size, img_size), channels)
         if args.checkpoint is not None:
-            model.load_state_dict(torch.load(args.checkpoint))
-        model.sample(args)
+            model.load_checkpoint(args.checkpoint)
+        model.sample(16)

@@ -684,12 +684,30 @@ class HierarchicalVAE(nn.Module):
 
             if epoch_loss < best_loss:
                 best_loss = epoch_loss
-                torch.save(self.state_dict(), os.path.join(models_dir, "HierarchicalVAE", f"HVAE_{args.dataset}.pt"))
+                # save encoder and decoder state dicts
+                dict_to_save = {"encoder": self.encoder.state_dict(), "decoder": self.decoder.state_dict()}
+                torch.save(dict_to_save, os.path.join(models_dir, "HierarchicalVAE", f"HVAE_{args.dataset}.pt"))
 
             epoch_bar.set_postfix(loss=epoch_loss, recon_loss=epoch_recon_loss, kl_loss=epoch_kl_loss)
             scheduler.step()
 
-            self.sample(16, train=True)
+            if epoch == 0 or (epoch + 1) % 5 == 0:
+                self.sample(16, train=True)
+
+    def load_checkpoint(self, checkpoint):
+        """
+
+        :param checkpoint:
+        :return:
+        """
+
+        # load encoder and decoder state dicts
+        checkpoint = torch.load(checkpoint, weights_only=False)
+        self.apply(add_sn)
+        self.encoder.load_state_dict(checkpoint["encoder"])
+        self.decoder.load_state_dict(checkpoint["decoder"])
+
+
 
     @torch.no_grad()
     def sample(self, num_samples, train=False):
