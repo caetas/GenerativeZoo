@@ -31,5 +31,10 @@ if __name__ == '__main__':
         model = FlowMatching(args, input_size, channels)
         model.load_checkpoint(args.checkpoint)
         model.interpolate(in_loader)
+    elif args.fid:
+        _, input_size, channels = pick_dataset(args.dataset, mode='val', batch_size = args.batch_size, normalize=True, size=args.size)
+        model = FlowMatching(args, input_size, channels)
+        model.load_checkpoint(args.checkpoint)
+        model.fid_sample(args.batch_size)
     else:
         raise ValueError("Invalid mode, please specify train or sample mode.")

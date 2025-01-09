@@ -1152,13 +1152,20 @@ class ConditionalDDPM(nn.Module):
     @torch.no_grad()
     def fid_sample(self):
 
+        # if self.args.checkpoint contains epoch number, ep = epoch number
+        # else, ep = 0
+        if 'epoch' in self.args.checkpoint:
+            ep = int(self.args.checkpoint.split('epoch')[1].split('.')[0])
+        else:
+            ep = 0
+
         if not os.path.exists('./../../fid_samples'):
             os.makedirs('./../../fid_samples')
         if not os.path.exists(f"./../../fid_samples/{self.dataset}"):
             os.makedirs(f"./../../fid_samples/{self.dataset}")
         #add ddpm factor and timesteps
-        if not os.path.exists(f"./../../fid_samples/{self.dataset}/condddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}"):
-            os.makedirs(f"./../../fid_samples/{self.dataset}/condddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}")
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}/condddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}_ep{ep}_w{self.cfg}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}/condddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}_ep{ep}_w{self.cfg}")
         cnt = 0
 
         self.model.eval()
@@ -1175,6 +1182,6 @@ class ConditionalDDPM(nn.Module):
                 samples = samples.permute(0,2,3,1).cpu().numpy()
                 samples = (samples*255).astype(np.uint8)
                 for s in samples:
-                    cv2.imwrite(f"./../../fid_samples/{self.dataset}/condddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png", cv2.cvtColor(s, cv2.COLOR_RGB2BGR) if s.shape[-1]==3 else s)
+                    cv2.imwrite(f"./../../fid_samples/{self.dataset}/condddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}_ep{ep}_w{self.cfg}/{cnt}.png", cv2.cvtColor(s, cv2.COLOR_RGB2BGR) if s.shape[-1]==3 else s)
                     cnt += 1
         

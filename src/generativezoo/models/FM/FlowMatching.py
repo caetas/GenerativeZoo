@@ -22,6 +22,7 @@ from accelerate import Accelerator
 from collections import OrderedDict
 import copy
 from abc import abstractmethod
+import cv2
 
 # PyTorch 1.7 has SiLU, but we support PyTorch 1.5.
 class SiLU(nn.Module):
@@ -906,10 +907,13 @@ class FlowMatching(nn.Module):
         return (predicted_flow - optimal_flow).square().mean()
     
     @torch.no_grad()
-    def sample(self, n_samples, train=True, accelerate=None):
+    def sample(self, n_samples, train=True, accelerate=None, fid=False):
         '''
         Sample images
         :param n_samples: number of samples
+        :param train: if True, sample during training
+        :param accelerate: Accelerator object
+        :param fid: if True, return the samples
         '''
         x_0 = torch.randn(n_samples, self.channels, self.img_size, self.img_size, device=self.device)
 
@@ -946,8 +950,10 @@ class FlowMatching(nn.Module):
                 samples = self.vae.decode(samples / 0.18215).sample
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
+        if fid:
+            return samples
         fig = plt.figure(figsize=(10, 10))
-        grid = make_grid(samples, nrow=4)
+        grid = make_grid(samples, nrow=int(n_samples**0.5), padding=0)
         plt.imshow(grid.permute(1, 2, 0).cpu().detach().numpy())
         plt.axis('off')
 
@@ -1060,7 +1066,7 @@ class FlowMatching(nn.Module):
         :param checkpoint_path: path to the checkpoint
         '''
         if checkpoint_path is not None:
-            self.model.load_state_dict(torch.load(checkpoint_path))
+            self.model.load_state_dict(torch.load(checkpoint_path, weights_only=False))
     
     @torch.no_grad()
     def outlier_detection(self, in_loader, out_loader):
@@ -1139,6 +1145,35 @@ class FlowMatching(nn.Module):
         plt.imshow(grid.permute(1, 2, 0).cpu().detach().numpy())
         plt.axis('off')
         plt.show()
+
+    @torch.no_grad()
+    def fid_sample(self, batch_size=16):
+        '''
+        Sample images for FID calculation
+        :param batch_size: batch size
+        '''
+        # if self.args.checkpoint contains epoch number, ep = epoch number
+        # else, ep = 0
+        if 'epoch' in self.args.checkpoint:
+            ep = int(self.args.checkpoint.split('epoch')[1].split('.')[0])
+        else:
+            ep = 0
+
+        if not os.path.exists('./../../fid_samples'):
+            os.makedirs('./../../fid_samples')
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}")
+        #add solverlib, solver, stepsize
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}/fm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}_ep{ep}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}/fm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}_ep{ep}")
+        cnt = 0
+        for i in tqdm(range(50000//batch_size), desc='FID Sampling', leave=True):
+            samps = self.sample(batch_size, train=False, fid=True).cpu().numpy()
+            samps = (samps*255).astype(np.uint8)
+            samps = samps.transpose(0, 2, 3, 1)
+            for samp in samps:
+                cv2.imwrite(f"./../../fid_samples/{self.dataset}/fm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}_ep{ep}/{cnt}.png", cv2.cvtColor(samp, cv2.COLOR_RGB2BGR) if samp.shape[-1] == 3 else samp)
+                cnt += 1 
 
 
 

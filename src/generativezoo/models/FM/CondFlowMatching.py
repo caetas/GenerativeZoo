@@ -19,6 +19,7 @@ from accelerate import Accelerator
 from collections import OrderedDict
 import copy
 from abc import abstractmethod
+import cv2
 
 # PyTorch 1.7 has SiLU, but we support PyTorch 1.5.
 class SiLU(nn.Module):
@@ -909,14 +910,17 @@ class CondFlowMatching(nn.Module):
         return (predicted_flow - optimal_flow).square().mean()
     
     @torch.no_grad()
-    def sample(self, n_samples, train=True, accelerate=None):
+    def sample(self, n_samples, train=True, accelerate=None, label=None, fid=False):
         '''
         Sample images
         :param n_samples: number of samples
         :param train: if True, log the samples to wandb
         '''
         x_0 = torch.randn(n_samples, self.channels, self.img_size, self.img_size, device=self.device)
-        y = torch.arange(n_samples, device=self.device).long() % self.n_classes
+        if label is None:
+            y = torch.arange(n_samples, device=self.device).long() % self.n_classes
+        else:
+            y = torch.full((n_samples,), label, device=self.device).long()
         # concatenate y with a tensor like y but with all elements equal to self.n_classes
         y = torch.cat([y, self.n_classes*torch.ones(n_samples, device=self.device).long()])
 
@@ -965,6 +969,8 @@ class CondFlowMatching(nn.Module):
                 samples = self.vae.decode(samples / 0.18215).sample
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
+        if fid:
+            return samples
         fig = plt.figure(figsize=(10, 10))
         grid = make_grid(samples, nrow=int(np.sqrt(n_samples)), padding=0)
         plt.imshow(grid.permute(1, 2, 0).cpu().detach().numpy())
@@ -1084,3 +1090,35 @@ class CondFlowMatching(nn.Module):
         '''
         if checkpoint_path is not None:
             self.model.load_state_dict(torch.load(checkpoint_path))
+    
+    @torch.no_grad()
+    def fid_sample(self):
+
+        # if self.args.checkpoint contains epoch number, ep = epoch number
+        # else, ep = 0
+        if 'epoch' in self.args.checkpoint:
+            ep = int(self.args.checkpoint.split('epoch')[1].split('.')[0])
+        else:
+            ep = 0
+
+        if not os.path.exists('./../../fid_samples'):
+            os.makedirs('./../../fid_samples')
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}")
+        #add ddpm factor and timesteps
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}/condfm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}_ep{ep}_w{self.cfg}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}/condfm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}_ep{ep}_w{self.cfg}")
+        cnt = 0
+
+        self.model.eval()
+        samp_per_class = 50000//self.n_classes
+        its_per_class = samp_per_class//self.args.batch_size
+
+        for c in tqdm(range(self.n_classes), desc="Class", leave=True):
+            for i in tqdm(range(its_per_class), desc="Iteration", leave=False):
+                samples = self.sample(self.args.batch_size, train=False, label=c, fid=True)
+                samples = samples.permute(0,2,3,1).cpu().numpy()
+                samples = (samples*255).astype(np.uint8)
+                for samp in samples:
+                    cv2.imwrite(f"./../../fid_samples/{self.dataset}/condfm_{self.solver_lib}_solver_{self.solver}_stepsize_{self.step_size}_ep{ep}_w{self.cfg}/{cnt}.png", cv2.cvtColor(samp, cv2.COLOR_RGB2BGR) if samp.shape[-1] == 3 else samp)
+                    cnt += 1 

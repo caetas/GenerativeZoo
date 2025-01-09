@@ -1239,13 +1239,21 @@ class DDPM(nn.Module):
         Sample images for FID calculation
         :param batch_size: batch size
         '''
+
+        # if self.args.checkpoint contains epoch number, ep = epoch number
+        # else, ep = 0
+        if 'epoch' in self.args.checkpoint:
+            ep = int(self.args.checkpoint.split('epoch')[1].split('.')[0])
+        else:
+            ep = 0
+
         if not os.path.exists('./../../fid_samples'):
             os.makedirs('./../../fid_samples')
         if not os.path.exists(f"./../../fid_samples/{self.dataset}"):
             os.makedirs(f"./../../fid_samples/{self.dataset}")
         #add ddpm factor and timesteps
-        if not os.path.exists(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}"):
-            os.makedirs(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}")
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}_ep{ep}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}_ep{ep}")
         cnt = 0
         for i in tqdm(range(50000//batch_size), desc='FID Sampling', leave=True):
             samps = self.sampler.sample(model=self.model, image_size=self.img_size, batch_size=batch_size, channels=self.channels)[-1]
@@ -1260,7 +1268,7 @@ class DDPM(nn.Module):
             samps = samps.transpose(0,2,3,1)
             samps = (samps*255).astype(np.uint8)
             for samp in samps:
-                cv2.imwrite(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}/{cnt}.png", cv2.cvtColor(samp, cv2.COLOR_RGB2BGR) if samp.shape[-1] == 3 else samp)
+                cv2.imwrite(f"./../../fid_samples/{self.dataset}/ddpm_{self.args.ddpm}_timesteps_{self.args.sample_timesteps}_ep{ep}/{cnt}.png", cv2.cvtColor(samp, cv2.COLOR_RGB2BGR) if samp.shape[-1] == 3 else samp)
                 cnt += 1  
 
 class LinearScheduler():
