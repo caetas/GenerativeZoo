@@ -3,10 +3,8 @@ from data.Dataloaders import *
 from utils.util import parse_args_RealNVP
 import wandb
 
-if __name__ == '__main__':
 
-    args = parse_args_RealNVP()
-
+def run_RealNVP(args):
     size = None
 
     if args.train:
@@ -50,3 +48,9 @@ if __name__ == '__main__':
         
         model.outlier_detection(in_loader, out_loader)
 
+
+if __name__ == '__main__':
+
+    args = parse_args_RealNVP()
+
+    run_RealNVP(args)

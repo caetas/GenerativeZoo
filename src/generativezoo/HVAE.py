@@ -4,10 +4,8 @@ from utils.util import parse_args_HierarchicalVAE
 import torch
 import wandb
 
-if __name__ == '__main__':
 
-    args = parse_args_HierarchicalVAE()
-
+def run_HVAE(args):
     size = None
 
     if args.train:
@@ -34,3 +32,10 @@ if __name__ == '__main__':
         if args.checkpoint is not None:
             model.load_checkpoint(args.checkpoint)
         model.sample(16)
+
+
+if __name__ == '__main__':
+
+    args = parse_args_HierarchicalVAE()
+
+    run_HVAE(args)

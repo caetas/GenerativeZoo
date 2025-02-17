@@ -17,7 +17,8 @@ def set_seed(seed: int = 42) -> None:
     rng = np.random.default_rng(seed)
     return rng
 
-def parse_args_HierarchicalVAE():
+
+def get_args_HierarchicalVAE():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--train', action='store_true', default=False, help='train model')
     argparser.add_argument('--sample', action='store_true', default=False, help='sample model')
@@ -30,9 +31,14 @@ def parse_args_HierarchicalVAE():
     argparser.add_argument('--sample_and_save_freq', type=int, default=5, help='sample and save frequency')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
     argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
-    return argparser.parse_args()
+    return argparser
 
-def parse_args_RealNVP():
+
+def parse_args_HierarchicalVAE():
+    return get_args_HierarchicalVAE.parse_args()
+
+
+def get_args_RealNVP():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--train', action='store_true', default=False, help='train model')
     argparser.add_argument('--sample', action='store_true', default=False, help='sample model')
@@ -51,7 +57,11 @@ def parse_args_RealNVP():
     argparser.add_argument('--checkpoint', type=str, default=None, help='checkpoint path')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
     argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
-    return argparser.parse_args()
+    return argparser
+
+
+def parse_args_RealNVP():
+    return get_args_RealNVP().parse_args()
 
 
 def parse_args_PixelCNN():
