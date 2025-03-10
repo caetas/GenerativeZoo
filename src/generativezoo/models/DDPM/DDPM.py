@@ -1487,31 +1487,3 @@ def get_loss(forward_diffusion_model, denoising_model, x_start, t, noise=None, l
         raise NotImplementedError()
 
     return loss
-
-def outlier_score(forward_diffusion_model, denoising_model, x_start, t, loss_type):
-    '''
-    Compute the outlier score
-    :param forward_diffusion_model: forward diffusion model
-    :param denoising_model: denoising model
-    :param x_start: input image
-    :param t: time
-    :param loss_type: type of loss
-    '''
-    noise = torch.randn_like(x_start)
-
-    x_noisy = forward_diffusion_model.q_sample(x_start=x_start, t=t, noise=noise)
-    predicted_noise = denoising_model(x_noisy, t)
-
-    if loss_type == 'l1':
-        loss = nn.L1Loss(reduction = 'none')
-        elementwise_loss = torch.mean(loss(noise, predicted_noise).reshape(x_start.shape), dim=(1,2,3))
-    elif loss_type == 'l2':
-        loss = nn.MSELoss(reduction = 'none')
-        elementwise_loss = torch.mean(loss(noise, predicted_noise).reshape(x_start.shape), dim=(1,2,3))
-    elif loss_type == "huber":
-        loss = nn.HuberLoss(reduction = 'none')
-        elementwise_loss = torch.mean(loss(noise, predicted_noise).reshape(x_start.shape), dim=(1,2,3))
-    else:
-        raise NotImplementedError()
-
-    return elementwise_loss

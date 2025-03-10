@@ -150,6 +150,8 @@ def parse_args_FlowMatching():
     argparser.add_argument('--size', type=int, default=None, help='Size of the original image')
     argparser.add_argument('--ema_rate', type=float, default=0.999, help='ema rate')
     argparser.add_argument('--snapshots', type=int, default=10, help='how many snapshots during training')
+    argparser.add_argument('--recon_factor', type=float, default=0.5, help='reconstruction factor')
+    argparser.add_argument('--lpips', action='store_true', default=False, help='use lpips loss')
     args = argparser.parse_args()
     args.channel_mult = tuple(args.channel_mult)
     args.attention_resolutions = tuple(args.attention_resolutions)

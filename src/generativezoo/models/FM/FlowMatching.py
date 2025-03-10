@@ -23,6 +23,7 @@ from collections import OrderedDict
 import copy
 from abc import abstractmethod
 import cv2
+from lpips import LPIPS
 
 # PyTorch 1.7 has SiLU, but we support PyTorch 1.5.
 class SiLU(nn.Module):
@@ -877,6 +878,11 @@ class FlowMatching(nn.Module):
         self.warmup = args.warmup
         self.decay = args.decay
         self.snapshot = args.n_epochs//args.snapshots
+        self.recon_factor = args.recon_factor
+        if args.lpips:
+            self.lpips_loss = LPIPS(net='alex').to(self.device)
+        else:
+            self.lpips_loss = None
         if args.train:
             self.ema = copy.deepcopy(self.model)
             self.ema_rate = args.ema_rate
@@ -1069,6 +1075,56 @@ class FlowMatching(nn.Module):
             self.model.load_state_dict(torch.load(checkpoint_path, weights_only=False))
     
     @torch.no_grad()
+    def outlier_score(self, x):
+        '''
+        Outlier score
+        :param x: input image
+        '''
+        # add noise up to self.recon_factor
+        noise = torch.randn_like(x)
+        sigma_min = 1e-4
+        t = torch.full(x.shape[:1], self.recon_factor, device=x.device)
+        x_t = (1 - (1 - sigma_min) * t[:, None, None, None]) * noise + t[:, None, None, None] * x
+
+        # reconstruct image from the noisy image using the solver
+        def f(t: float, x):
+            return self.forward(x, torch.full(x.shape[:1], t, device=self.device))
+        
+        if self.solver_lib == 'torchdiffeq':
+            if self.solver == 'euler' or self.solver == 'rk4' or self.solver == 'midpoint' or self.solver == 'explicit_adams' or self.solver == 'implicit_adams':
+                samples = odeint(f, x_t, t=torch.linspace(0, self.recon_factor, 2).to(self.device), options={'step_size': self.step_size}, method=self.solver, rtol=1e-5, atol=1e-5)
+            else:
+                samples = odeint(f, x_t, t=torch.linspace(0, self.recon_factor, 2).to(self.device), method=self.solver, options={'max_num_steps': 1//self.step_size}, rtol=1e-5, atol=1e-5)
+            samples = samples[1]
+        elif self.solver_lib == 'zuko':
+            samples = zuko.utils.odeint(f, x_t, 0, self.recon_factor, phi=self.model.parameters(), atol=1e-5, rtol=1e-5)
+        else:
+            t=0
+            for i in tqdm(range(int(self.recon_factor/self.step_size)), desc='Sampling', leave=False):
+                v = self.forward(x_t, torch.full(x_t.shape[:1], t, device=self.device))
+                x_t = x_t + self.step_size * v
+                t += self.step_size
+            samples = x_t
+        
+        if self.vae is not None:    
+            samples = self.vae.decode(samples / 0.18215).sample
+            x = self.vae.decode(x / 0.18215).sample
+
+        elementwise_loss = (samples - x).square().mean(dim=(1, 2, 3))
+
+        if self.lpips_loss is not None:
+            # if image only has 1 channel, repeat it to 3 channels
+            if samples.shape[1] == 1:
+                samples = samples.repeat(1,3,1,1)
+                x = x.repeat(1,3,1,1)
+
+            lpips = torch.mean(self.lpips_loss(samples, x), dim=(1,2,3))
+            elementwise_loss += lpips
+
+        return elementwise_loss
+        
+
+    @torch.no_grad()
     def outlier_detection(self, in_loader, out_loader):
         '''
         Outlier detection
@@ -1081,19 +1137,17 @@ class FlowMatching(nn.Module):
         self.model.eval()
         for x, _ in tqdm(in_loader, desc='In-distribution', leave=False):
             x = x.to(self.device)
-            #nll = self.get_nll(x)
-            nll = self.model(x, torch.full(x.shape[:1], 1, device=self.device)).cpu().abs().mean(dim=(1, 2, 3)).numpy()
-            # get maximum on dims 1,2,3
-            #nll = np.max(nll, axis=(1,2,3))
-            in_scores.append(nll)
+            if self.vae is not None:
+                x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
+            in_scores.append(self.outlier_score(x).cpu().numpy())
+            
 
         for x, _ in tqdm(out_loader, desc='Out-of-distribution', leave=False):
             x = x.to(self.device)
-            #nll = self.get_nll(x)
-            nll = self.model(x, torch.full(x.shape[:1], 1, device=self.device)).cpu().abs().mean(dim=(1, 2, 3)).numpy()
-            # get maximum on dims 1,2,3
-            #nll = np.max(nll, axis=(1,2,3))
-            out_scores.append(nll)
+            if self.vae is not None:
+                x = self.vae.encode(x).latent_dist.sample().mul_(0.18215)
+            out_scores.append(self.outlier_score(x).cpu().numpy())
+            
 
         in_scores = np.concatenate(in_scores)
         out_scores = np.concatenate(out_scores)
