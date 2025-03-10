@@ -174,7 +174,7 @@ The following datasets are ready to be used to train and sample from the provide
 - TinyImageNet [`Source`](https://cs231n.stanford.edu/reports/2015/pdfs/yle_project.pdf) **MANUAL DOWNLOAD REQUIRED** [`Link`](https://www.kaggle.com/datasets/nikhilshingadiya/tinyimagenet200)
 - Horse2Zebra [`Source`](https://arxiv.org/abs/1703.10593v6) **MANUAL DOWNLOAD REQUIRED** [`Link`](https://www.kaggle.com/datasets/balraj98/horse2zebra-dataset)
 - ImageNet-1k [`Source`](https://ieeexplore.ieee.org/abstract/document/5206848)
-- CelebA [`Source`](https://ieeexplore.ieee.org/abstract/document/5206848)
+- CelebA [`Source`](https://arxiv.org/abs/1411.7766)
 
 ## Tracking
 
