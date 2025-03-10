@@ -933,6 +933,31 @@ class ConditionalDDPM(nn.Module):
         """
         return self.model(x, _ts, y)
     
+    @torch.no_grad()
+    def encode(self, x):
+        '''
+        Encode the input image
+        :param x: input image
+        '''
+        # check if it is a distributted model or not
+        if isinstance(self.model, torch.nn.parallel.DistributedDataParallel):
+            return self.vae.module.encode(x)
+        else:
+            return self.vae.encode(x)
+        
+    @torch.no_grad()    
+    def decode(self, z):
+        '''
+        Decode the input image
+        :param z: input image
+        '''
+        # check if it is a distributted model or not
+        if isinstance(self.model, torch.nn.parallel.DistributedDataParallel):
+            return self.vae.module.decode(z)
+        else:
+            return self.vae.decode(z)
+    
+    
     def denoising_loss(self, x, y):
         """
         This method is used in training, so samples noise randomly
@@ -1031,7 +1056,7 @@ class ConditionalDDPM(nn.Module):
                             # if x has one channel, make it 3 channels
                             if x.shape[1] == 1:
                                 x = torch.cat((x, x, x), dim=1)
-                            x = self.vae.module.encode(x).latent_dist.sample().mul_(0.18215)
+                            x = self.encode(x).latent_dist.sample().mul_(0.18215)
                     
                     loss = self.denoising_loss(x,y)
                     acc_loss += loss.item() * x.shape[0]
@@ -1130,10 +1155,7 @@ class ConditionalDDPM(nn.Module):
         self.model.eval()
         samples = self.gen_samples(num_samples, train=train).cpu().detach()
         if self.vae is not None:
-            if train:
-                samples = self.vae.module.decode(samples.to(self.device) / 0.18215).sample
-            else:
-                samples = self.vae.decode(samples.to(self.device) / 0.18215).sample 
+            samples = self.decode(samples.to(self.device) / 0.18215).sample
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
 
@@ -1176,7 +1198,7 @@ class ConditionalDDPM(nn.Module):
             for i in tqdm(range(its_per_class), desc="Iteration", leave=False):
                 samples = self.gen_samples(self.args.batch_size, train=False, label=c).cpu().detach()
                 if self.vae is not None:
-                    samples = self.vae.decode(samples.to(self.device) / 0.18215).sample 
+                    samples = self.decode(samples.to(self.device) / 0.18215).sample 
                 samples = samples*0.5 + 0.5
                 samples = samples.clamp(0, 1)
                 samples = samples.permute(0,2,3,1).cpu().numpy()

@@ -897,6 +897,30 @@ class FlowMatching(nn.Module):
         '''
         return self.model(x, t)
     
+    @torch.no_grad()
+    def encode(self, x):
+        '''
+        Encode the input image
+        :param x: input image
+        '''
+        # check if it is a distributted model or not
+        if isinstance(self.model, torch.nn.parallel.DistributedDataParallel):
+            return self.vae.module.encode(x)
+        else:
+            return self.vae.encode(x)
+        
+    @torch.no_grad()    
+    def decode(self, z):
+        '''
+        Decode the input image
+        :param z: input image
+        '''
+        # check if it is a distributted model or not
+        if isinstance(self.model, torch.nn.parallel.DistributedDataParallel):
+            return self.vae.module.decode(z)
+        else:
+            return self.vae.decode(z)
+    
     def conditional_flow_matching_loss(self, x):
         '''
         Conditional flow matching loss
@@ -950,10 +974,7 @@ class FlowMatching(nn.Module):
             samples = x_0
         
         if self.vae is not None:
-            if train:
-                samples = self.vae.module.decode(samples / 0.18215).sample
-            else:
-                samples = self.vae.decode(samples / 0.18215).sample
+            samples = self.decode(samples / 0.18215).sample
         samples = samples*0.5 + 0.5
         samples = samples.clamp(0, 1)
         if fid:
@@ -1035,7 +1056,7 @@ class FlowMatching(nn.Module):
                             # if x has one channel, make it 3 channels
                             if x.shape[1] == 1:
                                 x = torch.cat((x, x, x), dim=1)
-                            x = self.vae.module.encode(x).latent_dist.sample().mul_(0.18215)
+                            x = self.encode(x).latent_dist.sample().mul_(0.18215)
 
                     optimizer.zero_grad()
                     loss = self.conditional_flow_matching_loss(x)
@@ -1107,8 +1128,8 @@ class FlowMatching(nn.Module):
             samples = x_t
         
         if self.vae is not None:    
-            samples = self.vae.decode(samples / 0.18215).sample
-            x = self.vae.decode(x / 0.18215).sample
+            samples = self.decode(samples / 0.18215).sample
+            x = self.decode(x / 0.18215).sample
 
         elementwise_loss = (samples - x).square().mean(dim=(1, 2, 3))
 
