@@ -957,6 +957,31 @@ class DDPM(nn.Module):
             for param in self.ema.parameters():
                 param.requires_grad = False
 
+    @torch.no_grad()
+    def encode(self, x):
+        '''
+        Encode the input image
+        :param x: input image
+        '''
+        # check if it is a distributted model or not
+        if isinstance(self.model, torch.nn.parallel.DistributedDataParallel):
+            return self.vae.module.encode(x)
+        else:
+            return self.vae.encode(x)
+        
+    @torch.no_grad()    
+    def decode(self, z):
+        '''
+        Decode the input image
+        :param z: input image
+        '''
+        # check if it is a distributted model or not
+        if isinstance(self.model, torch.nn.parallel.DistributedDataParallel):
+            return self.vae.module.decode(z)
+        else:
+            return self.vae.decode(z)
+    
+
 
     def train_model(self, dataloader, verbose=True):
         '''
@@ -1028,7 +1053,7 @@ class DDPM(nn.Module):
                             # if x has one channel, make it 3 channels
                             if batch.shape[1] == 1:
                                 batch = torch.cat((batch, batch, batch), dim=1)
-                            batch = self.vae.module.encode(batch).latent_dist.sample().mul_(0.18215)
+                            batch = self.encode(batch).latent_dist.sample().mul_(0.18215)
 
                     t = torch.randint(0, self.timesteps, (batch_size,), device=self.device).long()
                     loss = self.criterion(forward_diffusion_model=self.forward_diffusion_model, denoising_model=self.model, x_start=batch, t=t, loss_type=self.loss_type)
@@ -1054,7 +1079,7 @@ class DDPM(nn.Module):
 
                 if self.vae is not None:
                     with torch.no_grad():
-                        all_images = self.vae.module.decode(all_images.to(self.device) / 0.18215).sample 
+                        all_images = self.decode(all_images.to(self.device) / 0.18215).sample 
                         all_images = all_images.cpu().detach()
 
                 all_images = all_images * 0.5 + 0.5
@@ -1090,7 +1115,7 @@ class DDPM(nn.Module):
                 if x_start.shape[1] == 1:
                     x_start = torch.cat((x_start, x_start, x_start), dim=1)
                 x_original = x_start.clone()
-                x_start = self.vae.encode(x_start).latent_dist.sample().mul_(0.18215)
+                x_start = self.encode(x_start).latent_dist.sample().mul_(0.18215)
 
         noise = torch.randn_like(x_start)
         t = torch.ones((x_start.shape[0],), device=self.device).long() * (int(self.timesteps*self.sampler.recon_factor)-1)
@@ -1101,7 +1126,7 @@ class DDPM(nn.Module):
 
         if self.vae is not None:
             with torch.no_grad():
-                predicted_image = self.vae.decode(predicted_image.to(self.device) / 0.18215).sample 
+                predicted_image = self.decode(predicted_image.to(self.device) / 0.18215).sample 
                 predicted_image = predicted_image.cpu().detach()
                 x_start = x_original
 
@@ -1202,14 +1227,14 @@ class DDPM(nn.Module):
                     # if x has one channel, make it 3 channels
                     if batch.shape[1] == 1:
                         batch = torch.cat((batch, batch, batch), dim=1)
-                    batch = self.vae.encode(batch).latent_dist.sample().mul_(0.18215)
+                    batch = self.encode(batch).latent_dist.sample().mul_(0.18215)
 
             masks = self.create_masks(batch.shape[0])
             inpainted_images = self.sampler.inpaint_loop(self.model, batch, masks, self.forward_diffusion_model)
             
             if self.vae is not None:
                 with torch.no_grad():
-                    inpainted_images = self.vae.decode(inpainted_images.to(self.device) / 0.18215).sample 
+                    inpainted_images = self.decode(inpainted_images.to(self.device) / 0.18215).sample 
             inpainted_images = inpainted_images.cpu().detach().numpy()
 
             break
@@ -1229,7 +1254,7 @@ class DDPM(nn.Module):
         if self.vae is not None:
             with torch.no_grad():
                 samps = torch.tensor(samps, device=self.device)
-                samps = self.vae.decode(samps / 0.18215).sample 
+                samps = self.decode(samps / 0.18215).sample 
                 samps = samps.cpu().detach().numpy()
         plot_samples(samps)
 
@@ -1260,7 +1285,7 @@ class DDPM(nn.Module):
 
             if self.vae is not None:
                 samps = torch.tensor(samps, device=self.device)
-                samps = self.vae.decode(samps / 0.18215).sample 
+                samps = self.decode(samps / 0.18215).sample 
                 samps = samps.cpu().detach().numpy()
 
             samps = samps * 0.5 + 0.5

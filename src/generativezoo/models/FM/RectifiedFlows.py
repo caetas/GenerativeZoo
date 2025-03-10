@@ -450,6 +450,30 @@ class RF(nn.Module):
         tlist = batchwise_mse.detach().cpu().reshape(-1).tolist()
         ttloss = [(tv, tloss) for tv, tloss in zip(t, tlist)]
         return batchwise_mse.mean(), ttloss
+    
+    @torch.no_grad()
+    def encode(self, x):
+        '''
+        Encode the input image
+        :param x: input image
+        '''
+        # check if it is a distributted model or not
+        if isinstance(self.model, torch.nn.parallel.DistributedDataParallel):
+            return self.vae.module.encode(x)
+        else:
+            return self.vae.encode(x)
+        
+    @torch.no_grad()    
+    def decode(self, z):
+        '''
+        Decode the input image
+        :param z: input image
+        '''
+        # check if it is a distributted model or not
+        if isinstance(self.model, torch.nn.parallel.DistributedDataParallel):
+            return self.vae.module.decode(z)
+        else:
+            return self.vae.decode(z)
 
     @torch.no_grad()
     def get_sample(self, z, cond, null_cond=None, sample_steps=50, cfg=2.0, train=False, accelerate=None):
@@ -496,11 +520,10 @@ class RF(nn.Module):
             images.append(z)
         
         imgs = images[-1]
+
         if self.vae is not None:
-            if train:
-                imgs = self.vae.module.decode(imgs / 0.18215).sample
-            else:
-                imgs = self.vae.decode(imgs / 0.18215).sample
+            imgs = self.decode(imgs / 0.18215).sample
+
         imgs = imgs*0.5 + 0.5
         imgs = imgs.clamp(0, 1)
         grid = make_grid(imgs, nrow=4)
@@ -575,7 +598,7 @@ class RF(nn.Module):
                             # if x has one channel, make it 3 channels
                             if x.shape[1] == 1:
                                 x = torch.cat((x, x, x), dim=1)
-                            x = self.vae.module.encode(x).latent_dist.sample().mul_(0.18215)
+                            x = self.encode(x).latent_dist.sample().mul_(0.18215)
 
                     optimizer.zero_grad()
 

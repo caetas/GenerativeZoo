@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/pytorch:24.06-py3
+FROM nvcr.io/nvidia/pytorch:25.02-py3
 
 RUN apt-get update && apt-get install -y git
 
