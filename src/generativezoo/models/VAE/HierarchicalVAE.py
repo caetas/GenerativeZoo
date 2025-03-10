@@ -601,7 +601,7 @@ class HierarchicalVAE(nn.Module):
         self.no_wandb = no_wandb
 
         self.adaptive_loss = robust_loss_pytorch.adaptive.AdaptiveLossFunction(
-            num_dims=1, float_dtype=np.float32, device='cuda:0')
+            num_dims=1, float_dtype=np.float32, device="cuda:0" if torch.cuda.is_available() else "cpu")
 
     def forward(self, x):
         """
