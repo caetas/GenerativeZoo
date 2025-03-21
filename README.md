@@ -38,17 +38,21 @@ Clone this repository (requires git ssh keys)
 
 ### Using Docker
 
-Create the image using the provided [`Dockerfile`](Dockerfile) and then run the container:
+Create a `.secrets` file and add your Weights & Biases API Key:
+
+    WANDB_API_KEY=<your-wandb-api-key>
+
+Create the image using the provided [`Dockerfile`](Dockerfile) and then run the script [`job_docker.sh`](scripts/job_docker.sh) that will execute [`main.sh`](scripts/main.sh):
 
     docker build --tag generativezoo .
-    docker create --gpus all --shm-size=1g -i --name generativezoo_container generativezoo
-    docker start generativezoo_container
+    cd scripts
+    bash job_docker.sh
 
 To access the shell, please run:
 
-    docker exec -it generativezoo_container /bin/bash
+    docker run --rm -it --gpus all --ipc=host --env-file .env -v $(pwd)/.secrets:/app/.secrets -v $(pwd)/data:/app/data -v $(pwd)/src:/app/src -v $(pwd)/models:/app/models generativezoo bash
 
-**Note: Edit the [`Dockerfile`](Dockerfile) if you want to include data or model checkpoints in your image.**
+**Note: Edit the [`job_docker.sh`](scripts/job_docker.sh) script if you want to mount model checkpoints in your container.**
 
 ### Normal Installation
 
