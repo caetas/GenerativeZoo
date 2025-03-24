@@ -53,6 +53,7 @@ Or download it from the Hub:
     docker pull docker://ocaetas/generativezoo
 
 Then run the script [`job_docker.sh`](scripts/job_docker.sh) that will execute [`main.sh`](scripts/main.sh):
+
     cd scripts
     bash job_docker.sh
 
@@ -67,6 +68,7 @@ Convert the Docker Image to a `.sif` file:
     apptainer pull generativezoo.sif docker://ocaetas/generativezoo
 
 Then run the script [`job_apptainer.sh`](scripts/job_apptainer.sh) that will execute [`main.sh`](scripts/main.sh):
+    
     cd scripts
     bash job_apptainer.sh
 
