@@ -4,18 +4,12 @@ RUN apt-get update && apt-get install -y git
 
 WORKDIR /app/
 
-COPY requirements/requirements.txt /app/requirements/
-RUN pip install -r /app/requirements/requirements.txt
+COPY requirements/requirements_docker.txt /app/requirements/
+RUN pip install -r /app/requirements/requirements_docker.txt
 RUN mkdir /app/data
-RUN mkdir /app/data/raw
+RUN mkdir /app/src
+RUN mkdir /app/models
 
-# copy code and models
-#ADD models /app/models
-#ADD data /app/data
-ADD src /app/src
-ADD scripts /app/scripts
 WORKDIR /app
-
-COPY .env /app/.env
 
 ENV PYTHONPATH="${PYTHONPATH}:/app/src/generativezoo"
