@@ -877,6 +877,7 @@ class CondFlowMatching(nn.Module):
         self.decay = args.decay
         self.num_samples = args.num_samples
         self.snapshot = args.n_epochs // args.snapshots
+        self.translation_factor = args.translation_factor
         if args.train:
             self.ema = copy.deepcopy(self.model)
             self.ema_rate = args.ema_rate
@@ -935,17 +936,18 @@ class CondFlowMatching(nn.Module):
         return (predicted_flow - optimal_flow).square().mean()
     
     @torch.no_grad()
-    def sample(self, n_samples, train=True, accelerate=None, label=None, fid=False):
+    def sample(self, n_samples, train=True, accelerate=None, label=None, fid=False, x_0=None, start=0):
         '''
         Sample images
         :param n_samples: number of samples
         :param train: if True, log the samples to wandb
         '''
-        x_0 = torch.randn(n_samples, self.channels, self.img_size, self.img_size, device=self.device)
+        if x_0 is None:
+            x_0 = torch.randn(n_samples, self.channels, self.img_size, self.img_size, device=self.device)
         if label is None:
             y = torch.arange(n_samples, device=self.device).long() % self.n_classes
         else:
-            y = torch.full((n_samples,), label, device=self.device).long()
+            y = label
         # concatenate y with a tensor like y but with all elements equal to self.n_classes
         y = torch.cat([y, self.n_classes*torch.ones(n_samples, device=self.device).long()])
 
@@ -966,9 +968,9 @@ class CondFlowMatching(nn.Module):
         
         if self.solver_lib == 'torchdiffeq':
             if self.solver == 'euler' or self.solver == 'rk4' or self.solver == 'midpoint' or self.solver == 'explicit_adams' or self.solver == 'implicit_adams':
-                samples = odeint(f, x_0, t=torch.linspace(0, 1, 2).to(self.device), options={'step_size': self.step_size}, method=self.solver, rtol=1e-5, atol=1e-5)
+                samples = odeint(f, x_0, t=torch.linspace(start, 1, 2).to(self.device), options={'step_size': self.step_size}, method=self.solver, rtol=1e-5, atol=1e-5)
             else:
-                samples = odeint(f, x_0, t=torch.linspace(0, 1, 2).to(self.device), method=self.solver, options={'max_num_steps': 1//self.step_size}, rtol=1e-5, atol=1e-5)
+                samples = odeint(f, x_0, t=torch.linspace(start, 1, 2).to(self.device), method=self.solver, options={'max_num_steps': 1//self.step_size}, rtol=1e-5, atol=1e-5)
             samples = samples[1]
         elif self.solver_lib == 'zuko':
             samples = zuko.utils.odeint(f, x_0, 0, 1, phi=self.model.parameters(), atol=1e-5, rtol=1e-5)
@@ -1005,6 +1007,83 @@ class CondFlowMatching(nn.Module):
             plt.show()
 
         plt.close(fig)
+
+    @torch.no_grad()
+    def latent(self, x_1, label, end=0):
+        '''
+        Get the x_0 from the input image
+        :param label: label of the input image
+        :param x_1: input image
+        '''
+        if self.vae is not None:
+            x_1 = self.encode(x_1).latent_dist.sample().mul_(0.18215)
+
+        label = torch.cat([label, self.n_classes*torch.ones(x_1.shape[0], device=self.device).long()])
+        
+        def f(t: float, x):
+            x = x.repeat(2,1,1,1)
+            v = self.model(x, torch.full(x.shape[:1], t, device=self.device), label.to(self.device))
+            vc = v[:x.shape[0]//2]
+            vu = v[x.shape[0]//2:]
+            return vu + (vc - vu)*self.cfg
+        
+        if self.solver_lib == 'torchdiffeq':
+            if self.solver == 'euler' or self.solver == 'rk4' or self.solver == 'midpoint' or self.solver == 'explicit_adams' or self.solver == 'implicit_adams':
+                samples = odeint(f, x_1, t=torch.linspace(1, end, 2).to(self.device), options={'step_size': self.step_size}, method=self.solver, rtol=1e-5, atol=1e-5)
+            else:
+                samples = odeint(f, x_1, t=torch.linspace(1, end, 2).to(self.device), method=self.solver, options={'max_num_steps': 1//self.step_size}, rtol=1e-5, atol=1e-5)
+            samples = samples[-1]
+
+        elif self.solver_lib == 'zuko':
+            samples = zuko.utils.odeint(f, x_1, 1, 0, phi=self.model.parameters(), atol=1e-5, rtol=1e-5)
+
+        else:
+            t = 1.
+            for i in tqdm(range(int(1/self.step_size)), desc='Latent', leave=False):
+                x_1 = x_1.repeat(2,1,1,1)
+                v = self.model(x_1, torch.full(x_1.shape[:1], t, device=self.device), label.to(self.device))
+                vc = v[:x_1.shape[0]//2]
+                vu = v[x_1.shape[0]//2:]
+                v = vu + (vc - vu)*self.cfg
+                x_1 = x_1[:x_1.shape[0]//2] - self.step_size * v
+                t -= self.step_size
+
+            samples = x_1
+        return samples
+    
+    @torch.no_grad()
+    def image_translation(self, val_loader):
+        '''
+        Image translation
+        :param x_1: input image
+        :param label: label of the input image
+        '''
+        # only one batch
+        x_1, label = next(iter(val_loader))
+        # if label has an extra dimension, squeeze it
+        if label.dim() > 1:
+            label = label.squeeze(1)
+
+        x_1 = x_1.to(self.device)
+        label = label.to(self.device)
+        x_0 = self.latent(x_1, label, end=self.translation_factor)
+        label = (label + 1).long() % self.n_classes
+        x_1_translated = self.sample(x_1.shape[0], train=False, label=label, x_0=x_0, fid=True, start=self.translation_factor)
+
+        #plot x_1 and x_1_translated side by side, make grids
+        x_1 = x_1*0.5 + 0.5
+        x_1 = x_1.clamp(0, 1)
+        grid1 = make_grid(x_1, nrow=int(np.sqrt(x_1.shape[0])), padding=0)
+        grid2 = make_grid(x_1_translated, nrow=int(np.sqrt(x_1_translated.shape[0])), padding=0)
+        fig = plt.figure(figsize=(10, 10))
+        plt.subplot(1, 2, 1)
+        plt.imshow(grid1.permute(1, 2, 0).cpu().detach().numpy())
+        plt.axis('off')
+        plt.subplot(1, 2, 2)
+        plt.imshow(grid2.permute(1, 2, 0).cpu().detach().numpy())
+        plt.axis('off')
+        plt.show()
+
 
     
     def train_model(self, train_loader, verbose=True):
@@ -1065,6 +1144,9 @@ class CondFlowMatching(nn.Module):
             train_loss = 0.0
             for x, cl in tqdm(train_loader, desc='Batches', leave=False, disable=not verbose):
                 x = x.to(self.device)
+                # if cl has an extra dimension, squeeze it
+                if cl.dim() > 1:
+                    cl = cl.squeeze(1)
 
                 with accelerate.autocast():
 
@@ -1111,7 +1193,7 @@ class CondFlowMatching(nn.Module):
         :param checkpoint_path: path to the checkpoint
         '''
         if checkpoint_path is not None:
-            self.model.load_state_dict(torch.load(checkpoint_path))
+            self.model.load_state_dict(torch.load(checkpoint_path, weights_only=False))
     
     @torch.no_grad()
     def fid_sample(self):
@@ -1138,7 +1220,7 @@ class CondFlowMatching(nn.Module):
 
         for c in tqdm(range(self.n_classes), desc="Class", leave=True):
             for i in tqdm(range(its_per_class), desc="Iteration", leave=False):
-                samples = self.sample(self.args.batch_size, train=False, label=c, fid=True)
+                samples = self.sample(self.args.batch_size, train=False, label=torch.full((self.args.batch_size,), c, device=self.device).long(), fid=True)
                 samples = samples.permute(0,2,3,1).cpu().numpy()
                 samples = (samples*255).astype(np.uint8)
                 for samp in samples:

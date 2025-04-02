@@ -72,9 +72,11 @@ Then run the script [`job_apptainer.sh`](scripts/job_apptainer.sh) that will exe
     cd scripts
     bash job_apptainer.sh
 
-To access thse shell, please run:
+To access the shell, please run:
 
     apptainer shell --nv --env-file .env --bind $(pwd)/:/app/ generativezoo.sif
+
+**Add the flag `--nvccli` if you are using WSL.**
 
 **Note: Edit the [`main.sh`](scripts/main.sh) script if you want to train a different model.**
 
