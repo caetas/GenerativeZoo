@@ -72,7 +72,7 @@ Then run the script [`job_apptainer.sh`](scripts/job_apptainer.sh) that will exe
     cd scripts
     bash job_apptainer.sh
 
-To access thse shell, please run:
+To access the shell, please run:
 
     apptainer shell --nv --env-file .env --bind $(pwd)/:/app/ generativezoo.sif
 
