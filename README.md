@@ -34,13 +34,13 @@ You will need:
 Clone this repository (requires git ssh keys)
 
     git clone --recursive git@github.com:caetas/GenerativeZoo.git
-    cd generativezoo
+    cd GenerativeZoo
 
 ### Using Docker or Apptainer
 
 Create a `.secrets` file and add your Weights & Biases API Key:
 
-    WANDB_API_KEY=<your-wandb-api-key>
+    WANDB_API_KEY = <your-wandb-api-key>
 
 #### Docker
 
