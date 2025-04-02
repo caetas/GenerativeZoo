@@ -2,7 +2,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from config import data_raw_dir, data_dir
-from medmnist import ChestMNIST, TissueMNIST, OCTMNIST, PneumoniaMNIST, RetinaMNIST
+from medmnist import ChestMNIST, TissueMNIST, OCTMNIST, PneumoniaMNIST, RetinaMNIST, DermaMNIST
 import os
 from glob import glob
 from PIL import Image
@@ -244,6 +244,67 @@ def chestmnist_val_loader(batch_size, normalize = False, input_shape = None):
         return validation_loader, input_shape, 1
     else:
         return validation_loader, 32, 1
+    
+def dermamnist_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
+    
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
+            transforms.ToTensor(),
+        ])
+
+    if input_shape is not None:
+        size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
+        training_data = DermaMNIST(root=data_raw_dir, split='train', download=True, transform=transform, size = size)
+    else:
+        training_data = DermaMNIST(root=data_raw_dir, split='train', download=True, transform=transform)
+
+    training_loader = DataLoader(training_data, 
+                                batch_size=batch_size, 
+                                shuffle=True,
+                                pin_memory=True,
+                                num_workers = num_workers)
+    
+    if input_shape is not None:
+        return training_loader, input_shape, 3
+    else:
+        return training_loader, 32, 3
+    
+def dermamnist_val_loader(batch_size, normalize = False, input_shape = None):
+    
+    if normalize:
+        transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,))
+        ])
+    else:
+        transform = transforms.Compose([
+            transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
+            transforms.ToTensor(),
+        ])
+
+    if input_shape is not None:
+        size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
+        validation_data = DermaMNIST(root=data_raw_dir, split='test', download=True, transform=transform, size = size)
+    else:
+        validation_data = DermaMNIST(root=data_raw_dir, split='test', download=True, transform=transform)
+
+    validation_loader = DataLoader(validation_data,
+                                batch_size=batch_size,
+                                shuffle=True,
+                                pin_memory=True)
+    
+    if input_shape is not None:
+        return validation_loader, input_shape, 3
+    else:
+        return validation_loader, 32, 3
 
 def octmnist_train_loader(batch_size, normalize = False, input_shape = None, num_workers = 0):
     
@@ -1171,6 +1232,11 @@ def pick_dataset(dataset_name, mode = 'train', batch_size = 64, normalize = Fals
             return retinamnist_train_loader(batch_size, normalize, size, num_workers)
         elif mode == 'val':
             return retinamnist_val_loader(batch_size, normalize, size)
+    elif dataset_name == 'dermamnist':
+        if mode == 'train':
+            return dermamnist_train_loader(batch_size, normalize, size, num_workers)
+        elif mode == 'val':
+            return dermamnist_val_loader(batch_size, normalize, size)
     elif dataset_name == 'fashionmnist':
         if mode == 'train':
             return fashion_mnist_train_loader(batch_size, normalize, size, num_workers)

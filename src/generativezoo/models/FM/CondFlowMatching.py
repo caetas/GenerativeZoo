@@ -1016,6 +1016,8 @@ class CondFlowMatching(nn.Module):
         :param x_1: input image
         '''
         if self.vae is not None:
+            if x_1.shape[1] == 1:
+                x_1 = x_1.repeat(1, 3, 1, 1)
             x_1 = self.encode(x_1).latent_dist.sample().mul_(0.18215)
 
         label = torch.cat([label, self.n_classes*torch.ones(x_1.shape[0], device=self.device).long()])
@@ -1083,6 +1085,41 @@ class CondFlowMatching(nn.Module):
         plt.imshow(grid2.permute(1, 2, 0).cpu().detach().numpy())
         plt.axis('off')
         plt.show()
+
+    @torch.no_grad()
+    def classification(self, val_loader):
+        '''
+        Classification
+        :param val_loader: validation data loader
+        '''
+        gt = []
+        pred = []
+        # two modes: encoding and reconstruction
+        for x_1, label in tqdm(val_loader, desc='Classification', leave=False):
+            x_1 = x_1.to(self.device)
+            if label.dim() > 1:
+                label = label.squeeze(1)
+            label = label.to(self.device)
+            aux = self.cfg
+            self.cfg = 0.0
+            x_0 = self.latent(x_1.to(self.device), label.to(self.device), end=self.translation_factor)
+            self.cfg = aux
+            error = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
+            x_1 = x_1*0.5 + 0.5
+            x_1 = x_1.clamp(0, 1)
+            for i in range(self.n_classes):
+                cl = i*torch.ones(x_1.shape[0], device=self.device).long()
+                x_1_translated = self.sample(x_1.shape[0], train=False, label=cl, x_0=x_0, fid=True, start=self.translation_factor)
+                # get error between x_1 and x_1_translated
+                error[:, i] = torch.mean((x_1 - x_1_translated)**2, dim=(1, 2, 3))
+            # get the index of the minimum error
+            pred.append(torch.argmin(error, dim=1).cpu().numpy())
+            gt.append(label.cpu().numpy())
+        gt = np.concatenate(gt)
+        pred = np.concatenate(pred)
+        # get the accuracy
+        acc = np.sum(gt == pred) / len(gt)
+        print(f'Accuracy: {acc*100:.2f}%')
 
 
     
