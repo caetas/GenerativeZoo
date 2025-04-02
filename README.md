@@ -76,6 +76,8 @@ To access thse shell, please run:
 
     apptainer shell --nv --env-file .env --bind $(pwd)/:/app/ generativezoo.sif
 
+**Add the flag `--nvccli` if you are using WSL.**
+
 **Note: Edit the [`main.sh`](scripts/main.sh) script if you want to train a different model.**
 
 ### Normal Installation

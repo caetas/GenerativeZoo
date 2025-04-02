@@ -23,5 +23,11 @@ if __name__ == '__main__':
         model = CondFlowMatching(args, input_size, channels)
         model.load_checkpoint(args.checkpoint)
         model.fid_sample()
+
+    elif args.translation:
+        val_loader, input_size, channels = pick_dataset(args.dataset, batch_size = 16, normalize=True, size=args.size, mode='val')
+        model = CondFlowMatching(args, input_size, channels)
+        model.load_checkpoint(args.checkpoint)
+        model.image_translation(val_loader)
     else:
         raise ValueError("Invalid mode, please specify train or sample mode.")
