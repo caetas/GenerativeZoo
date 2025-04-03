@@ -173,7 +173,7 @@ def retinamnist_val_loader(batch_size, normalize = False, input_shape = None):
     else:
         size = 28
 
-    validation_data = RetinaMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = size)
+    validation_data = RetinaMNIST(root=data_raw_dir, split='test', download=True, transform=transform, size = size)
 
     validation_loader = DataLoader(validation_data,
                                     batch_size=batch_size,
@@ -232,9 +232,9 @@ def chestmnist_val_loader(batch_size, normalize = False, input_shape = None):
 
     if input_shape is not None:
         size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
-        validation_data = ChestMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = size)
+        validation_data = ChestMNIST(root=data_raw_dir, split='test', download=True, transform=transform, size = size)
     else:
-        validation_data = ChestMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
+        validation_data = ChestMNIST(root=data_raw_dir, split='test', download=True, transform=transform)
 
     validation_loader = DataLoader(validation_data,
                                 batch_size=batch_size,
@@ -353,9 +353,9 @@ def octmnist_val_loader(batch_size, normalize = False, input_shape = None):
 
     if input_shape is not None:
         size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
-        validation_data = OCTMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = size)
+        validation_data = OCTMNIST(root=data_raw_dir, split='test', download=True, transform=transform, size = size)
     else:
-        validation_data = OCTMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
+        validation_data = OCTMNIST(root=data_raw_dir, split='test', download=True, transform=transform)
 
     validation_loader = DataLoader(validation_data,
                                 batch_size=batch_size,
@@ -413,9 +413,9 @@ def tissuemnist_val_loader(batch_size, normalize = False, input_shape = None):
     
     if input_shape is not None:
         size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
-        validation_data = TissueMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = size)
+        validation_data = TissueMNIST(root=data_raw_dir, split='test', download=True, transform=transform, size = size)
     else:
-        validation_data = TissueMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
+        validation_data = TissueMNIST(root=data_raw_dir, split='test', download=True, transform=transform)
 
     validation_loader = DataLoader(validation_data,
                                 batch_size=batch_size,
@@ -474,9 +474,9 @@ def pneumoniamnist_val_loader(batch_size, normalize = False, input_shape = None)
     
     if input_shape is not None:
         size = min([64, 128, 224], key=lambda x: abs(x - input_shape))
-        validation_data = PneumoniaMNIST(root=data_raw_dir, split='val', download=True, transform=transform, size = size)
+        validation_data = PneumoniaMNIST(root=data_raw_dir, split='test', download=True, transform=transform, size = size)
     else:
-        validation_data = PneumoniaMNIST(root=data_raw_dir, split='val', download=True, transform=transform)
+        validation_data = PneumoniaMNIST(root=data_raw_dir, split='test', download=True, transform=transform)
 
     validation_loader = DataLoader(validation_data,
                                 batch_size=batch_size,
