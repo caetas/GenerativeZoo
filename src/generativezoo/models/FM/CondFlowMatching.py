@@ -878,6 +878,7 @@ class CondFlowMatching(nn.Module):
         self.num_samples = args.num_samples
         self.snapshot = args.n_epochs // args.snapshots
         self.translation_factor = args.translation_factor
+        self.recon_factor = args.recon_factor
         if args.train:
             self.ema = copy.deepcopy(self.model)
             self.ema_rate = args.ema_rate
@@ -1094,6 +1095,7 @@ class CondFlowMatching(nn.Module):
         '''
         gt = []
         pred = []
+        pred_recon = []
         # two modes: encoding and reconstruction
         for x_1, label in tqdm(val_loader, desc='Classification', leave=False):
             x_1 = x_1.to(self.device)
@@ -1105,21 +1107,30 @@ class CondFlowMatching(nn.Module):
             x_0 = self.latent(x_1.to(self.device), label.to(self.device), end=self.translation_factor)
             self.cfg = aux
             error = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
+            error_recon = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
             x_1 = x_1*0.5 + 0.5
             x_1 = x_1.clamp(0, 1)
+            noise = torch.randn_like(x_1)
+            x_t = (1 - (1 - 1e-7) * self.recon_factor) * noise + self.recon_factor * x_1
             for i in range(self.n_classes):
                 cl = i*torch.ones(x_1.shape[0], device=self.device).long()
                 x_1_translated = self.sample(x_1.shape[0], train=False, label=cl, x_0=x_0, fid=True, start=self.translation_factor)
+                x_1_recon = self.sample(x_1.shape[0], train=False, label=cl, x_0=x_t, fid=True, start=self.recon_factor)
                 # get error between x_1 and x_1_translated
                 error[:, i] = torch.mean((x_1 - x_1_translated)**2, dim=(1, 2, 3))
+                error_recon[:, i] = torch.mean((x_1 - x_1_recon)**2, dim=(1, 2, 3))
             # get the index of the minimum error
             pred.append(torch.argmin(error, dim=1).cpu().numpy())
+            pred_recon.append(torch.argmin(error_recon, dim=1).cpu().numpy())
             gt.append(label.cpu().numpy())
         gt = np.concatenate(gt)
         pred = np.concatenate(pred)
+        pred_recon = np.concatenate(pred_recon)
         # get the accuracy
         acc = np.sum(gt == pred) / len(gt)
-        print(f'Accuracy: {acc*100:.2f}%')
+        acc_recon = np.sum(gt == pred_recon) / len(gt)
+        print(f'Accuracy Tranlation: {acc*100:.2f}%')
+        print(f'Accuracy Reconstruction: {acc_recon*100:.2f}%')
 
 
     
