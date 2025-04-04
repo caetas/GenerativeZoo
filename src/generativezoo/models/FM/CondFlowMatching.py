@@ -1108,10 +1108,17 @@ class CondFlowMatching(nn.Module):
             self.cfg = aux
             error = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
             error_recon = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
+            if self.vae is not None:
+                if x_1.shape[1] == 1:
+                    x_1_encode = x_1.repeat(1, 3, 1, 1)
+                x_1_encode = self.encode(x_1).latent_dist.sample().mul_(0.18215)
+                noise = torch.randn_like(x_1_encode)
+                x_t = (1 - (1 - 1e-7) * self.recon_factor) * noise + self.recon_factor * x_1_encode
+            else:
+                x_t = (1 - (1 - 1e-7) * self.recon_factor) * torch.randn_like(x_1) + self.recon_factor * x_1
             x_1 = x_1*0.5 + 0.5
             x_1 = x_1.clamp(0, 1)
-            noise = torch.randn_like(x_1)
-            x_t = (1 - (1 - 1e-7) * self.recon_factor) * noise + self.recon_factor * x_1
+
             for i in range(self.n_classes):
                 cl = i*torch.ones(x_1.shape[0], device=self.device).long()
                 x_1_translated = self.sample(x_1.shape[0], train=False, label=cl, x_0=x_0, fid=True, start=self.translation_factor)
