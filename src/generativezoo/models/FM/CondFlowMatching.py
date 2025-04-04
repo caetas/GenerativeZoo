@@ -1139,11 +1139,11 @@ class CondFlowMatching(nn.Module):
                     # sample random noise of size x_1_encode if self.vae is not None else x_1
                     if self.vae is not None:
                         noise = torch.randn_like(x_1_encode)
-                        x_t = (1 - (1 - 1e-7) * self.recon_factor) * noise + self.recon_factor * x_1_encode
+                        x_t = (1 - (1 - 1e-7) * t) * noise + t * x_1_encode
                         optimal_flow = x_1_encode - (1 - 1e-7) * noise
                     else:
                         noise = torch.randn_like(x_1)
-                        x_t = (1 - (1 - 1e-7) * self.recon_factor) * noise + self.recon_factor * x_1
+                        x_t = (1 - (1 - 1e-7) * t) * noise + t * x_1
                         optimal_flow = x_1 - (1 - 1e-7) * noise
 
                     cl = i*torch.ones(x_1.shape[0], device=self.device).long()
