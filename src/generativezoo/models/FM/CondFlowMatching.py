@@ -1147,8 +1147,8 @@ class CondFlowMatching(nn.Module):
         pred_scores = np.concatenate(pred_scores)
         pred_recon_scores = np.concatenate(pred_recon_scores)
         # calculate multiclass AUC
-        pred_scores = np.array([roc_auc_score(gt == i, pred_scores[:, i]) for i in range(self.n_classes)])
-        pred_recon_scores = np.array([roc_auc_score(gt == i, pred_recon_scores[:, i]) for i in range(self.n_classes)])
+        pred_scores = np.array([roc_auc_score(not(gt == i), pred_scores[:, i]) for i in range(self.n_classes)])
+        pred_recon_scores = np.array([roc_auc_score(not(gt == i), pred_recon_scores[:, i]) for i in range(self.n_classes)])
 
         print(f'Accuracy Translation: {acc*100:.2f}%')
         print(f'Accuracy Reconstruction: {acc_recon*100:.2f}%')
