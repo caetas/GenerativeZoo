@@ -21,7 +21,6 @@ import copy
 from abc import abstractmethod
 import cv2
 from sklearn.metrics import roc_auc_score
-from sklearn.preprocessing import label_binarize
 
 # PyTorch 1.7 has SiLU, but we support PyTorch 1.5.
 class SiLU(nn.Module):
@@ -1144,18 +1143,9 @@ class CondFlowMatching(nn.Module):
         # get the accuracy
         acc = np.sum(gt == pred) / len(gt)
         acc_recon = np.sum(gt == pred_recon) / len(gt)
-        # get the AUC
-        pred_scores = np.concatenate(pred_scores)
-        pred_recon_scores = np.concatenate(pred_recon_scores)
-        # calculate multiclass AUC using macro average and one-vs-rest (ovr) strategy
-        gt_bin = label_binarize(gt, classes=list(range(self.n_classes)))
-        pred_scores_auc = roc_auc_score(gt_bin, pred_scores, average='macro', multi_class='ovr')
-        pred_recon_scores_auc = roc_auc_score(gt_bin, pred_recon_scores, average='macro', multi_class='ovr')
 
         print(f'Accuracy Translation: {acc*100:.2f}%')
         print(f'Accuracy Reconstruction: {acc_recon*100:.2f}%')
-        print(f'AUC Translation: {pred_scores_auc:.4f}')
-        print(f'AUC Reconstruction: {pred_recon_scores_auc:.4f}')
 
 
     
