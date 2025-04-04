@@ -1148,8 +1148,8 @@ class CondFlowMatching(nn.Module):
 
                     cl = i*torch.ones(x_1.shape[0], device=self.device).long()
                     # evaluate the error in the model prediction
-                    pred = self.forward(x_t, t, cl)
-                    error_mc[:, i] += torch.mean((optimal_flow - pred)**2, dim=(1, 2, 3))
+                    predicted = self.forward(x_t, t, cl)
+                    error_mc[:, i] += torch.mean((optimal_flow - predicted)**2, dim=(1, 2, 3))
 
                 error_mc[:, i] /= 10
 
