@@ -1163,6 +1163,7 @@ class CondFlowMatching(nn.Module):
         gt = np.concatenate(gt)
         pred = np.concatenate(pred)
         pred_recon = np.concatenate(pred_recon)
+        pred_mc = np.concatenate(pred_mc)
         # get the accuracy
         acc = np.sum(gt == pred) / len(gt)
         acc_recon = np.sum(gt == pred_recon) / len(gt)
