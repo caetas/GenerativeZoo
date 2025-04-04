@@ -1101,6 +1101,7 @@ class CondFlowMatching(nn.Module):
         # two modes: encoding and reconstruction
         for x_1, label in tqdm(val_loader, desc='Classification', leave=False):
             x_1 = x_1.to(self.device)
+
             if label.dim() > 1:
                 label = label.squeeze(1)
             label = label.to(self.device)
@@ -1110,6 +1111,7 @@ class CondFlowMatching(nn.Module):
             self.cfg = aux
             error = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
             error_recon = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
+
             if self.vae is not None:
                 if x_1.shape[1] == 1:
                     x_1 = x_1.repeat(1, 3, 1, 1)
@@ -1139,11 +1141,11 @@ class CondFlowMatching(nn.Module):
                     # sample random noise of size x_1_encode if self.vae is not None else x_1
                     if self.vae is not None:
                         noise = torch.randn_like(x_1_encode)
-                        x_t = (1 - (1 - 1e-7) * t) * noise + t * x_1_encode
+                        x_t = (1 - (1 - 1e-7) * t[:, None, None, None]) * noise + t[:, None, None, None] * x_1_encode
                         optimal_flow = x_1_encode - (1 - 1e-7) * noise
                     else:
                         noise = torch.randn_like(x_1)
-                        x_t = (1 - (1 - 1e-7) * t) * noise + t * x_1
+                        x_t = (1 - (1 - 1e-7) * t[:, None, None, None]) * noise + t[:, None, None, None] * x_1
                         optimal_flow = x_1 - (1 - 1e-7) * noise
 
                     cl = i*torch.ones(x_1.shape[0], device=self.device).long()
