@@ -1095,10 +1095,9 @@ class CondFlowMatching(nn.Module):
         :param val_loader: validation data loader
         '''
         gt = []
-        pred_scores = []
-        pred_recon_scores = []
         pred = []
         pred_recon = []
+        pred_mc = []
         # two modes: encoding and reconstruction
         for x_1, label in tqdm(val_loader, desc='Classification', leave=False):
             x_1 = x_1.to(self.device)
@@ -1129,12 +1128,36 @@ class CondFlowMatching(nn.Module):
                 # get error between x_1 and x_1_translated
                 error[:, i] = torch.mean((x_1 - x_1_translated)**2, dim=(1, 2, 3))
                 error_recon[:, i] = torch.mean((x_1 - x_1_recon)**2, dim=(1, 2, 3))
+            
+            error_mc = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
+            # Monte Carlo Evaluation
+            for i in range(self.n_classes):
+                # do it 10 times
+                for j in range(10):
+                    # sample random time steps
+                    t = torch.rand(x_1.shape[0], device=self.device)
+                    # sample random noise of size x_1_encode if self.vae is not None else x_1
+                    if self.vae is not None:
+                        noise = torch.randn_like(x_1_encode)
+                        x_t = (1 - (1 - 1e-7) * self.recon_factor) * noise + self.recon_factor * x_1_encode
+                        optimal_flow = x_1_encode - (1 - 1e-7) * noise
+                    else:
+                        noise = torch.randn_like(x_1)
+                        x_t = (1 - (1 - 1e-7) * self.recon_factor) * noise + self.recon_factor * x_1
+                        optimal_flow = x_1 - (1 - 1e-7) * noise
+
+                    cl = i*torch.ones(x_1.shape[0], device=self.device).long()
+                    # evaluate the error in the model prediction
+                    pred = self.forward(x_t, t, cl)
+                    error_mc[:, i] += torch.mean((optimal_flow - pred)**2, dim=(1, 2, 3))
+
+                error_mc[:, i] /= 10
+
+
             # get the index of the minimum error for Accuracy
             pred.append(torch.argmin(error, dim=1).cpu().numpy())
             pred_recon.append(torch.argmin(error_recon, dim=1).cpu().numpy())
-            # get the error per class for AUC
-            pred_scores.append(error.cpu().numpy())
-            pred_recon_scores.append(error_recon.cpu().numpy())
+            pred_mc.append(torch.argmin(error_mc, dim=1).cpu().numpy())
             gt.append(label.cpu().numpy())
 
         gt = np.concatenate(gt)
@@ -1143,9 +1166,11 @@ class CondFlowMatching(nn.Module):
         # get the accuracy
         acc = np.sum(gt == pred) / len(gt)
         acc_recon = np.sum(gt == pred_recon) / len(gt)
+        acc_mc = np.sum(gt == pred_mc) / len(gt)
 
         print(f'Accuracy Translation: {acc*100:.2f}%')
         print(f'Accuracy Reconstruction: {acc_recon*100:.2f}%')
+        print(f'Accuracy Monte Carlo: {acc_mc*100:.2f}%')
 
 
     
