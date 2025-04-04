@@ -21,6 +21,7 @@ import copy
 from abc import abstractmethod
 import cv2
 from sklearn.metrics import roc_auc_score
+from lpips import LPIPS
 
 # PyTorch 1.7 has SiLU, but we support PyTorch 1.5.
 class SiLU(nn.Module):
@@ -1098,6 +1099,7 @@ class CondFlowMatching(nn.Module):
         pred = []
         pred_recon = []
         pred_mc = []
+        lpips_metric = LPIPS(net='vgg').to(self.device)
         # two modes: encoding and reconstruction
         for x_1, label in tqdm(val_loader, desc='Classification', leave=False):
             x_1 = x_1.to(self.device)
@@ -1128,14 +1130,19 @@ class CondFlowMatching(nn.Module):
                 x_1_translated = self.sample(x_1.shape[0], train=False, label=cl, x_0=x_0, fid=True, start=self.translation_factor)
                 x_1_recon = self.sample(x_1.shape[0], train=False, label=cl, x_0=x_t, fid=True, start=self.recon_factor)
                 # get error between x_1 and x_1_translated
-                error[:, i] = torch.mean((x_1 - x_1_translated)**2, dim=(1, 2, 3))
-                error_recon[:, i] = torch.mean((x_1 - x_1_recon)**2, dim=(1, 2, 3))
+                #error[:, i] = torch.mean((x_1 - x_1_translated)**2, dim=(1, 2, 3))
+                #error_recon[:, i] = torch.mean((x_1 - x_1_recon)**2, dim=(1, 2, 3))
+                error[:, i] = lpips_metric((x_1*2 -1).clamp(-1,1), (x_1_translated*2 -1).clamp(-1,1)).view(-1)
+                # get error between x_1 and x_1_recon
+                error_recon[:, i] = lpips_metric((x_1*2 -1).clamp(-1,1), (x_1_recon*2 -1).clamp(-1,1)).view(-1)
             
+            x_1 = x_1*2 - 1
+            x_1 = x_1.clamp(-1, 1)
             error_mc = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
             # Monte Carlo Evaluation
             for i in range(self.n_classes):
                 # do it 10 times
-                for j in range(10):
+                for j in range(2):
                     # sample random time steps
                     t = torch.rand(x_1.shape[0], device=self.device)
                     # sample random noise of size x_1_encode if self.vae is not None else x_1
@@ -1152,8 +1159,6 @@ class CondFlowMatching(nn.Module):
                     # evaluate the error in the model prediction
                     predicted = self.forward(x_t, t, cl)
                     error_mc[:, i] += torch.mean((optimal_flow - predicted)**2, dim=(1, 2, 3))
-
-                error_mc[:, i] /= 10
 
 
             # get the index of the minimum error for Accuracy
