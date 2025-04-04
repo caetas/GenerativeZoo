@@ -20,6 +20,7 @@ from collections import OrderedDict
 import copy
 from abc import abstractmethod
 import cv2
+from sklearn.metrics import roc_auc_score
 
 # PyTorch 1.7 has SiLU, but we support PyTorch 1.5.
 class SiLU(nn.Module):
@@ -1094,6 +1095,8 @@ class CondFlowMatching(nn.Module):
         :param val_loader: validation data loader
         '''
         gt = []
+        pred_scores = []
+        pred_recon_scores = []
         pred = []
         pred_recon = []
         # two modes: encoding and reconstruction
@@ -1126,18 +1129,31 @@ class CondFlowMatching(nn.Module):
                 # get error between x_1 and x_1_translated
                 error[:, i] = torch.mean((x_1 - x_1_translated)**2, dim=(1, 2, 3))
                 error_recon[:, i] = torch.mean((x_1 - x_1_recon)**2, dim=(1, 2, 3))
-            # get the index of the minimum error
+            # get the index of the minimum error for Accuracy
             pred.append(torch.argmin(error, dim=1).cpu().numpy())
             pred_recon.append(torch.argmin(error_recon, dim=1).cpu().numpy())
+            # get the error per class for AUC
+            pred_scores.append(error.cpu().numpy())
+            pred_recon_scores.append(error_recon.cpu().numpy())
             gt.append(label.cpu().numpy())
+
         gt = np.concatenate(gt)
         pred = np.concatenate(pred)
         pred_recon = np.concatenate(pred_recon)
         # get the accuracy
         acc = np.sum(gt == pred) / len(gt)
         acc_recon = np.sum(gt == pred_recon) / len(gt)
-        print(f'Accuracy Tranlation: {acc*100:.2f}%')
+        # get the AUC
+        pred_scores = np.concatenate(pred_scores)
+        pred_recon_scores = np.concatenate(pred_recon_scores)
+        # calculate multiclass AUC
+        pred_scores = np.array([roc_auc_score(gt == i, pred_scores[:, i]) for i in range(self.n_classes)])
+        pred_recon_scores = np.array([roc_auc_score(gt == i, pred_recon_scores[:, i]) for i in range(self.n_classes)])
+
+        print(f'Accuracy Translation: {acc*100:.2f}%')
         print(f'Accuracy Reconstruction: {acc_recon*100:.2f}%')
+        print(f'AUC Translation: {pred_scores.mean()*100:.2f}%')
+        print(f'AUC Reconstruction: {pred_recon_scores.mean()*100:.2f}%')
 
 
     
