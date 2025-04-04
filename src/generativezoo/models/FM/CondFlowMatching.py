@@ -1154,8 +1154,8 @@ class CondFlowMatching(nn.Module):
 
         print(f'Accuracy Translation: {acc*100:.2f}%')
         print(f'Accuracy Reconstruction: {acc_recon*100:.2f}%')
-        print(f'AUC Translation: {pred_scores.mean()*100:.2f}%')
-        print(f'AUC Reconstruction: {pred_recon_scores.mean()*100:.2f}%')
+        print(f'AUC Translation: {pred_scores_auc:.4f}')
+        print(f'AUC Reconstruction: {pred_recon_scores_auc:.4f}')
 
 
     
