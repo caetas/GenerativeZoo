@@ -1137,6 +1137,7 @@ class CondFlowMatching(nn.Module):
                 if self.lpips:
                     if x_1.shape[1] == 1:
                         x_1 = x_1.repeat(1, 3, 1, 1)
+                    if x_1_translated.shape[1] == 1:
                         x_1_translated = x_1_translated.repeat(1, 3, 1, 1)
                     lpips_error[:, i] = lpips_metric(x_1.clamp(-1,1), (x_1_translated*2 -1).clamp(-1,1)).view(-1)
                 # plot x_1 and x_1_translated side by side, make grids
