@@ -190,6 +190,8 @@ def bloodmnist_train_loader(batch_size, normalize = False, input_shape = None, n
         if normalize:
             transform = transforms.Compose([
                 transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomVerticalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,), (0.5,))
             ])
@@ -312,6 +314,8 @@ def dermamnist_train_loader(batch_size, normalize = False, input_shape = None, n
     if normalize:
         transform = transforms.Compose([
             transforms.Resize(input_shape) if input_shape is not None else transforms.Resize(32),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])

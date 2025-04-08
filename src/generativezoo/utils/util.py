@@ -199,6 +199,7 @@ def parse_args_CondFlowMatching():
     argparser.add_argument('--translation_factor', type=float, default=0.2, help='translation factor (as percentage of preserved original image)')
     argparser.add_argument('--classification', action='store_true', default=False, help='classification')
     argparser.add_argument('--recon_factor', type=float, default=0.5, help='reconstruction factor')
+    argparser.add_argument('--lpips', action='store_true', default=False, help='use lpips loss')
     args = argparser.parse_args()
     args.channel_mult = tuple(args.channel_mult)
     args.attention_resolutions = tuple(args.attention_resolutions)

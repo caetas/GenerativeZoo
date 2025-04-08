@@ -21,6 +21,7 @@ import copy
 from abc import abstractmethod
 import cv2
 from sklearn.metrics import roc_auc_score
+from skimage.metrics import structural_similarity as ssim
 from lpips import LPIPS
 
 # PyTorch 1.7 has SiLU, but we support PyTorch 1.5.
@@ -881,6 +882,7 @@ class CondFlowMatching(nn.Module):
         self.snapshot = args.n_epochs // args.snapshots
         self.translation_factor = args.translation_factor
         self.recon_factor = args.recon_factor
+        self.lpips = args.lpips
         if args.train:
             self.ema = copy.deepcopy(self.model)
             self.ema_rate = args.ema_rate
@@ -1095,11 +1097,17 @@ class CondFlowMatching(nn.Module):
         Classification
         :param val_loader: validation data loader
         '''
+        self.model.eval()
+
         gt = []
         pred = []
         pred_recon = []
-        pred_mc = []
-        lpips_metric = LPIPS(net='vgg').to(self.device)
+
+        pred_all = []
+        pred_recon_all = []
+
+        if self.lpips:
+            lpips_metric = LPIPS(net='vgg').to(self.device)
         # two modes: encoding and reconstruction
         for x_1, label in tqdm(val_loader, desc='Classification', leave=False):
             x_1 = x_1.to(self.device)
@@ -1107,78 +1115,100 @@ class CondFlowMatching(nn.Module):
             if label.dim() > 1:
                 label = label.squeeze(1)
             label = label.to(self.device)
-            aux = self.cfg
-            self.cfg = 0.0
-            x_0 = self.latent(x_1.to(self.device), label.to(self.device), end=self.translation_factor)
-            self.cfg = aux
+            #aux = self.cfg
+            #self.cfg = 0.0
+            #x_0 = self.latent(x_1.to(self.device), label.to(self.device), end=self.translation_factor)
+            #self.cfg = aux
             error = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
+            lpips_error = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
             error_recon = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
-
-            if self.vae is not None:
-                if x_1.shape[1] == 1:
-                    x_1 = x_1.repeat(1, 3, 1, 1)
-                x_1_encode = self.encode(x_1).latent_dist.sample().mul_(0.18215)
-                noise = torch.randn_like(x_1_encode)
-                x_t = (1 - (1 - 1e-7) * self.recon_factor) * noise + self.recon_factor * x_1_encode
-            else:
-                x_t = (1 - (1 - 1e-7) * self.recon_factor) * torch.randn_like(x_1) + self.recon_factor * x_1
-            x_1 = x_1*0.5 + 0.5
-            x_1 = x_1.clamp(0, 1)
+            lpips_error_recon = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
 
             for i in range(self.n_classes):
                 cl = i*torch.ones(x_1.shape[0], device=self.device).long()
+
+                ### Translation
+                aux = self.cfg
+                self.cfg = 1.0
+                x_0 = self.latent(x_1, cl, end=self.translation_factor)
+                self.cfg = aux
                 x_1_translated = self.sample(x_1.shape[0], train=False, label=cl, x_0=x_0, fid=True, start=self.translation_factor)
-                x_1_recon = self.sample(x_1.shape[0], train=False, label=cl, x_0=x_t, fid=True, start=self.recon_factor)
-                # get error between x_1 and x_1_translated
-                #error[:, i] = torch.mean((x_1 - x_1_translated)**2, dim=(1, 2, 3))
-                #error_recon[:, i] = torch.mean((x_1 - x_1_recon)**2, dim=(1, 2, 3))
-                error[:, i] = lpips_metric((x_1*2 -1).clamp(-1,1), (x_1_translated*2 -1).clamp(-1,1)).view(-1)
-                # get error between x_1 and x_1_recon
-                error_recon[:, i] = lpips_metric((x_1*2 -1).clamp(-1,1), (x_1_recon*2 -1).clamp(-1,1)).view(-1)
-            
-            x_1 = x_1*2 - 1
-            x_1 = x_1.clamp(-1, 1)
-            error_mc = torch.zeros((x_1.shape[0], self.n_classes), device=self.device)
-            # Monte Carlo Evaluation
-            for i in range(self.n_classes):
-                # do it 10 times
-                for j in range(2):
-                    # sample random time steps
-                    t = torch.rand(x_1.shape[0], device=self.device)
-                    # sample random noise of size x_1_encode if self.vae is not None else x_1
+                error[:, i] = ((x_1*0.5 +0.5).clamp(0,1) - x_1_translated).square().mean(dim=(1, 2, 3))
+                if self.lpips:
+                    if x_1.shape[1] == 1:
+                        x_1 = x_1.repeat(1, 3, 1, 1)
+                        x_1_translated = x_1_translated.repeat(1, 3, 1, 1)
+                    lpips_error[:, i] = lpips_metric(x_1.clamp(-1,1), (x_1_translated*2 -1).clamp(-1,1)).view(-1)
+                # plot x_1 and x_1_translated side by side, make grids
+                '''
+                grid1 = make_grid((x_1*0.5 + 0.5).clamp(0,1), nrow=int(np.sqrt(x_1.shape[0])), padding=0)
+                grid2 = make_grid(x_1_translated.clamp(0, 1), nrow=int(np.sqrt(x_1_translated.shape[0])), padding=0)
+                fig = plt.figure(figsize=(10, 10))
+                plt.subplot(1, 2, 1)
+                plt.imshow(grid1.permute(1, 2, 0).cpu().detach().numpy())
+                plt.axis('off')
+                plt.subplot(1, 2, 2)
+                plt.imshow(grid2.permute(1, 2, 0).cpu().detach().numpy())
+                plt.axis('off')
+                plt.show()
+                '''
+                
+                # Reconstruction
+                for j in range(1):
                     if self.vae is not None:
+                        if x_1.shape[1] == 1:
+                            x_1 = x_1.repeat(1, 3, 1, 1)
+                        x_1_encode = self.encode(x_1).latent_dist.sample().mul_(0.18215)
                         noise = torch.randn_like(x_1_encode)
-                        x_t = (1 - (1 - 1e-7) * t[:, None, None, None]) * noise + t[:, None, None, None] * x_1_encode
-                        optimal_flow = x_1_encode - (1 - 1e-7) * noise
+                        x_t = (1 - (1 - 1e-7) * self.recon_factor) * noise + self.recon_factor * x_1_encode
                     else:
-                        noise = torch.randn_like(x_1)
-                        x_t = (1 - (1 - 1e-7) * t[:, None, None, None]) * noise + t[:, None, None, None] * x_1
-                        optimal_flow = x_1 - (1 - 1e-7) * noise
+                        x_t = (1 - (1 - 1e-7) * self.recon_factor) * torch.randn_like(x_1) + self.recon_factor * x_1
+                    x_1_recon = self.sample(x_1.shape[0], train=False, label=cl, x_0=x_t, fid=True, start=self.recon_factor)
+                    error_recon[:, i] = ((x_1*0.5 + 0.5).clamp(0,1) - x_1_recon).square().mean(dim=(1, 2, 3))
+                    if self.lpips:
+                        if x_1.shape[1] == 1:
+                            x_1 = x_1.repeat(1, 3, 1, 1)
+                        if x_1_recon.shape[1] == 1:
+                            x_1_recon = x_1_recon.repeat(1, 3, 1, 1)
+                        lpips_error_recon[:, i] = lpips_metric(x_1.clamp(-1,1), (x_1_recon*2 -1).clamp(-1,1)).view(-1)
 
-                    cl = i*torch.ones(x_1.shape[0], device=self.device).long()
-                    # evaluate the error in the model prediction
-                    predicted = self.forward(x_t, t, cl)
-                    error_mc[:, i] += torch.mean((optimal_flow - predicted)**2, dim=(1, 2, 3))
-
+            error_recon = error_recon/torch.sum(error_recon, dim=1, keepdims=True) + ((lpips_error_recon/torch.sum(lpips_error_recon, dim=1, keepdims=True)) if self.lpips else 0)
+            error = error/torch.sum(error, dim=1, keepdims=True) + ((lpips_error/torch.sum(lpips_error, dim=1, keepdims=True)) if self.lpips else 0)
 
             # get the index of the minimum error for Accuracy
             pred.append(torch.argmin(error, dim=1).cpu().numpy())
             pred_recon.append(torch.argmin(error_recon, dim=1).cpu().numpy())
-            pred_mc.append(torch.argmin(error_mc, dim=1).cpu().numpy())
+            pred_all.append(error.cpu().numpy())
+            pred_recon_all.append(error_recon.cpu().numpy())
             gt.append(label.cpu().numpy())
+
 
         gt = np.concatenate(gt)
         pred = np.concatenate(pred)
         pred_recon = np.concatenate(pred_recon)
-        pred_mc = np.concatenate(pred_mc)
+        pred_all = np.concatenate(pred_all)
+        pred_recon_all = np.concatenate(pred_recon_all)
+        # pred all should be normalized by dividing by the sum in each second dimension
+        #pred_all = pred_all / np.sum(pred_all, axis=1, keepdims=True)
+        #pred_recon_all = pred_recon_all / np.sum(pred_recon_all, axis=1, keepdims=True)
         # get the accuracy
         acc = np.sum(gt == pred) / len(gt)
         acc_recon = np.sum(gt == pred_recon) / len(gt)
-        acc_mc = np.sum(gt == pred_mc) / len(gt)
+
+        # get auc for each class
+        auc = np.zeros(self.n_classes)
+        auc_recon = np.zeros(self.n_classes)
+
+        for i in range(self.n_classes):
+            auc[i] = roc_auc_score(gt != i, pred_all[:, i])
+            auc_recon[i] = roc_auc_score(gt != i, pred_recon_all[:, i])
+        auc = np.mean(auc)
+        auc_recon = np.mean(auc_recon)
 
         print(f'Accuracy Translation: {acc*100:.2f}%')
         print(f'Accuracy Reconstruction: {acc_recon*100:.2f}%')
-        print(f'Accuracy Monte Carlo: {acc_mc*100:.2f}%')
+        print(f'AUC Translation: {auc*100:.2f}%')
+        print(f'AUC Reconstruction: {auc_recon*100:.2f}%')
 
 
     
