@@ -1189,6 +1189,12 @@ class CondFlowMatching(nn.Module):
         pred_recon = np.concatenate(pred_recon)
         pred_all = np.concatenate(pred_all)
         pred_recon_all = np.concatenate(pred_recon_all)
+        # pred_all should be normalized by the min and max in each second dimension
+        pred_all = (pred_all - np.min(pred_all, axis=0, keepdims=True)) / (np.max(pred_all, axis=0, keepdims=True) - np.min(pred_all, axis=0, keepdims=True))
+        pred_recon_all = (pred_recon_all - np.min(pred_recon_all, axis=0, keepdims=True)) / (np.max(pred_recon_all, axis=0, keepdims=True) - np.min(pred_recon_all, axis=0, keepdims=True))
+        #pred and recon should be the argmin of the pred_all and pred_recon_all respectively
+        pred = np.argmin(pred_all, axis=1)
+        pred_recon = np.argmin(pred_recon_all, axis=1)
         # pred all should be normalized by dividing by the sum in each second dimension
         #pred_all = pred_all / np.sum(pred_all, axis=1, keepdims=True)
         #pred_recon_all = pred_recon_all / np.sum(pred_recon_all, axis=1, keepdims=True)
