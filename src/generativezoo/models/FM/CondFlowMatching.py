@@ -1129,18 +1129,24 @@ class CondFlowMatching(nn.Module):
 
                 ### Translation
                 aux = self.cfg
-                self.cfg = 1.0
+                self.cfg = 5.0
                 x_0 = self.latent(x_1, cl, end=self.translation_factor)
+                xnorm = torch.linalg.norm(x_0, dim=1, keepdim=True, ord=2).flatten(1)
+                for j in range(xnorm.shape[0]):
+                    error[j,i] = torch.abs(xnorm[j].max() - xnorm[j].min())
+                    # add euclidean norm of x_0 to error
+                    error[j,i] += torch.linalg.norm(x_0[j], dim=0, ord=2).mean() 
+                
                 self.cfg = aux
-                x_1_translated = self.sample(x_1.shape[0], train=False, label=cl, x_0=x_0, fid=True, start=self.translation_factor)
-                error[:, i] = ((x_1*0.5 +0.5).clamp(0,1) - x_1_translated).square().mean(dim=(1, 2, 3))
+                #x_1_translated = self.sample(x_1.shape[0], train=False, label=cl, x_0=x_0, fid=True, start=self.translation_factor)
+                #error[:, i] = ((x_1*0.5 +0.5).clamp(0,1) - x_1_translated).square().mean(dim=(1, 2, 3))
                 if self.lpips:
                     if x_1.shape[1] == 1:
                         x_1 = x_1.repeat(1, 3, 1, 1)
                     if x_1_translated.shape[1] == 1:
                         x_1_translated = x_1_translated.repeat(1, 3, 1, 1)
                     lpips_error[:, i] = lpips_metric(x_1.clamp(-1,1), (x_1_translated*2 -1).clamp(-1,1)).view(-1)
-                # plot x_1 and x_1_translated side by side, make grids
+                # plot x_1 and x_1_translated side by side, make grids         
                 '''
                 grid1 = make_grid((x_1*0.5 + 0.5).clamp(0,1), nrow=int(np.sqrt(x_1.shape[0])), padding=0)
                 grid2 = make_grid(x_1_translated.clamp(0, 1), nrow=int(np.sqrt(x_1_translated.shape[0])), padding=0)
