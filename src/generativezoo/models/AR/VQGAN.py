@@ -8,6 +8,18 @@ from einops import rearrange
 from collections import namedtuple
 from torchvision import models
 import functools
+from tqdm import tqdm
+from matplotlib import pyplot as plt
+from torchvision.utils import make_grid
+from accelerate import Accelerator
+from config import models_dir
+import os
+
+def create_checkpoint_dir():
+  if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
+  if not os.path.exists(os.path.join(models_dir, 'VQGAN')):
+    os.makedirs(os.path.join(models_dir, 'VQGAN'))
 
 class ActNorm(nn.Module):
     def __init__(self, num_features, logdet=False, affine=True,
@@ -839,80 +851,68 @@ class VQLPIPSWithDiscriminator(nn.Module):
         
 class VQModel(nn.Module):
     def __init__(self,
+                 args,
                  in_channels,
-                 out_channels,
-                 channels,
-                 z_channels,
                  resolution,
-                 ch_mult,
-                 num_res_blocks,
-                 attn_resolutions,
-                 dropout,
-                 double_z,
-                 n_embed,
-                 embed_dim,
-                 ckpt_path=None,
-                 ignore_keys=[],
-                 image_key="image",
-                 colorize_nlabels=None,
-                 monitor=None,
-                 remap=None,
-                 sane_index_shape=False,  # tell vector quantizer to return indices as bhw
                  ):
         
         super().__init__()
-        self.image_key = image_key
 
         self.encoder = Encoder(
-            in_channels=in_channels,
-            out_ch=out_channels,
-            ch=channels,
-            z_channels=z_channels,
-            resolution=resolution,
-            ch_mult=ch_mult,
-            num_res_blocks=num_res_blocks,
-            attn_resolutions=attn_resolutions,
-            dropout=dropout,
-            double_z=double_z,
+            in_channels = in_channels,
+            out_ch = in_channels,
+            ch=args.channels,
+            z_channels= args.z_channels,
+            resolution= resolution,
+            ch_mult= args.ch_mult,
+            num_res_blocks= args.num_res_blocks,
+            attn_resolutions= args.attn_resolutions,
+            dropout= args.dropout,
+            double_z= args.double_z,
         )
 
         self.decoder = Decoder(
-            in_channels=in_channels,
-            out_ch=out_channels,
-            ch=channels,
-            z_channels=z_channels,
-            resolution=resolution,
-            ch_mult=ch_mult,
-            num_res_blocks=num_res_blocks,
-            attn_resolutions=attn_resolutions,
-            dropout=dropout,
-            double_z=double_z,
+            in_channels= in_channels,
+            out_ch= in_channels,
+            ch= args.channels,
+            z_channels= args.z_channels,
+            resolution= resolution,
+            ch_mult= args.ch_mult,
+            num_res_blocks= args.num_res_blocks,
+            attn_resolutions= args.attn_resolutions,
+            dropout= args.dropout,
+            double_z= args.double_z,
         )
 
-        self.loss = VQLPIPSWithDiscriminator(disc_in_channels=out_channels,
-                                             disc_start=250001,
-                                             disc_weight=0.8,
-                                             codebook_weight=1.0)
+        self.loss = VQLPIPSWithDiscriminator(disc_in_channels=in_channels,
+                                             disc_start=args.disc_start,
+                                             disc_weight=args.disc_weight,
+                                             codebook_weight=args.codebook_weight)
         
-        self.quantize = VectorQuantizer(n_embed, embed_dim, beta=0.25,
-                                        remap=remap, sane_index_shape=sane_index_shape)
+        self.quantize = VectorQuantizer(args.n_embed, args.embed_dim, beta=0.25,
+                                        remap=args.remap, sane_index_shape=args.sane_index_shape)
         
-        self.quant_conv = torch.nn.Conv2d(z_channels, embed_dim, 1)
+        self.quant_conv = torch.nn.Conv2d(args.z_channels, args.embed_dim, 1)
 
-        self.post_quant_conv = torch.nn.Conv2d(embed_dim, z_channels, 1)
+        self.post_quant_conv = torch.nn.Conv2d(args.embed_dim, args.z_channels, 1)
 
-        if ckpt_path is not None:
-            self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys)
+        if args.checkpoint is not None:
+            self.init_from_ckpt(args.checkpoint, ignore_keys=None)
 
-        if colorize_nlabels is not None:
-            assert type(colorize_nlabels)==int
-            self.register_buffer("colorize", torch.randn(3, colorize_nlabels, 1, 1))
+        if args.colorize_nlabels is not None:
+            assert type(args.colorize_nlabels)==int
+            self.register_buffer("colorize", torch.randn(3, args.colorize_nlabels, 1, 1))
 
-        if monitor is not None:
-            self.monitor = monitor
-        self.learning_rate = 1e-4
+        self.lr = args.lr
         self.optimizers = self.configure_optimizers()
         self.global_step = 0
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.args = args
+        self.n_epochs = args.n_epochs
+        self.resolution = resolution
+        self.in_channels = in_channels
+        self.sample_and_save_freq = args.sample_and_save_freq
+        self.to(self.device)
 
     def init_from_ckpt(self, path, ignore_keys=list()):
         sd = torch.load(path, map_location="cpu")["state_dict"]
@@ -924,6 +924,10 @@ class VQModel(nn.Module):
                     del sd[k]
         self.load_state_dict(sd, strict=False)
         print(f"Restored from {path}")
+
+    def load_checkpoint(self, path):
+        if path is not None:
+            self.load_state_dict(torch.load(path, weights_only=False))
 
     def encode(self, x):
         h = self.encoder(x)
@@ -960,9 +964,7 @@ class VQModel(nn.Module):
                                             last_layer=self.get_last_layer(), split="train")
             return discloss
 
-    def validation_step(self, batch, batch_idx):
-        x = self.get_input(batch, self.image_key)
-        xrec, qloss = self(x)
+    def validation_step(self, xrec, qloss, x):
         aeloss = self.loss(qloss, x, xrec, 0, self.global_step,
                                             last_layer=self.get_last_layer(), split="val")
 
@@ -971,7 +973,7 @@ class VQModel(nn.Module):
         return aeloss, discloss
 
     def configure_optimizers(self):
-        lr = self.learning_rate
+        lr = self.lr
         opt_ae = torch.optim.Adam(list(self.encoder.parameters())+
                                   list(self.decoder.parameters())+
                                   list(self.quantize.parameters())+
@@ -985,16 +987,157 @@ class VQModel(nn.Module):
     def get_last_layer(self):
         return self.decoder.conv_out.weight
     
-    def train_model(self, train_dataloader, val_dataloader=None, epochs=1):
-        self.train()
-        for epoch in range(epochs):
-            batch = torch.randn(16, 3, 256, 256)
-            xrec, qloss = self(batch)
-            self.optimizers[0].zero_grad()
-            loss = self.training_step(batch, xrec, qloss, 0)
-            loss.backward()
-            self.optimizers[0].step()
-            self.optimizers[1].zero_grad()
-            loss = self.training_step(batch, xrec, qloss, 1)
-            loss.backward()
-            self.optimizers[1].step()
+    def train_model(self, train_dataloader, val_dataloader=None):
+
+        create_checkpoint_dir()
+
+        accelerate = Accelerator(log_with='wandb')
+
+        accelerate.init_trackers("VQGAN", config={
+            "lr": self.lr,
+            "batch_size": self.args.batch_size,
+            "n_epochs": self.args.n_epochs,
+            "n_embed": self.args.n_embed,
+            "embed_dim": self.args.embed_dim,
+            "resolution": self.resolution,
+            "ch_mult": self.args.ch_mult,
+            "num_res_blocks": self.args.num_res_blocks,
+            "attn_resolutions": self.args.attn_resolutions,
+            "dropout": self.args.dropout,
+            "double_z": self.args.double_z,
+            "disc_start": self.args.disc_start,
+            "disc_weight": self.args.disc_weight,
+            "codebook_weight": self.args.codebook_weight,
+            "channels": self.args.channels,
+            "z_channels": self.args.z_channels,
+            "in_channels": self.in_channels,
+            "dataset": self.args.dataset,
+        },
+        init_kwargs={"wandb":{"name": f"VQGAN_{self.args.dataset}"}})
+
+        vae_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizers[0], max_lr=self.lr,
+                                                            total_steps=self.n_epochs*len(train_dataloader),
+                                                            pct_start=0.1, cycle_momentum=False,
+                                                            div_factor=self.lr/1e-6, final_div_factor=1,
+                                                            anneal_strategy="cos")
+        # Discriminator scheduler
+        disc_scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optimizers[1], max_lr=self.lr,
+                                                            total_steps=self.n_epochs*len(train_dataloader),
+                                                            pct_start=0.1, cycle_momentum=False,
+                                                            div_factor=self.lr/1e-6, final_div_factor=1,
+                                                            anneal_strategy="cos")
+        
+        train_dataloader, val_dataloader, self.optimizers[0], self.optimizers[1], self.encoder, self.decoder, self.quant_conv, self.post_quant_conv, vae_scheduler, disc_scheduler = accelerate.prepare(
+            train_dataloader, val_dataloader, self.optimizers[0], self.optimizers[1], self.encoder, self.decoder, self.quant_conv, self.post_quant_conv, vae_scheduler, disc_scheduler
+        )
+        # Training loop
+        
+        for epoch in tqdm(range(self.n_epochs), desc="Training Epochs"):
+            self.train()
+            vae_loss = 0
+            disc_loss = 0
+            # Training step
+            for batch,_ in tqdm(train_dataloader, desc="Training Batches", leave=False):
+                # Get the input data
+                x = batch.to(self.device)
+                # Forward pass
+                xrec, qloss = self(x)
+                # Compute the vae loss
+                aeloss = self.loss(qloss, x, xrec, 0, self.global_step,
+                                            last_layer=self.get_last_layer(), split="train")
+                # Backward pass
+                self.optimizers[0].zero_grad()
+                accelerate.backward(aeloss)
+                self.optimizers[0].step()
+                # Compute the discriminator loss
+                discloss = self.loss(qloss, x, xrec, 1, self.global_step,
+                                            last_layer=self.get_last_layer(), split="train")
+                vae_loss += aeloss.item()*batch.shape[0]
+                disc_loss += discloss.item()*batch.shape[0]
+                # Backward pass
+                self.optimizers[1].zero_grad()
+                accelerate.backward(discloss)
+                self.optimizers[1].step()
+                # Update the global step
+                self.global_step += 1
+                # Update the schedulers
+                vae_scheduler.step()
+                disc_scheduler.step()
+
+            accelerate.wait_for_everyone()
+            # Log the losses
+            vae_loss /= len(train_dataloader.dataset)
+            disc_loss /= len(train_dataloader.dataset)
+            accelerate.log({"vae_loss_train": vae_loss, "disc_loss_train": disc_loss})
+
+            if (epoch+1) % self.sample_and_save_freq == 0:
+            # Validation step
+                if val_dataloader is not None:
+                    self.eval()
+                    vae_loss = 0
+                    disc_loss = 0
+                    cnt = 0
+                    with torch.no_grad():
+                        for batch,_ in tqdm(val_dataloader, desc="Validation Batches", leave=False):
+                            x = batch.to(self.device)
+                            xrec, qloss = self(x)
+                            aeloss, disc_loss = self.validation_step(xrec, qloss, x)
+                            vae_loss += aeloss.item()*batch.shape[0]
+                            disc_loss += disc_loss.item()*batch.shape[0]
+                            # plot a grid of 9 samples of x and a grid of 9 samples of xrec
+                            if cnt == 0:
+                                x = x*0.5 + 0.5
+                                xrec = xrec*0.5 + 0.5
+                                x = x.clamp(0, 1)
+                                xrec = xrec.clamp(0, 1)
+                                x = x[:9]
+                                xrec = xrec[:9]
+                                x = make_grid(x, nrow=3, normalize=True)
+                                xrec = make_grid(xrec, nrow=3, normalize=True)
+                                fig = plt.figure(figsize=(10, 5))
+                                plt.subplot(1, 2, 1)
+                                plt.imshow(x.permute(1, 2, 0).cpu().numpy())
+                                plt.title("Input")
+                                plt.axis("off")
+                                plt.subplot(1, 2, 2)
+                                plt.imshow(xrec.permute(1, 2, 0).cpu().numpy())
+                                plt.title("Reconstruction")
+                                plt.axis("off")
+                                accelerate.log({"validation_input": fig})
+                                plt.close(fig)
+                            cnt += 1
+                    vae_loss /= len(val_dataloader.dataset)
+                    disc_loss /= len(val_dataloader.dataset)
+                    accelerate.log({"vae_loss_val": vae_loss, "disc_loss_val": disc_loss})
+                    # Save the model
+                    model_to_save = accelerate.unwrap_model(self)
+                    accelerate.save(model_to_save.state_dict(), os.path.join(models_dir,'VQGAN',f"VQGAN_{self.args.dataset}_epoch{epoch+1}.pt"))
+                    self.train()
+        print("Training complete.")
+
+    @torch.no_grad()
+    def reconstruct(self, val_loader):
+        self.eval()
+        for batch,_ in tqdm(val_loader, desc="Reconstructing Batches", leave=False):
+            x = batch.to(self.device)
+            xrec, qloss = self(x)
+            # plot a grid of 9 samples of x and a grid of 9 samples of xrec
+            x = x*0.5 + 0.5
+            xrec = xrec*0.5 + 0.5
+            x = x.clamp(0, 1)
+            xrec = xrec.clamp(0, 1)
+            x = x[:9]
+            xrec = xrec[:9]
+            x = make_grid(x, nrow=3, normalize=True)
+            xrec = make_grid(xrec, nrow=3, normalize=True)
+            fig = plt.figure(figsize=(10, 5))
+            plt.subplot(1, 2, 1)
+            plt.imshow(x.permute(1, 2, 0).cpu().numpy())
+            plt.title("Input")
+            plt.axis("off")
+            plt.subplot(1, 2, 2)
+            plt.imshow(xrec.permute(1, 2, 0).cpu().numpy())
+            plt.title("Reconstruction")
+            plt.axis("off")
+            plt.show()
+            break

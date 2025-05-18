@@ -1,18 +1,18 @@
 from models.AR.VQGAN import VQModel
+from utils.util import parse_args_VQGAN
+from data.Dataloaders import *
 
-model = VQModel(
-    in_channels=3,
-    out_channels=3,
-    channels=64,
-    z_channels=64,
-    resolution=256,
-    ch_mult=[1, 2, 2, 2, 2],
-    num_res_blocks=2,
-    attn_resolutions=[2, 4],
-    dropout=0.1,
-    double_z=False,
-    n_embed=1024,
-    embed_dim=64)
+if __name__ == "__main__":
+    args = parse_args_VQGAN()
 
-model.train_model(None, None)
+    if args.train:
+        train_loader, input_size, channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, num_workers=args.num_workers, size=args.size)
+        val_loader, _, _ = pick_dataset(args.dataset, mode='val', batch_size = args.batch_size, normalize=True, num_workers=args.num_workers, size=args.size)
+        model = VQModel(args, channels, input_size)
+        model.train_model(train_loader, val_loader)
 
+    elif args.sample:
+        val_loader, input_size, channels = pick_dataset(args.dataset, mode='val', batch_size = args.batch_size, normalize=True, num_workers=args.num_workers, size=args.size)
+        model = VQModel(args, channels, input_size)
+        model.load_checkpoint(args.checkpoint)
+        model.reconstruct(val_loader)
