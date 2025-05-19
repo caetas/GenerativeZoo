@@ -1,3 +1,7 @@
+###########################################################################
+###### Code based on: https://github.com/CompVis/taming-transformers ######
+###########################################################################
+
 import math
 import torch
 import torch.nn as nn
@@ -694,7 +698,7 @@ class NetLinLayer(nn.Module):
 class vgg16(torch.nn.Module):
     def __init__(self, requires_grad=False, pretrained=True):
         super(vgg16, self).__init__()
-        vgg_pretrained_features = models.vgg16(pretrained=pretrained).features
+        vgg_pretrained_features = models.vgg16(weights='VGG16_Weights.IMAGENET1K_V1').features
         self.slice1 = torch.nn.Sequential()
         self.slice2 = torch.nn.Sequential()
         self.slice3 = torch.nn.Sequential()
@@ -896,9 +900,6 @@ class VQModel(nn.Module):
 
         self.post_quant_conv = torch.nn.Conv2d(args.embed_dim, args.z_channels, 1)
 
-        if args.checkpoint is not None:
-            self.init_from_ckpt(args.checkpoint, ignore_keys=None)
-
         if args.colorize_nlabels is not None:
             assert type(args.colorize_nlabels)==int
             self.register_buffer("colorize", torch.randn(3, args.colorize_nlabels, 1, 1))
@@ -928,6 +929,7 @@ class VQModel(nn.Module):
     def load_checkpoint(self, path):
         if path is not None:
             self.load_state_dict(torch.load(path, weights_only=False))
+            print(f"Loaded VAE")
 
     def encode(self, x):
         h = self.encoder(x)

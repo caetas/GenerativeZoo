@@ -11,7 +11,7 @@ if __name__ == "__main__":
         model = VQModel(args, channels, input_size)
         model.train_model(train_loader, val_loader)
 
-    elif args.sample:
+    elif args.reconstruct:
         val_loader, input_size, channels = pick_dataset(args.dataset, mode='val', batch_size = args.batch_size, normalize=True, num_workers=args.num_workers, size=args.size)
         model = VQModel(args, channels, input_size)
         model.load_checkpoint(args.checkpoint)
