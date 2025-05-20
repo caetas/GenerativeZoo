@@ -1,4 +1,4 @@
-from models.AR.VQGAN import VQModel
+from models.GAN.VQGAN import VQModel
 from utils.util import parse_args_VQGAN
 from data.Dataloaders import *
 

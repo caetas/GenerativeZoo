@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-from .VQGAN import VQModel
+from ..GAN.VQGAN import VQModel
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
@@ -266,6 +266,7 @@ class VQGAN_GPT(nn.Module):
         self.GPT = GPT(args, channels, input_size)
         self.VAE.load_checkpoint(args.checkpoint_vae)
         self.zshape = (args.num_samples, args.z_channels, input_size//((len(args.ch_mult)-1)**2), input_size//(len(args.ch_mult)-1)**2)
+        args.block_size = self.zshape[2] * self.zshape[3]
         self.args = args
         for param in self.VAE.parameters():
             param.requires_grad = False
@@ -273,6 +274,15 @@ class VQGAN_GPT(nn.Module):
         self.to(self.device)
         self.lr = args.lr
         self.resolution = input_size
+
+    def load_checkpoint(self, checkpoint):
+        """
+        Load the model checkpoint.
+        """
+        if checkpoint is not None:
+            if os.path.isfile(checkpoint):
+                print(f"Loading checkpoint '{checkpoint}'")
+                self.GPT.load_state_dict(torch.load(checkpoint, weights_only=False))
 
 
     def train_model(self, train_loader, val_loader):
