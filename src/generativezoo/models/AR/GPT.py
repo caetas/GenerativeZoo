@@ -13,6 +13,16 @@ from .VQGAN import VQModel
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
+from accelerate import Accelerator
+import os
+from config import models_dir
+
+def create_checkpoint_dir():
+    if not os.path.exists(models_dir):
+        os.makedirs(models_dir)
+    checkpoint_dir = os.path.join(models_dir, "GPT")
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
 
 class LayerNorm(nn.Module):
     """ LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False """
@@ -29,16 +39,16 @@ class CausalSelfAttention(nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        assert config.embed_dim % config.n_head == 0
+        assert config.embed_dim_t % config.n_head == 0
         # key, query, value projections for all heads, but in a batch
-        self.c_attn = nn.Linear(config.embed_dim, 3 * config.embed_dim, bias=config.bias)
+        self.c_attn = nn.Linear(config.embed_dim_t, 3 * config.embed_dim_t, bias=config.bias)
         # output projection
-        self.c_proj = nn.Linear(config.embed_dim, config.embed_dim, bias=config.bias)
+        self.c_proj = nn.Linear(config.embed_dim_t, config.embed_dim_t, bias=config.bias)
         # regularization
         self.attn_dropout = nn.Dropout(config.dropout_t)
         self.resid_dropout = nn.Dropout(config.dropout_t)
         self.n_head = config.n_head
-        self.embed_dim = config.embed_dim
+        self.embed_dim_t = config.embed_dim_t
         self.dropout = config.dropout_t
         # flash attention make GPU go brrrrr but support is only in PyTorch >= 2.0
         self.flash = hasattr(torch.nn.functional, 'scaled_dot_product_attention')
@@ -52,7 +62,7 @@ class CausalSelfAttention(nn.Module):
         B, T, C = x.size() # batch size, sequence length, embedding dimensionality (embed_dim)
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
-        q, k, v  = self.c_attn(x).split(self.embed_dim, dim=2)
+        q, k, v  = self.c_attn(x).split(self.embed_dim_t, dim=2)
         k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
         q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
         v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
@@ -78,9 +88,9 @@ class MLP(nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        self.c_fc    = nn.Linear(config.embed_dim, 4 * config.embed_dim, bias=config.bias)
+        self.c_fc    = nn.Linear(config.embed_dim_t, 4 * config.embed_dim_t, bias=config.bias)
         self.gelu    = nn.GELU()
-        self.c_proj  = nn.Linear(4 * config.embed_dim, config.embed_dim, bias=config.bias)
+        self.c_proj  = nn.Linear(4 * config.embed_dim_t, config.embed_dim_t, bias=config.bias)
         self.dropout = nn.Dropout(config.dropout_t)
 
     def forward(self, x):
@@ -94,9 +104,9 @@ class Block(nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        self.ln_1 = LayerNorm(config.embed_dim, bias=config.bias)
+        self.ln_1 = LayerNorm(config.embed_dim_t, bias=config.bias)
         self.attn = CausalSelfAttention(config)
-        self.ln_2 = LayerNorm(config.embed_dim, bias=config.bias)
+        self.ln_2 = LayerNorm(config.embed_dim_t, bias=config.bias)
         self.mlp = MLP(config)
 
     def forward(self, x):
@@ -114,13 +124,13 @@ class GPT(nn.Module):
         self.args = args
 
         self.transformer = nn.ModuleDict(dict(
-            wte = nn.Embedding(args.n_embed + 1, args.embed_dim),
-            wpe = nn.Embedding(args.block_size, args.embed_dim),
+            wte = nn.Embedding(args.n_embed + 1, args.embed_dim_t),
+            wpe = nn.Embedding(args.block_size, args.embed_dim_t),
             drop = nn.Dropout(args.dropout_t),
             h = nn.ModuleList([Block(args) for _ in range(args.n_layer)]),
-            ln_f = LayerNorm(args.embed_dim, bias=args.bias),
+            ln_f = LayerNorm(args.embed_dim_t, bias=args.bias),
         ))
-        self.lm_head = nn.Linear(args.embed_dim, args.n_embed+1, bias=False)
+        self.lm_head = nn.Linear(args.embed_dim_t, args.n_embed+1, bias=False)
         # with weight tying when using torch.compile() some warnings get generated:
         # "UserWarning: functional_call was passed multiple values for tied weights.
         # This behavior is deprecated and will be an error in future versions"
@@ -136,14 +146,6 @@ class GPT(nn.Module):
 
         # report number of parameters
         print("number of parameters: %.2fM" % (self.get_num_params()/1e6,))
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.VAE = VQModel(args, channels, input_size)
-        self.VAE.load_checkpoint(args.checkpoint_vae)
-        self.VAE.eval()
-        # disable gradients for the VAE
-        for param in self.VAE.parameters():
-            param.requires_grad = False
-        self.to(self.device)
 
     def get_num_params(self, non_embedding=True):
         """
@@ -157,27 +159,6 @@ class GPT(nn.Module):
             n_params -= self.transformer.wpe.weight.numel()
         return n_params
     
-    @torch.no_grad()
-    def encode(self, batch):
-        """
-        Encode the input batch using the VAE encoder.
-        """
-        quant_z, _, info = self.VAE.encode(batch)
-        indices = info[2].view(quant_z.size(0), -1)
-
-        return quant_z, indices
-    
-    @torch.no_grad()
-    def decode(self, indices, zshape):
-        """
-        Decode the input indices using the VAE decoder.
-        """
-        bhwc = (zshape[0],zshape[2],zshape[3],zshape[1])
-        quant_z = self.VAE.quantize.get_codebook_entry(indices.reshape(-1), shape=bhwc)
-        x = self.VAE.decode(quant_z)
-        #x= self.VAE.decode_code(indices.reshape(-1))
-        
-        return x
 
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
@@ -248,59 +229,6 @@ class GPT(nn.Module):
         print(f"using fused AdamW: {use_fused}")
 
         return optimizer
-    
-    def train_model(self, train_loader, val_loader):
-        """
-        Train the model using the provided data loaders.
-        """
-        # Set the model to training mode
-        self.train()
-
-        optimizer = self.configure_optimizers(self.args.weight_decay, self.args.lr, self.args.betas, self.device)
-
-        #iterate over the training data
-        for epoch in tqdm(range(self.args.n_epochs), desc="Training Epochs"):
-            self.train()
-            epoch_loss = 0
-            for batch,_ in tqdm(train_loader, desc="Training Batches"):
-                batch = batch.to(self.device)
-                encoded, y = self.encode(batch)
-                # x should be n-1 elements of y and append n_embed at the beginning
-                x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
-                # forward pass
-                logits, loss = self(x, targets=y)
-                # backward pass
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                epoch_loss += loss.item()*len(batch)
-
-            epoch_loss /= len(train_loader.dataset)
-            print(f"Epoch {epoch+1}/{self.args.n_epochs}, Loss: {epoch_loss:.4f}")
-            # Validation step
-            # generate some samples
-            if (epoch+1) % self.args.sample_and_save_freq == 0:
-                self.eval()
-                with torch.no_grad():
-                    # init token is just a single token with value n_embed
-                    idx = torch.full((16,1), self.args.n_embed).to(self.device)
-                    samples = self.generate(idx, 64, temperature=0.8, top_k=10)[:, 1:]
-                    # decode the samples
-                    zshape = (samples.shape[0], encoded.shape[1], encoded.shape[2], encoded.shape[3])
-                    #zshape = encoded.shape
-                    decoded = self.decode(samples, zshape)
-                    decoded = decoded *0.5 + 0.5
-                    decoded = decoded.clamp(0, 1)
-                    # plot the samples
-                    grid = make_grid(decoded, nrow=4, normalize=True)
-                    plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
-                    plt.axis('off')
-                    plt.show()
-
-
-
-                
-                
 
     @torch.no_grad()
     def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
@@ -330,3 +258,183 @@ class GPT(nn.Module):
             idx = torch.cat((idx, idx_next), dim=1)
 
         return idx
+    
+class VQGAN_GPT(nn.Module):
+    def __init__(self, args, channels, input_size):
+        super().__init__()
+        self.VAE = VQModel(args, channels, input_size)
+        self.GPT = GPT(args, channels, input_size)
+        self.VAE.load_checkpoint(args.checkpoint_vae)
+        self.zshape = (args.num_samples, args.z_channels, input_size//((len(args.ch_mult)-1)**2), input_size//(len(args.ch_mult)-1)**2)
+        self.args = args
+        for param in self.VAE.parameters():
+            param.requires_grad = False
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
+        self.lr = args.lr
+        self.resolution = input_size
+
+
+    def train_model(self, train_loader, val_loader):
+        """
+        Train the model using the provided data loaders.
+        """
+        create_checkpoint_dir()
+
+        accelerate = Accelerator(log_with='wandb')
+
+        accelerate.init_trackers("GPT", config={
+            "lr": self.lr,
+            "batch_size": self.args.batch_size,
+            "n_epochs": self.args.n_epochs,
+            "n_embed": self.args.n_embed,
+            "embed_dim": self.args.embed_dim_t,
+            "resolution": self.resolution,
+            "n_layer": self.args.n_layer,
+            "n_head": self.args.n_head,
+            "block_size": self.args.block_size,
+            "dropout_t": self.args.dropout_t,
+            "bias": self.args.bias,
+            "weight_decay": self.args.weight_decay,
+            "embed_dim_t": self.args.embed_dim_t,
+            "betas": self.args.betas,
+            "dataset": self.args.dataset,
+        },
+        init_kwargs={"wandb":{"name": f"GPT_{self.args.dataset}"}})
+
+        optimizer = self.GPT.configure_optimizers(self.args.weight_decay, self.args.lr, self.args.betas, self.device)
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.args.lr, total_steps=self.args.n_epochs*len(train_loader), pct_start=0.1, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
+
+        # Move model and optimizer to the accelerator
+        self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader = accelerate.prepare(
+            self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader
+        )   
+
+        #iterate over the training data
+        for epoch in tqdm(range(self.args.n_epochs), desc="Training Epochs"):
+            self.GPT.train()
+            epoch_loss = 0
+            for batch,_ in tqdm(train_loader, desc="Training Batches", leave=False):
+                batch = batch.to(self.device)
+                encoded, y = self.encode(batch)
+                # x should be n-1 elements of y and append n_embed at the beginning
+                x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
+                # forward pass
+                logits, loss = self.GPT(x, targets=y)
+                # backward pass
+                optimizer.zero_grad()
+                accelerate.backward(loss)
+                optimizer.step()
+                epoch_loss += loss.item()*len(batch)
+                scheduler.step()
+
+            epoch_loss /= len(train_loader.dataset)
+            accelerate.log({"epoch_loss": epoch_loss})
+            # Validation step
+            # generate some samples
+            if (epoch+1) % self.args.sample_and_save_freq == 0:
+                self.GPT.eval()
+                self.sample(train=True, accelerate=accelerate)
+
+                model_to_save = accelerate.unwrap_model(self.GPT)
+                # Save the model
+                accelerate.save(model_to_save.state_dict(), os.path.join(models_dir, "GPT", f"gpt_{self.args.dataset}_{epoch+1}.pt"))
+                epoch_loss = 0
+                with torch.no_grad():
+                    for batch,_ in tqdm(val_loader, desc="Validation Batches", leave=False):
+                        batch = batch.to(self.device)
+                        encoded, y = self.encode(batch)
+                        # x should be n-1 elements of y and append n_embed at the beginning
+                        x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
+                        # forward pass
+                        logits, loss = self.GPT(x, targets=y)
+                        # backward pass
+                        epoch_loss += loss.item()*len(batch)
+                    epoch_loss /= len(val_loader.dataset)
+                    accelerate.log({"val_loss": epoch_loss})
+        
+    @torch.no_grad()
+    def sample(self, train=False, accelerate=None):
+        """
+        Sample from the model.
+        """
+        # init token is just a single token with value n_embed
+        idx = torch.full((self.args.num_samples,1), self.args.n_embed).to(self.device)
+        # generate some samples
+        samples = self.GPT.generate(idx, 64, temperature=self.args.temperature, top_k=self.args.top_k)[:, 1:]
+        decoded = self.decode(samples, self.zshape)
+        decoded = decoded *0.5 + 0.5
+        decoded = decoded.clamp(0, 1)
+        # plot the samples
+        grid = make_grid(decoded, nrow=4, normalize=True)
+        fig = plt.figure(figsize=(10, 10))
+        plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
+        plt.axis('off')
+        if train:
+            accelerate.log({"sample": fig})
+        else:
+            plt.show()
+        plt.close(fig)
+
+    @torch.no_grad()
+    def encode(self, batch):
+        """
+        Encode the input batch using the VAE encoder.
+        """
+        quant_z, _, info = self.VAE.encode(batch)
+        indices = info[2].view(quant_z.size(0), -1)
+        # S-pattern transform
+        indices = self.s_pattern_transform(indices, quant_z.size(2), quant_z.size(3))
+
+        return quant_z, indices
+    
+    @torch.no_grad()
+    def decode(self, indices, zshape):
+        """
+        Decode the input indices using the VAE decoder.
+        """
+        # S-pattern transform
+        indices = self.s_pattern_transform(indices, zshape[2], zshape[3], inverse=True)
+        bhwc = (zshape[0],zshape[2],zshape[3],zshape[1])
+        quant_z = self.VAE.quantize.get_codebook_entry(indices.reshape(-1), shape=bhwc)
+        x = self.VAE.decode(quant_z)
+        #x= self.VAE.decode_code(indices.reshape(-1))
+        
+        return x
+    
+    @torch.no_grad()
+    def s_pattern_transform(self, tokens: torch.Tensor, height: int, width: int, inverse: bool = False) -> torch.Tensor:
+        """
+        Transform tokens between raster and S-pattern (boustrophedon) order.
+
+        Args:
+            tokens (torch.Tensor): Tensor of shape (B, H*W) or (H*W,)
+            height (int): Grid height
+            width (int): Grid width
+            mode (str): "reorder" to convert to S-pattern,
+                        "restore" to revert back to raster order
+
+        Returns:
+            torch.Tensor: Transformed tokens in same shape as input
+        """
+        # Create base S-pattern indices
+        indices = torch.arange(height * width).reshape(height, width)
+        for i in range(height):
+            if i % 2 == 1:
+                indices[i] = indices[i].flip(0)
+        s_indices = indices.flatten()
+
+        # Compute reverse mapping
+        if inverse:
+            mapping = torch.empty_like(s_indices)
+            mapping[s_indices] = torch.arange(height * width)
+        else:
+            mapping = s_indices
+
+        # Apply transformation
+        if tokens.dim() == 2:
+            return tokens[:, mapping]
+        elif tokens.dim() == 1:
+            return tokens[mapping]
+        else:
+            raise ValueError("tokens must be of shape (B, H*W) or (H*W,)")

@@ -69,7 +69,8 @@ def parse_args_GPT():
     argparser.add_argument('--disc_weight', type=float, default=0.8, help='Discriminator loss weight')
     argparser.add_argument('--codebook_weight', type=float, default=1.0, help='Codebook loss weight')
     argparser.add_argument('--n_embed', type=int, default=128, help='Number of embeddings in codebook')
-    argparser.add_argument('--embed_dim', type=int, default=64, help='Embedding dimension')
+    argparser.add_argument('--embed_dim', type=int, default=64, help='Embedding dimension for VQGAN')
+    argparser.add_argument('--embed_dim_t', type=int, default=64, help='Embedding dimension for transformer')
     argparser.add_argument('--remap', type=str, default=None, help='Remap indices for codebook')
     argparser.add_argument('--sane_index_shape', action='store_true', default=False, help='Use sane index shape for quantizer')
     argparser.add_argument('--checkpoint_vae', type=str, default=None, help='Path to checkpoint')
@@ -84,6 +85,10 @@ def parse_args_GPT():
     argparser.add_argument('--dropout_t', type=float, default=0.1, help='Dropout rate in transformer')
     argparser.add_argument('--betas', type=float, nargs='+', default=[0.9, 0.95], help='Betas for Adam optimizer')
     argparser.add_argument('--weight_decay', type=float, default=0.1, help='Weight decay for Adam optimizer')
+    argparser.add_argument('--num_samples', type=int, default=16, help='Number of samples to generate')
+    argparser.add_argument('--checkpoint_t', type=str, default=None, help='Path to checkpoint for transformer')
+    argparser.add_argument('--temperature', type=float, default=1.0, help='Temperature for sampling')
+    argparser.add_argument('--top_k', type=int, default=None, help='Top k for sampling')
     return argparser.parse_args()
 
 def parse_args_HierarchicalVAE():
