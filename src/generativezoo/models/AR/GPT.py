@@ -265,7 +265,7 @@ class VQGAN_GPT(nn.Module):
         self.VAE = VQModel(args, channels, input_size)
         self.GPT = GPT(args, channels, input_size)
         self.VAE.load_checkpoint(args.checkpoint_vae)
-        self.zshape = (args.num_samples, args.z_channels, input_size//((len(args.ch_mult)-1)**2), input_size//(len(args.ch_mult)-1)**2)
+        self.zshape = (args.num_samples, args.z_channels, input_size//(2**(len(args.ch_mult)-1)), input_size//(2**(len(args.ch_mult)-1)))
         args.block_size = self.zshape[2] * self.zshape[3]
         self.args = args
         for param in self.VAE.parameters():
