@@ -134,6 +134,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 - CycleGAN [`Paper`](https://arxiv.org/abs/1703.10593) | [`Code`](src/generativezoo/models/GAN/CycleGAN.py)<sup>4</sup> | [`Script`](src/generativezoo/CycGAN.py) | [`Documentation`](docs/CycleGAN.md)
 - Prescribed GAN [`Paper`](https://arxiv.org/abs/1910.04302) | [`Code`](src/generativezoo/models/GAN/PrescribedGAN.py)<sup>5</sup> | [`Script`](src/generativezoo/PresGAN.py) | [`Documentation`](docs/PrescribedGAN.md)
 - Wasserstein GAN with Gradient Penalty [`Paper`](https://arxiv.org/abs/1704.00028) | [`Code`](src/generativezoo/models/GAN/WGAN.py)<sup>6</sup> | [`Script`](src/generativezoo/WGAN.py) | [`Documentation`](docs/WassersteinGAN.md)
+- VQ-GAN [`Paper`](https://arxiv.org/abs/2012.09841) | [`Code`](src/generativezoo/models/GAN/VQGAN.py)<sup>24</sup> | [`Script`](src/generativezoo/VQGAN.py) | [`Documentation`](docs/VQGAN.md)
 
 #### DDPMs
 
@@ -148,8 +149,8 @@ The listed models are already implemented and fully integrated in the model zoo.
 
 #### Autoregressive
 
-- VQ-VAE + Transformer [`Paper`](https://arxiv.org/abs/1711.00937) | [`Code`](src/generativezoo/models/AR/VQVAE_Transformer.py)<sup>11</sup> | [`Script`](src/generativezoo/VQVAE_T.py) | [`Documentation`](docs/VQVAE_Transformer.md)
-- VQ-GAN + Transformer [`Paper`](https://arxiv.org/abs/2012.09841) | [`Code`](src/generativezoo/models/AR/VQGAN_Transformer.py)<sup>11</sup> | [`Script`](src/generativezoo/VQGAN_T.py) | [`Documentation`](docs/VQGAN_Transformer.md)
+- GPT [`Paper`](https://arxiv.org/abs/2012.09841) | [`Code`](src/generativezoo/models/AR/GPT.py)<sup>22</sup> | [`Script`](src/generativezoo/GPT.py) | [`Documentation`](docs/GPT.md)
+- MaskGiT [`Paper`](https://arxiv.org/abs/2202.04200) | [`Code`](src/generativezoo/models/AR/MaskGiT.py)<sup>23</sup> | [`Script`](src/generativezoo/MaskGiT.py) | [`Documentation`](docs/MaskGiT.md)
 - PixelCNN [`Paper`](https://arxiv.org/abs/1606.05328) | [`Code`](src/generativezoo/models/AR/PixelCNN.py)<sup>14</sup> | [`Script`](src/generativezoo/P-CNN.py) | [`Documentation`](docs/PixelCNN.md)
 
 #### Normalizing Flows
@@ -282,6 +283,9 @@ All the repositories used to generate this code are mentioned in each of the cor
 19. [minRF](https://github.com/cloneofsimo/minRF)
 20. [diffusers](https://github.com/huggingface/diffusers)
 21. [guided-diffusion](https://github.com/openai/guided-diffusion)
+22. [nanoGPT](https://github.com/karpathy/nanoGPT)
+23. [Halton-MaskGIT](https://github.com/valeoai/Halton-MaskGIT/tree/v1.0)
+24. [taming-transformers](https://github.com/CompVis/taming-transformers)
 
 ## Citation
 
