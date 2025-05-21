@@ -126,8 +126,8 @@ def parse_args_MaskGiT():
     argparser.add_argument("--drop-label",   type=float, default=0.1,        help="drop rate for cfg")
     argparser.add_argument("--hidden_dim",    type=int,   default=128,        help="hidden dim for transformer")
     argparser.add_argument("--heads",    type=int,   default=8,          help="number of heads for transformer")
-    argparser.add_argument("--depth",    type=int,   default=6,          help="number of layers for transformer")
-    argparser.add_argument("--mlp_dim",    type=int,   default=128,       help="mlp dim for transformer")
+    argparser.add_argument("--depth",    type=int,   default=10,          help="number of layers for transformer")
+    argparser.add_argument("--mlp_dim",    type=int,   default=384,       help="mlp dim for transformer")
     argparser.add_argument('--dropout_t', type=float, default=0.1, help='Dropout rate in transformer')
     argparser.add_argument('--sample_and_save_freq', type=int, default=20, help='Sample and save frequency')
     argparser.add_argument('--betas', type=float, nargs='+', default=[0.9, 0.95], help='Betas for Adam optimizer')
@@ -136,6 +136,7 @@ def parse_args_MaskGiT():
     argparser.add_argument("--sched_mode",   type=str,   default="arccos",   help="scheduler mode when sampling")
     argparser.add_argument("--mask-value",   type=int,   default=None,       help="mask value for sampling")
     argparser.add_argument("--n_classes",       type=int,   default=10,        help="number of classes for sampling")
+    argparser.add_argument('--num_samples', type=int, default=16, help='Number of samples to generate')
     return argparser.parse_args()
 
 def parse_args_HierarchicalVAE():

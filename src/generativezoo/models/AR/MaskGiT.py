@@ -16,6 +16,14 @@ from ..GAN.VQGAN import VQModel
 from matplotlib import pyplot as plt
 
 from accelerate import Accelerator
+from config import models_dir
+
+def create_checkpoint_dir():
+    """ Create the checkpoint directory if it does not exist """
+    if not os.path.exists(models_dir):
+        os.makedirs(models_dir)
+    if not os.path.exists(os.path.join(models_dir, "MaskGiT")):
+        os.makedirs(os.path.join(models_dir, "MaskGiT"))
 
 
 class PreNorm(nn.Module):
@@ -230,6 +238,7 @@ class MaskGIT(nn.Module):
         self.vit.to(self.device)  # Send model to device
         self.ae.to(self.device)  # Send model to device
         self.args.mask_value = self.codebook_size  # Mask value for the maskGit
+        self.num_samples = self.args.num_samples  # Number of samples to generate
 
     @staticmethod
     def get_mask_code(code, mode="arccos", value=None, codebook_size=256):
@@ -298,6 +307,8 @@ class MaskGIT(nn.Module):
     def train_model(self, train_loader, val_loader):
         """ Train the model """
 
+        create_checkpoint_dir()  # Create the checkpoint directory if it does not exist
+
         scheduler = torch.optim.lr_scheduler.OneCycleLR(self.optim, self.args.lr, total_steps=self.args.n_epochs*len(train_loader), pct_start=0.1, anneal_strategy='cos', cycle_momentum=False, div_factor=self.args.lr/1e-6, final_div_factor=1)
 
         accelerate = Accelerator(log_with='wandb')
@@ -345,6 +356,11 @@ class MaskGIT(nn.Module):
             accelerate.log({"train_loss": epoch_loss})
 
             if (epoch+1) % self.args.sample_and_save_freq == 0:
+
+                # Save the model
+                model_to_save = accelerate.unwrap_model(self.vit)
+                accelerate.save(model_to_save.state_dict(), os.path.join(models_dir, "MaskGiT", f"MaskGIT_{self.args.dataset}_{epoch+1}.pth"))
+
                 self.vit.eval()
                 with torch.no_grad():
                     val_loss = 0.
@@ -370,7 +386,7 @@ class MaskGIT(nn.Module):
                     accelerate.log({"val_loss": val_loss})
 
 
-                gen_sample = self.sample(init_code=None,
+                gen_sample = self.get_sample(init_code=None,
                                             nb_sample=16,
                                             labels=None,
                                             sm_temp=self.args.sm_temp,
@@ -434,8 +450,37 @@ class MaskGIT(nn.Module):
         #x= self.VAE.decode_code(indices.reshape(-1))
         
         return x
+    
+    @torch.no_grad()
+    def sample(self):
+        """ Sample the model
+            :return
+            x          -> torch.FloatTensor: nb_sample x 3 x 256 x 256, the generated images
+            code       -> torch.LongTensor:  nb_sample x step x 16 x 16, the code corresponding to the generated images
+        """
+        samples = self.get_sample(init_code=None,
+                               nb_sample=self.num_samples,
+                               labels=None,
+                               sm_temp=self.args.sm_temp,
+                               w=self.args.cfg_w,
+                               randomize="linear",
+                               r_temp=self.args.r_temp,
+                               sched_mode=self.args.sched_mode,
+                               step=self.args.step)[0]
+        
+        # Decode the generated code
+        samples = self.decode(samples, zshape=(self.num_samples, self.args.z_channels, self.patch_size, self.patch_size))
+        samples = samples * 0.5 + 0.5
+        samples = samples.clamp(0, 1)
+        grid = vutils.make_grid(samples, nrow=int(np.sqrt(self.num_samples)), padding=0)
+        fig = plt.figure(figsize=(8, 8))
+        plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
+        plt.axis('off')
+        plt.show()
+        plt.close(fig)
 
-    def sample(self, init_code=None, nb_sample=50, labels=None, sm_temp=1, w=3,
+
+    def get_sample(self, init_code=None, nb_sample=50, labels=None, sm_temp=1, w=3,
                randomize="linear", r_temp=4.5, sched_mode="arccos", step=12):
         """ Generate sample with the MaskGIT model
            :param
