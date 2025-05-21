@@ -451,6 +451,18 @@ class MaskGIT(nn.Module):
         
         return x
     
+    def load_checkpoint(self, checkpoint_path):
+        """ Load the model checkpoint
+            :param
+            checkpoint_path -> str: path to the checkpoint
+        """
+        if checkpoint_path is not None:
+            if os.path.exists(checkpoint_path):
+                self.vit.load_state_dict(torch.load(checkpoint_path, weights_only=False))
+                print(f"Checkpoint {checkpoint_path} loaded")
+        else:
+            print(f"Checkpoint {checkpoint_path} not found")
+    
     @torch.no_grad()
     def sample(self):
         """ Sample the model
