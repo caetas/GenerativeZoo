@@ -16,6 +16,8 @@ from torchvision.utils import make_grid
 from accelerate import Accelerator
 import os
 from config import models_dir
+import numpy as np
+from sklearn.metrics import roc_auc_score
 
 def create_checkpoint_dir():
     if not os.path.exists(models_dir):
@@ -168,7 +170,7 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, targets=None):
+    def forward(self, idx, targets=None, ood=False):
         device = idx.device
         b, t = idx.size()
         assert t <= self.args.block_size, f"Cannot forward sequence of length {t}, block size is only {self.args.block_size}"
@@ -186,6 +188,9 @@ class GPT(nn.Module):
             # if we are given some desired targets also calculate the loss
             logits = self.lm_head(x)
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
+            if ood:
+                # loss per element in the batch
+                loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1, reduction='none')
         else:
             # inference-time mini-optimization: only forward the lm_head on the very last position
             logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
@@ -412,6 +417,46 @@ class VQGAN_GPT(nn.Module):
         
         return x
     
+    @torch.no_grad()
+    def outlier_detection(self, in_loader, out_loader):
+        """
+        Detect outliers in the input data using the VAE encoder.
+        """
+        self.GPT.eval()
+        self.VAE.eval()
+        in_scores = []
+        out_scores = []
+
+        # Iterate over the in-distribution data
+        for batch, _ in tqdm(in_loader, desc="In-distribution Batches", leave=False):
+            batch = batch.to(self.device)
+            encoded, y = self.encode(batch)
+            # x should be n-1 elements of y and append n_embed at the beginning
+            x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
+            # forward pass
+            _, loss = self.GPT(x, targets=y, ood=True)
+            in_scores.append(loss.cpu().numpy())
+
+        in_scores = np.concatenate(in_scores)
+
+        # Iterate over the out-of-distribution data
+        for batch, _ in tqdm(out_loader, desc="Out-of-distribution Batches", leave=False):
+            batch = batch.to(self.device)
+            encoded, y = self.encode(batch)
+            # x should be n-1 elements of y and append n_embed at the beginning
+            x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
+            # forward pass
+            _, loss = self.GPT(x, targets=y, ood=True)
+            out_scores.append(loss.cpu().numpy())
+
+        out_scores = np.concatenate(out_scores)
+
+        # get auc
+        y_true = np.concatenate([np.zeros(len(in_scores)), np.ones(len(out_scores))])
+        y_scores = np.concatenate([in_scores, out_scores])
+        auc = roc_auc_score(y_true, y_scores)
+        print(f"AUC: {auc:.4f}")
+        
     @torch.no_grad()
     def s_pattern_transform(self, tokens: torch.Tensor, height: int, width: int, inverse: bool = False) -> torch.Tensor:
         """
