@@ -386,7 +386,7 @@ class VQGAN_GPT(nn.Module):
         decoded = decoded *0.5 + 0.5
         decoded = decoded.clamp(0, 1)
         # plot the samples
-        grid = make_grid(decoded, nrow=4, normalize=True)
+        grid = make_grid(decoded, nrow=4, normalize=True, padding=0)
         fig = plt.figure(figsize=(10, 10))
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
         plt.axis('off')

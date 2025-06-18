@@ -127,6 +127,7 @@ def parse_args_MaskGiT():
     argparser.add_argument("--n_classes",       type=int,   default=10,        help="number of classes for sampling")
     argparser.add_argument('--num_samples', type=int, default=16, help='Number of samples to generate')
     argparser.add_argument('--checkpoint_vit', type=str, default=None, help='Path to checkpoint for transformer')
+    argparser.add_argument('--disc_num_layers', type=int, default=3, help='Number of layers in discriminator')
     return argparser.parse_args()
 
 def parse_args_HierarchicalVAE():
