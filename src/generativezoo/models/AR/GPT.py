@@ -271,8 +271,10 @@ class VQGAN_GPT(nn.Module):
         self.GPT = GPT(args, channels, input_size)
         self.VAE.load_checkpoint(args.checkpoint_vae)
         self.zshape = (args.num_samples, args.z_channels, input_size//(2**(len(args.ch_mult)-1)), input_size//(2**(len(args.ch_mult)-1)))
-        args.block_size = self.zshape[2] * self.zshape[3]
+        self.img_tokens = self.zshape[2] * self.zshape[3]
         self.block_size = args.block_size
+        assert self.block_size <= self.img_tokens, f"Block size {self.block_size} must be less than or equal to the number of tokens in an image {self.img_tokens}."
+        print(f"Block size: {self.block_size}")
         self.args = args
         for param in self.VAE.parameters():
             param.requires_grad = False
@@ -337,6 +339,12 @@ class VQGAN_GPT(nn.Module):
                 encoded, y = self.encode(batch)
                 # x should be n-1 elements of y and append n_embed at the beginning
                 x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
+                # get only self.block_size tokens but randomly and y should get the same indices
+                if self.block_size < x.size(1):
+                    start_idx = torch.randint(0, x.size(1) - self.block_size, (x.size(0), 1), device=self.device)
+                    # Use advanced indexing to select block_size tokens for each batch element
+                    x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
+                    y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                 # forward pass
                 logits, loss = self.GPT(x, targets=y)
                 # backward pass
@@ -364,6 +372,10 @@ class VQGAN_GPT(nn.Module):
                         encoded, y = self.encode(batch)
                         # x should be n-1 elements of y and append n_embed at the beginning
                         x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
+                        if self.block_size < x.size(1):
+                            start_idx = torch.randint(0, x.size(1) - self.block_size, (x.size(0), 1), device=self.device)
+                            x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
+                            y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                         # forward pass
                         logits, loss = self.GPT(x, targets=y)
                         # backward pass
@@ -381,7 +393,7 @@ class VQGAN_GPT(nn.Module):
         # init token is just a single token with value n_embed
         idx = torch.full((self.args.num_samples,1), self.args.n_embed).to(self.device)
         # generate some samples
-        samples = self.GPT.generate(idx, self.block_size, temperature=self.args.temperature, top_k=self.args.top_k)[:, 1:]
+        samples = self.GPT.generate(idx, self.img_tokens, temperature=self.args.temperature, top_k=self.args.top_k)[:, 1:]
         decoded = self.decode(samples, self.zshape)
         decoded = decoded *0.5 + 0.5
         decoded = decoded.clamp(0, 1)
