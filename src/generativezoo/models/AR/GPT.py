@@ -272,11 +272,14 @@ class VQGAN_GPT(nn.Module):
         self.VAE.load_checkpoint(args.checkpoint_vae)
         self.zshape = (args.num_samples, args.z_channels, input_size//(2**(len(args.ch_mult)-1)), input_size//(2**(len(args.ch_mult)-1)))
         args.block_size = self.zshape[2] * self.zshape[3]
+        self.block_size = args.block_size
         self.args = args
         for param in self.VAE.parameters():
             param.requires_grad = False
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.to(self.device)
+        self.VAE.to(self.device)
+        self.GPT.to(self.device)
+        self.zshape = self.zshape.to(self.device)
         self.lr = args.lr
         self.resolution = input_size
 
@@ -323,7 +326,9 @@ class VQGAN_GPT(nn.Module):
         # Move model and optimizer to the accelerator
         self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader = accelerate.prepare(
             self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader
-        )   
+        )
+
+        self.VAE.eval()   
 
         #iterate over the training data
         for epoch in tqdm(range(self.args.n_epochs), desc="Training Epochs"):
@@ -373,10 +378,12 @@ class VQGAN_GPT(nn.Module):
         """
         Sample from the model.
         """
+        self.GPT.eval()
+        self.VAE.eval()
         # init token is just a single token with value n_embed
         idx = torch.full((self.args.num_samples,1), self.args.n_embed).to(self.device)
         # generate some samples
-        samples = self.GPT.generate(idx, 64, temperature=self.args.temperature, top_k=self.args.top_k)[:, 1:]
+        samples = self.GPT.generate(idx, self.block_size, temperature=self.args.temperature, top_k=self.args.top_k)[:, 1:]
         decoded = self.decode(samples, self.zshape)
         decoded = decoded *0.5 + 0.5
         decoded = decoded.clamp(0, 1)

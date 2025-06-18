@@ -929,8 +929,13 @@ class VQModel(nn.Module):
 
     def load_checkpoint(self, path):
         if path is not None:
-            self.load_state_dict(torch.load(path, weights_only=False))
-            print(f"Loaded VAE")
+            #if it ends with .ckpt, it is a lightning checkpoint
+            if path.endswith(".ckpt"):
+                print(f"Loading VAE from {path}...")
+                self.load_state_dict(torch.load(path, map_location=self.device)["state_dict"], strict=False)
+            else:
+                self.load_state_dict(torch.load(path, weights_only=False))
+                print(f"Loaded VAE")
 
     def encode(self, x):
         h = self.encoder(x)
