@@ -277,9 +277,7 @@ class VQGAN_GPT(nn.Module):
         for param in self.VAE.parameters():
             param.requires_grad = False
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.VAE.to(self.device)
-        self.GPT.to(self.device)
-        self.zshape = self.zshape.to(self.device)
+        self.to(self.device)
         self.lr = args.lr
         self.resolution = input_size
 
