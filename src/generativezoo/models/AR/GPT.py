@@ -176,6 +176,7 @@ class GPT(nn.Module):
         assert t <= self.args.block_size, f"Cannot forward sequence of length {t}, block size is only {self.args.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device) # shape (t)
         if init_pos is not None:
+            print(pos.shape, init_pos.shape)
             pos += init_pos
 
         # forward the GPT model itself
