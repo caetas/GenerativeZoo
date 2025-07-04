@@ -5,6 +5,7 @@
 import math
 import inspect
 from dataclasses import dataclass
+from tracemalloc import start
 
 import torch
 import torch.nn as nn
@@ -127,7 +128,7 @@ class GPT(nn.Module):
 
         self.transformer = nn.ModuleDict(dict(
             wte = nn.Embedding(args.n_embed + 1, args.embed_dim_t),
-            wpe = nn.Embedding(args.block_size, args.embed_dim_t),
+            wpe = nn.Embedding(input_size, args.embed_dim_t),
             drop = nn.Dropout(args.dropout_t),
             h = nn.ModuleList([Block(args) for _ in range(args.n_layer)]),
             ln_f = LayerNorm(args.embed_dim_t, bias=args.bias),
@@ -176,8 +177,7 @@ class GPT(nn.Module):
         assert t <= self.args.block_size, f"Cannot forward sequence of length {t}, block size is only {self.args.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device) # shape (t)
         if init_pos is not None:
-            print(pos.shape, init_pos.shape)
-            pos += init_pos
+            pos = torch.arange(init_pos.cpu().item(), init_pos.cpu().item() + t, dtype=torch.long, device=device) # shape (t)
 
         # forward the GPT model itself
         tok_emb = self.transformer.wte(idx) # token embeddings of shape (b, t, embed_dim)
@@ -190,6 +190,8 @@ class GPT(nn.Module):
         if targets is not None:
             # if we are given some desired targets also calculate the loss
             logits = self.lm_head(x)
+            print(f"Logits shape: {logits.shape}, Targets shape: {targets.shape}")
+            print(targets.view(-1).shape)
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
             if ood:
                 # loss per element in the batch
@@ -271,10 +273,10 @@ class GPT(nn.Module):
 class VQGAN_GPT(nn.Module):
     def __init__(self, args, channels, input_size):
         super().__init__()
-        self.VAE = VQModel(args, channels, input_size)
-        self.GPT = GPT(args, channels, input_size)
-        self.VAE.load_checkpoint(args.checkpoint_vae)
         self.zshape = (args.num_samples, args.z_channels, input_size//(2**(len(args.ch_mult)-1)), input_size//(2**(len(args.ch_mult)-1)))
+        self.VAE = VQModel(args, channels, input_size)
+        self.GPT = GPT(args, channels, self.zshape[-1]*self.zshape[-2])
+        self.VAE.load_checkpoint(args.checkpoint_vae)
         self.img_tokens = self.zshape[2] * self.zshape[3]
         self.block_size = args.block_size
         assert self.block_size <= self.img_tokens, f"Block size {self.block_size} must be less than or equal to the number of tokens in an image {self.img_tokens}."
@@ -341,16 +343,17 @@ class VQGAN_GPT(nn.Module):
             for batch,_ in tqdm(train_loader, desc="Training Batches", leave=False):
                 batch = batch.to(self.device)
                 encoded, y = self.encode(batch)
+                start_idx = None
                 # x should be n-1 elements of y and append n_embed at the beginning
                 x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
                 # get only self.block_size tokens but randomly and y should get the same indices
                 if self.block_size < x.size(1):
                     #start_idx = torch.randint(0, x.size(1) - self.block_size, (x.size(0), 1), device=self.device)
                     # sample a single start index for all batch elements
-                    start_idx = torch.randint(0, x.size(1) - self.block_size, (1,), device=self.device)
+                    start_idx = torch.randint(0, x.size(1) - self.block_size, (1,1), device=self.device).squeeze(0)
                     # Use advanced indexing to select block_size tokens for each batch element
-                    x = x[:, start_idx:start_idx+self.block_size]
-                    y = y[:, start_idx:start_idx+self.block_size]
+                    x = torch.stack([x[i, start_idx:start_idx+self.block_size] for i in range(x.size(0))])
+                    y = torch.stack([y[i, start_idx:start_idx+self.block_size] for i in range(y.size(0))])
                     #x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                     #y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                 # forward pass
