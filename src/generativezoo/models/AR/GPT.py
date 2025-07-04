@@ -246,7 +246,7 @@ class GPT(nn.Module):
         Most likely you'll want to make sure to be in model.eval() mode of operation for this.
         """
         for _ in range(max_new_tokens):
-            id_start = None if idx.size(1) <= self.args.block_size else idx.size(1) - self.args.block_size
+            id_start = None if idx.size(1) <= self.args.block_size else torch.tensor(idx.size(1) - self.args.block_size).to(idx.device) # start position for the model
             # if the sequence context is growing too long we must crop it at block_size
             idx_cond = idx if idx.size(1) <= self.args.block_size else idx[:, -self.args.block_size:]
             # forward the model to get the logits for the index in the sequence
