@@ -345,10 +345,13 @@ class VQGAN_GPT(nn.Module):
                 x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
                 # get only self.block_size tokens but randomly and y should get the same indices
                 if self.block_size < x.size(1):
-                    start_idx = torch.randint(0, x.size(1) - self.block_size, (x.size(0), 1), device=self.device)
+                    #start_idx = torch.randint(0, x.size(1) - self.block_size, (x.size(0), 1), device=self.device)
+                    start_idx = torch.randint(0, x.size(1) - self.block_size, device=self.device)
                     # Use advanced indexing to select block_size tokens for each batch element
-                    x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
-                    y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
+                    x = x[:, start_idx.item():start_idx.item()+self.block_size]
+                    y = y[:, start_idx.item():start_idx.item()+self.block_size]
+                    #x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
+                    #y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                 # forward pass
                 logits, loss = self.GPT(x, targets=y, init_pos=start_idx)
                 # backward pass
