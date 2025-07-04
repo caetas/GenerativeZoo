@@ -102,7 +102,6 @@ def parse_args_MaskGiT():
     argparser.add_argument('--codebook_weight', type=float, default=1.0, help='Codebook loss weight')
     argparser.add_argument('--n_embed', type=int, default=128, help='Number of embeddings in codebook')
     argparser.add_argument('--embed_dim', type=int, default=64, help='Embedding dimension for VQGAN')
-    argparser.add_argument('--embed_dim_t', type=int, default=64, help='Embedding dimension for transformer')
     argparser.add_argument('--remap', type=str, default=None, help='Remap indices for codebook')
     argparser.add_argument('--sane_index_shape', action='store_true', default=False, help='Use sane index shape for quantizer')
     argparser.add_argument('--checkpoint_vae', type=str, default=None, help='Path to checkpoint')

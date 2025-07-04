@@ -170,11 +170,13 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, targets=None, ood=False):
+    def forward(self, idx, targets=None, ood=False, init_pos=None):
         device = idx.device
         b, t = idx.size()
         assert t <= self.args.block_size, f"Cannot forward sequence of length {t}, block size is only {self.args.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device) # shape (t)
+        if init_pos is not None:
+            pos += init_pos
 
         # forward the GPT model itself
         tok_emb = self.transformer.wte(idx) # token embeddings of shape (b, t, embed_dim)
@@ -243,10 +245,11 @@ class GPT(nn.Module):
         Most likely you'll want to make sure to be in model.eval() mode of operation for this.
         """
         for _ in range(max_new_tokens):
+            id_start = None if idx.size(1) <= self.args.block_size else idx.size(1) - self.args.block_size
             # if the sequence context is growing too long we must crop it at block_size
             idx_cond = idx if idx.size(1) <= self.args.block_size else idx[:, -self.args.block_size:]
             # forward the model to get the logits for the index in the sequence
-            logits, _ = self(idx_cond)
+            logits, _ = self(idx_cond, init_pos=id_start)
             # pluck the logits at the final step and scale by desired temperature
             logits = logits[:, -1, :] / temperature
             # optionally crop the logits to only the top k options
@@ -346,7 +349,7 @@ class VQGAN_GPT(nn.Module):
                     x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                     y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                 # forward pass
-                logits, loss = self.GPT(x, targets=y)
+                logits, loss = self.GPT(x, targets=y, init_pos=start_idx)
                 # backward pass
                 optimizer.zero_grad()
                 accelerate.backward(loss)
