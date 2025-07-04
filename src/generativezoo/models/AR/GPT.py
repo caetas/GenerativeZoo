@@ -346,7 +346,7 @@ class VQGAN_GPT(nn.Module):
                 # get only self.block_size tokens but randomly and y should get the same indices
                 if self.block_size < x.size(1):
                     #start_idx = torch.randint(0, x.size(1) - self.block_size, (x.size(0), 1), device=self.device)
-                    start_idx = torch.randint(0, x.size(1) - self.block_size, device=self.device)
+                    start_idx = torch.randint(0, x.size(1) - self.block_size, (1,1), device=self.device).squeeze()
                     # Use advanced indexing to select block_size tokens for each batch element
                     x = x[:, start_idx.item():start_idx.item()+self.block_size]
                     y = y[:, start_idx.item():start_idx.item()+self.block_size]
