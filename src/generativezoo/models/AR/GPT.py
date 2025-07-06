@@ -379,14 +379,18 @@ class VQGAN_GPT(nn.Module):
                     for batch,_ in tqdm(val_loader, desc="Validation Batches", leave=False):
                         batch = batch.to(self.device)
                         encoded, y = self.encode(batch)
+                        start_idx = None
                         # x should be n-1 elements of y and append n_embed at the beginning
                         x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
                         if self.block_size < x.size(1):
-                            start_idx = torch.randint(0, x.size(1) - self.block_size, (x.size(0), 1), device=self.device)
-                            x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
-                            y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
+                            start_idx = torch.randint(0, x.size(1) - self.block_size, (1,1), device=self.device).squeeze(0)
+                            # Use advanced indexing to select block_size tokens for each batch element
+                            x = torch.stack([x[i, start_idx:start_idx+self.block_size] for i in range(x.size(0))])
+                            y = torch.stack([y[i, start_idx:start_idx+self.block_size] for i in range(y.size(0))])
+                            #x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
+                            #y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                         # forward pass
-                        logits, loss = self.GPT(x, targets=y)
+                        logits, loss = self.GPT(x, targets=y, init_pos=start_idx)
                         # backward pass
                         epoch_loss += loss.item()*len(batch)
                     epoch_loss /= len(val_loader.dataset)
