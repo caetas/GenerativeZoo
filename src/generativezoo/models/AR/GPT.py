@@ -349,7 +349,7 @@ class VQGAN_GPT(nn.Module):
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.args.lr, total_steps=self.args.n_epochs*len(train_loader), pct_start=0.1, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
         # Move model and optimizer to the accelerator
-        self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader, self.ema = accelerate.prepare(
+        self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader, self.ema_model = accelerate.prepare(
             self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader, self.ema_model
         )
 
@@ -377,7 +377,7 @@ class VQGAN_GPT(nn.Module):
                     #x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                     #y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                 # forward pass
-                logits, loss = self.ema_model(x, targets=y, init_pos=start_idx)
+                logits, loss = self.GPT(x, targets=y, init_pos=start_idx)
                 # backward pass
                 optimizer.zero_grad()
                 accelerate.backward(loss)
