@@ -71,7 +71,7 @@ def parse_args_GPT():
     argparser.add_argument('--bias', action='store_true', default=False, help='Use bias in transformer')
     argparser.add_argument('--dropout_t', type=float, default=0.1, help='Dropout rate in transformer')
     argparser.add_argument('--betas', type=float, nargs='+', default=[0.9, 0.95], help='Betas for Adam optimizer')
-    argparser.add_argument('--weight_decay', type=float, default=0.1, help='Weight decay for Adam optimizer')
+    argparser.add_argument('--weight_decay', type=float, default=0.0, help='Weight decay for Adam optimizer')
     argparser.add_argument('--num_samples', type=int, default=16, help='Number of samples to generate')
     argparser.add_argument('--checkpoint_gpt', type=str, default=None, help='Path to checkpoint for transformer')
     argparser.add_argument('--temperature', type=float, default=1.0, help='Temperature for sampling')
