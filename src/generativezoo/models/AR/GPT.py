@@ -431,7 +431,7 @@ class VQGAN_GPT(nn.Module):
         idx = torch.full((self.args.num_samples,1), self.args.n_embed).to(self.device)
         # generate some samples
         if train:
-            samples = self.ema_model.generate(idx, max_new_tokens=self.img_tokens, temperature=self.args.temperature, top_k=self.args.top_k)
+            samples = self.ema_model.generate(idx, max_new_tokens=self.img_tokens, temperature=self.args.temperature, top_k=self.args.top_k)[:, 1:]
         else:
             samples = self.GPT.generate(idx, self.img_tokens, temperature=self.args.temperature, top_k=self.args.top_k)[:, 1:]
         decoded = self.decode(samples, self.zshape)
