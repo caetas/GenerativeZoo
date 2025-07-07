@@ -78,6 +78,7 @@ def parse_args_GPT():
     argparser.add_argument('--top_k', type=int, default=None, help='Top k for sampling')
     argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
     argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'bloodmnist', 'dermamnist', 'dermamnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'retinamnist', 'svhn', 'tinyimagenet','imagenet'])
+    argparser.add_argument('--ema_decay', type=float, default=0.999, help='EMA decay for model parameters')
     return argparser.parse_args()
 
 def parse_args_MaskGiT():

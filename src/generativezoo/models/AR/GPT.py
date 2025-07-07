@@ -19,6 +19,23 @@ import os
 from config import models_dir
 import numpy as np
 from sklearn.metrics import roc_auc_score
+import copy
+from collections import OrderedDict
+
+@torch.no_grad()
+def update_ema(ema_model, model, decay=0.5):
+    """
+    Step the EMA model towards the current model.
+    """
+    ema_params = OrderedDict(ema_model.named_parameters())
+    model_params = OrderedDict(model.named_parameters())
+    
+    for name, param in model_params.items():
+        # if name contains "module" then remove module
+        if "module" in name:
+            name = name.replace("module.", "")
+        # TODO: Consider applying only to params that require_grad to avoid small numerical changes of pos_embed
+        ema_params[name].mul_(decay).add_(param.data, alpha=1 - decay)
 
 def create_checkpoint_dir():
     if not os.path.exists(models_dir):
@@ -286,6 +303,10 @@ class VQGAN_GPT(nn.Module):
         self.to(self.device)
         self.lr = args.lr
         self.resolution = input_size
+        self.ema_model = copy.deepcopy(self.GPT)
+        self.ema_model.eval()  # set to eval mode
+        for param in self.ema_model.parameters():
+            param.requires_grad = False
 
     def load_checkpoint(self, checkpoint):
         """
@@ -328,11 +349,12 @@ class VQGAN_GPT(nn.Module):
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.args.lr, total_steps=self.args.n_epochs*len(train_loader), pct_start=0.1, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
         # Move model and optimizer to the accelerator
-        self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader = accelerate.prepare(
-            self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader
+        self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader, self.ema = accelerate.prepare(
+            self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader, self.ema_model
         )
 
-        self.VAE.eval()   
+        self.VAE.eval()
+        update_ema(self.ema_model, self.GPT, decay=0)   
 
         #iterate over the training data
         for epoch in tqdm(range(self.args.n_epochs), desc="Training Epochs"):
@@ -355,13 +377,15 @@ class VQGAN_GPT(nn.Module):
                     #x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                     #y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                 # forward pass
-                logits, loss = self.GPT(x, targets=y, init_pos=start_idx)
+                logits, loss = self.ema_model(x, targets=y, init_pos=start_idx)
                 # backward pass
                 optimizer.zero_grad()
                 accelerate.backward(loss)
                 optimizer.step()
                 epoch_loss += loss.item()*len(batch)
                 scheduler.step()
+                # update the EMA model
+                update_ema(self.ema_model, self.GPT, decay=self.args.ema_decay)
 
             epoch_loss /= len(train_loader.dataset)
             accelerate.log({"epoch_loss": epoch_loss})
@@ -371,7 +395,7 @@ class VQGAN_GPT(nn.Module):
                 self.GPT.eval()
                 self.sample(train=True, accelerate=accelerate)
 
-                model_to_save = accelerate.unwrap_model(self.GPT)
+                model_to_save = accelerate.unwrap_model(self.ema_model)
                 # Save the model
                 accelerate.save(model_to_save.state_dict(), os.path.join(models_dir, "GPT", f"gpt_{self.args.dataset}_{epoch+1}.pt"))
                 epoch_loss = 0
@@ -390,7 +414,7 @@ class VQGAN_GPT(nn.Module):
                             #x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                             #y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                         # forward pass
-                        logits, loss = self.GPT(x, targets=y, init_pos=start_idx)
+                        logits, loss = self.ema_model(x, targets=y, init_pos=start_idx)
                         # backward pass
                         epoch_loss += loss.item()*len(batch)
                     epoch_loss /= len(val_loader.dataset)
@@ -406,7 +430,10 @@ class VQGAN_GPT(nn.Module):
         # init token is just a single token with value n_embed
         idx = torch.full((self.args.num_samples,1), self.args.n_embed).to(self.device)
         # generate some samples
-        samples = self.GPT.generate(idx, self.img_tokens, temperature=self.args.temperature, top_k=self.args.top_k)[:, 1:]
+        if train:
+            samples = self.ema_model.generate(idx, max_new_tokens=self.img_tokens, temperature=self.args.temperature, top_k=self.args.top_k)
+        else:
+            samples = self.GPT.generate(idx, self.img_tokens, temperature=self.args.temperature, top_k=self.args.top_k)[:, 1:]
         decoded = self.decode(samples, self.zshape)
         decoded = decoded *0.5 + 0.5
         decoded = decoded.clamp(0, 1)
