@@ -644,7 +644,6 @@ class RF(nn.Module):
                     accelerate.backward(loss)
                 optimizer.step()
                 scheduler.step()
-                break
 
                 train_loss += loss.item()*x.shape[0]
                 update_ema(self.ema, self.model, self.ema_rate)
