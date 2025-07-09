@@ -211,6 +211,7 @@ class GPT(nn.Module):
             if ood:
                 # loss per element in the batch
                 loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1, reduction='none')
+                loss = loss.view(b, t) # shape (b, t)
         else:
             # inference-time mini-optimization: only forward the lm_head on the very last position
             logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
@@ -483,16 +484,34 @@ class VQGAN_GPT(nn.Module):
         self.VAE.eval()
         in_scores = []
         out_scores = []
+        in_patch_scores = []
+        out_patch_scores = []
 
         # Iterate over the in-distribution data
         for batch, _ in tqdm(in_loader, desc="In-distribution Batches", leave=False):
             batch = batch.to(self.device)
             encoded, y = self.encode(batch)
+            patch = np.zeros((encoded.shape[0], self.img_tokens), dtype=np.float32)
             # x should be n-1 elements of y and append n_embed at the beginning
             x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
-            # forward pass
-            _, loss = self.GPT(x, targets=y, ood=True)
-            in_scores.append(loss.cpu().numpy())
+
+            if self.block_size < x.size(1):
+                #go on windows of self.block_size tokens until the end of the sequence
+                for i in range(0, x.size(1) - self.block_size + 1, self.block_size):
+                    x_tensor = torch.stack([x[j, i:i+self.block_size] for j in range(x.size(0))])
+                    y_tensor = torch.stack([y[j, i:i+self.block_size] for j in range(y.size(0))])
+                    logits, loss = self.GPT(x_tensor, targets=y_tensor, ood=True, init_pos=torch.tensor(i).to(self.device))
+                    patch[:,i:i+self.block_size] = loss.cpu().numpy()
+
+            else:
+                # if block_size is larger than the sequence length, we use the whole sequence
+                x_tensor = torch.stack([x[j, :self.img_tokens] for j in range(x.size(0))])
+                y_tensor = torch.stack([y[j, :self.img_tokens] for j in range(y.size(0))])
+                _, loss = self.GPT(x_tensor, targets=y_tensor, ood=True)
+                patch[:,:self.img_tokens] = loss.cpu().numpy()
+
+            in_patch_scores.append(patch)
+            in_scores.append(np.mean(patch, axis=1))
 
         in_scores = np.concatenate(in_scores)
 
@@ -500,11 +519,26 @@ class VQGAN_GPT(nn.Module):
         for batch, _ in tqdm(out_loader, desc="Out-of-distribution Batches", leave=False):
             batch = batch.to(self.device)
             encoded, y = self.encode(batch)
+            patch = np.zeros((encoded.shape[0], self.img_tokens), dtype=np.float32)
             # x should be n-1 elements of y and append n_embed at the beginning
             x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
-            # forward pass
-            _, loss = self.GPT(x, targets=y, ood=True)
-            out_scores.append(loss.cpu().numpy())
+            
+            if self.block_size < x.size(1):
+                #go on windows of self.block_size tokens until the end of the sequence
+                for i in range(0, x.size(1) - self.block_size + 1, self.block_size):
+                    x_tensor = torch.stack([x[j, i:i+self.block_size] for j in range(x.size(0))])
+                    y_tensor = torch.stack([y[j, i:i+self.block_size] for j in range(y.size(0))])
+                    logits, loss = self.GPT(x_tensor, targets=y_tensor, ood=True, init_pos=torch.tensor(i).to(self.device))
+                    patch[:,i:i+self.block_size] = loss.cpu().numpy()
+            else:
+                # if block_size is larger than the sequence length, we use the whole sequence
+                x_tensor = torch.stack([x[j, :self.block_size] for j in range(x.size(0))])
+                y_tensor = torch.stack([y[j, :self.block_size] for j in range(y.size(0))])
+                _, loss = self.GPT(x_tensor, targets=y_tensor, ood=True)
+                patch[:,:self.block_size] = loss.cpu().numpy()
+
+            out_patch_scores.append(patch)
+            out_scores.append(np.mean(patch, axis=1))
 
         out_scores = np.concatenate(out_scores)
 
@@ -512,6 +546,15 @@ class VQGAN_GPT(nn.Module):
         y_true = np.concatenate([np.zeros(len(in_scores)), np.ones(len(out_scores))])
         y_scores = np.concatenate([in_scores, out_scores])
         auc = roc_auc_score(y_true, y_scores)
+
+        # plot the scores
+        plt.hist(in_scores, bins=50, alpha=0.5, label='In-distribution', color='blue')
+        plt.hist(out_scores, bins=50, alpha=0.5, label='Out-of-distribution', color='red')
+        plt.xlabel('Negative Log Likelihood (NLL)')
+        plt.ylabel('Frequency')
+        plt.title('Negative Log Likelihood (NLL) Distribution')
+        plt.legend()
+        plt.show()
         print(f"AUC: {auc:.4f}")
         
     @torch.no_grad()

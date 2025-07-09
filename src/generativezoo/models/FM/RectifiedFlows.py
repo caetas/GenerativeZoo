@@ -17,6 +17,7 @@ import copy
 from collections import OrderedDict
 from diffusers.models import AutoencoderKL
 from accelerate import Accelerator
+from torchdiffeq import odeint
 
 @torch.no_grad()
 def update_ema(ema_model, model, decay=0.5):
@@ -418,6 +419,8 @@ class RF(nn.Module):
         self.cfg = args.cfg
         self.warmup = args.warmup
         self.decay = args.decay
+        self.solver = args.solver
+        self.solver_lib = args.solver_lib
         model_size = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         print(f"Number of parameters: {model_size}, {model_size / 1e6}M")
         self.model.to(self.device)
@@ -494,32 +497,60 @@ class RF(nn.Module):
         if self.conditional:
             cond = torch.cat([cond, null_cond], dim=0)
 
-        for i in tqdm(range(sample_steps, 0, -1), desc='Sampling', leave=False):
-            t = i / sample_steps
-            t = torch.tensor([t] * b).to(z.device)
-
-            if self.conditional:
-                z = z.repeat(2, 1, 1, 1)
-                t = t.repeat(2)
-                if train:
-                    v = self.ema(z, t, cond.long().to(z.device))
-                else:
-                    v = self.model(z, t, cond.long().to(z.device))
-                vc = v[:b]
-                vu = v[b:]
-                vc = vu + cfg * (vc - vu)
-                z = z[:b]
-            
-            else :
-                if train:
-                    vc = self.ema(z, t, torch.zeros_like(cond).long().to(z.device))
-                else:
-                    vc = self.model(z, t, torch.zeros_like(cond).long().to(z.device))
-
-            z = z - dt * vc
-            images.append(z)
+        if self.solver_lib == "torchdiffeq":
+            if train:
+                def f(t: float, x):
+                    if self.conditional:
+                        x = x.repeat(2,1,1,1)
+                        v = self.ema(x, torch.full(x.shape[:1], t, device=self.device), cond.long().to(z.device))
+                        vc = v[:b]
+                        vu = v[b:]
+                        return vu + (vc - vu)*self.cfg
+                    else:
+                        return self.ema(x, torch.full(x.shape[:1], t, device=self.device), torch.zeros_like(cond).long().to(z.device))
+            else:
+                def f(t: float, x):
+                    if self.conditional:
+                        x = x.repeat(2,1,1,1)
+                        v = self.model(x, torch.full(x.shape[:1], t, device=self.device), cond.long().to(z.device))
+                        vc = v[:b]
+                        vu = v[b:]
+                        return vu + (vc - vu)*self.cfg
+                    else:
+                        return self.model(x, torch.full(x.shape[:1], t, device=self.device), torch.zeros_like(cond).long().to(z.device))
+                
+            if self.solver == 'euler' or self.solver == 'rk4' or self.solver == 'midpoint' or self.solver == 'explicit_adams' or self.solver == 'implicit_adams':
+                samples = odeint(f, z, t=torch.linspace(1, 0, 2).to(self.device), options={'step_size': 1.0/sample_steps}, method=self.solver, rtol=1e-5, atol=1e-5)
+            else:
+                samples = odeint(f, z, t=torch.linspace(1, 0, 2).to(self.device), method=self.solver, options={'max_num_steps': sample_steps}, rtol=1e-5, atol=1e-5)
+            imgs = samples[-1]
         
-        imgs = images[-1]
+        else:
+            for i in tqdm(range(sample_steps, 0, -1), desc='Sampling', leave=False):
+                t = i / sample_steps
+                t = torch.tensor([t] * b).to(z.device)
+
+                if self.conditional:
+                    z = z.repeat(2, 1, 1, 1)
+                    t = t.repeat(2)
+                    if train:
+                        v = self.ema(z, t, cond.long().to(z.device))
+                    else:
+                        v = self.model(z, t, cond.long().to(z.device))
+                    vc = v[:b]
+                    vu = v[b:]
+                    vc = vu + cfg * (vc - vu)
+                    z = z[:b]
+                else:
+                    if train:
+                        vc = self.ema(z, t, torch.zeros_like(cond).long().to(z.device))
+                    else:
+                        vc = self.model(z, t, torch.zeros_like(cond).long().to(z.device))
+
+                z = z - dt * vc
+                images.append(z)
+            
+            imgs = images[-1]
 
         if self.vae is not None:
             imgs = self.decode(imgs / 0.18215).sample
