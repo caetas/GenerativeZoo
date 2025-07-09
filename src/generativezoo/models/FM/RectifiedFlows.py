@@ -18,6 +18,7 @@ from collections import OrderedDict
 from diffusers.models import AutoencoderKL
 from accelerate import Accelerator
 from torchdiffeq import odeint
+import numpy as np
 
 @torch.no_grad()
 def update_ema(ema_model, model, decay=0.5):
@@ -431,6 +432,7 @@ class RF(nn.Module):
             self.ema_rate = args.ema_rate
             for param in self.ema.parameters():
                 param.requires_grad = False
+            self.ema.eval()
 
     def forward(self, x, cond):
         '''
@@ -493,6 +495,7 @@ class RF(nn.Module):
         dt = 1.0 / sample_steps
         dt = torch.tensor([dt] * b).to(z.device).view([b, *([1] * len(z.shape[1:]))])
         images = [z]
+        print(self.ema.training)
 
         if self.conditional:
             cond = torch.cat([cond, null_cond], dim=0)
@@ -557,7 +560,7 @@ class RF(nn.Module):
 
         imgs = imgs*0.5 + 0.5
         imgs = imgs.clamp(0, 1)
-        grid = make_grid(imgs, nrow=4)
+        grid = make_grid(imgs, nrow=int(np.sqrt(imgs.shape[0])), padding=0)
         fig = plt.figure(figsize=(10, 10))
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
         plt.axis('off')
@@ -641,6 +644,7 @@ class RF(nn.Module):
                     accelerate.backward(loss)
                 optimizer.step()
                 scheduler.step()
+                break
 
                 train_loss += loss.item()*x.shape[0]
                 update_ema(self.ema, self.model, self.ema_rate)
@@ -661,6 +665,7 @@ class RF(nn.Module):
                 accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'Lat' if self.vae is not None else ''}{'CondRF' if self.conditional else 'RF'}_{self.dataset}_epoch{epoch+1}.pt"))
         
             if epoch == 0 or ((epoch+1) % self.sample_and_save_freq == 0):
+                self.model.eval()
                 cond = torch.arange(0, 16).cuda() % self.num_classes
                 z = torch.randn(16, self.channels, self.img_size, self.img_size).to(self.device)
                 null_cond = self.num_classes*torch.ones_like(cond).long() if self.conditional else torch.zeros_like(cond).long()
