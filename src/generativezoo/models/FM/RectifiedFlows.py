@@ -397,13 +397,13 @@ class RF(nn.Module):
         self.args = args
         self.conditional = args.conditional
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.vae =  AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-mse").to(self.device) if args.latent else None
+        self.vae =  AutoencoderKL.from_pretrained(f"stabilityai/stable-diffusion-3.5-medium", subfolder='vae').to(self.device) if args.latent else None
         self.channels = channels
         self.img_size = img_size
 
         # If using VAE, change the number of channels and image size accordingly
         if self.vae is not None:
-            self.channels = 4
+            self.channels = 16
             self.img_size = self.img_size // 8
 
         if self.conditional:
@@ -481,7 +481,7 @@ class RF(nn.Module):
             return self.vae.decode(z)
 
     @torch.no_grad()
-    def get_sample(self, z, cond, null_cond=None, sample_steps=50, cfg=2.0, train=False, accelerate=None):
+    def get_sample(self, z, cond, null_cond=None, sample_steps=50, cfg=2.0, train=False, accelerate=None, fid=False):
         '''
         Generate samples from the model
         :param z: torch.Tensor, random noise
@@ -495,7 +495,6 @@ class RF(nn.Module):
         dt = 1.0 / sample_steps
         dt = torch.tensor([dt] * b).to(z.device).view([b, *([1] * len(z.shape[1:]))])
         images = [z]
-        print(self.ema.training)
 
         if self.conditional:
             cond = torch.cat([cond, null_cond], dim=0)
@@ -560,6 +559,10 @@ class RF(nn.Module):
 
         imgs = imgs*0.5 + 0.5
         imgs = imgs.clamp(0, 1)
+        
+        if fid:
+            return imgs
+        
         grid = make_grid(imgs, nrow=int(np.sqrt(imgs.shape[0])), padding=0)
         fig = plt.figure(figsize=(10, 10))
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
@@ -683,6 +686,53 @@ class RF(nn.Module):
         z = torch.randn(num_samples, self.channels, self.img_size, self.img_size).to(self.device)
         null_cond = self.num_classes*torch.ones_like(cond).long() if self.conditional else torch.zeros_like(cond).long()
         self.get_sample(z, cond, train=False, sample_steps=self.sample_steps, cfg=self.cfg, null_cond=null_cond)
+
+    @torch.no_grad()
+    def fid_sample(self):
+        '''
+        Generate samples from the model and save them to a directory for FID calculation
+        '''
+        self.model.eval()
+
+        # if self.args.checkpoint contains epoch number, ep = epoch number
+        # else, ep = 0
+        ep = 0
+        if self.args.checkpoint is not None:
+            if 'epoch' in self.args.checkpoint:
+                ep = int(self.args.checkpoint.split('epoch')[1].split('.')[0])
+
+        if not os.path.exists('./../../fid_samples'):
+            os.makedirs('./../../fid_samples')
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}")
+        #add ddpm factor and timesteps
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}/rf_{self.solver_lib}_solver_{self.solver}_steps_{self.sample_steps}_ep{ep}_w{self.cfg}{'_conditional' if self.conditional else '_unconditional'}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}/rf_{self.solver_lib}_solver_{self.solver}_steps_{self.sample_steps}_ep{ep}_w{self.cfg}{'_conditional' if self.conditional else '_unconditional'}")
+        cnt = 0
+
+        cond = torch.arange(0, 50000).cuda() % self.num_classes
+
+        for i in tqdm(range(0, 50000, self.args.batch_size), desc='FID Sampling'):
+            if i + self.args.batch_size > 50000:
+                j = 50000
+            else:
+                j = i + self.args.batch_size
+            z = torch.randn(j-i, self.channels, self.img_size, self.img_size).to(self.device)
+            null_cond = self.num_classes*torch.ones_like(cond[i:j]).long() if self.conditional else torch.zeros_like(cond[i:j]).long()
+            imgs = self.get_sample(z, cond[i:j], train=False, sample_steps=self.sample_steps, cfg=self.cfg, null_cond=null_cond, accelerate=None, fid=True)
+            imgs = imgs.cpu().numpy().transpose(0, 2, 3, 1)  # Change to HWC format
+            for img in imgs:
+                img = (img * 255).astype(np.uint8)
+                img_path = f"./../../fid_samples/{self.dataset}/rf_{self.solver_lib}_solver_{self.solver}_steps_{self.sample_steps}_ep{ep}_w{self.cfg}{'_conditional' if self.conditional else '_unconditional'}/{cnt}.png"
+                if img.shape[2] == 1:
+                    img = img[:, :, 0]
+                    plt.imsave(img_path, img, cmap='gray')
+                else:
+                    plt.imsave(img_path, img)
+                plt.close()
+                cnt += 1
+
+
 
     def load_checkpoint(self, checkpoint):
         '''

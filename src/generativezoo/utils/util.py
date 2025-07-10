@@ -352,6 +352,7 @@ def parse_args_RectifiedFlows():
     argparser.add_argument('--snapshots', type=int, default=10, help='how many snapshots during training')
     argparser.add_argument('--solver_lib', type=str, default='torchdiffeq', help='solver library', choices=['torchdiffeq', 'none'])
     argparser.add_argument('--solver', type=str, default='euler', help='solver for ODE', choices=['dopri5', 'rk4', 'dopri8', 'euler', 'bosh3', 'adaptive_heun', 'midpoint', 'explicit_adams', 'implicit_adams'])
+    argparser.add_argument('--fid', action='store_true', default=False, help='calculate FID')
     return argparser.parse_args()
 
 def parse_args_VanillaFlow():
