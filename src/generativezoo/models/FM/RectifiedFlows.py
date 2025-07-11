@@ -521,7 +521,7 @@ class RF(nn.Module):
                     else:
                         return self.model(x, torch.full(x.shape[:1], t, device=self.device), torch.zeros_like(cond).long().to(z.device))
                 
-            if self.solver == 'euler' or self.solver == 'rk4' or self.solver == 'midpoint' or self.solver == 'explicit_adams' or self.solver == 'implicit_adams':
+            if self.solver == 'euler' or self.solver == 'rk4' or self.solver == 'midpoint' or self.solver == 'explicit_adams' or self.solver == 'implicit_adams' or self.solver == 'heun3':
                 samples = odeint(f, z, t=torch.linspace(1, 0, 2).to(self.device), options={'step_size': 1.0/sample_steps}, method=self.solver, rtol=1e-5, atol=1e-5)
             else:
                 samples = odeint(f, z, t=torch.linspace(1, 0, 2).to(self.device), method=self.solver, options={'max_num_steps': sample_steps}, rtol=1e-5, atol=1e-5)
@@ -740,4 +740,4 @@ class RF(nn.Module):
         :param checkpoint: str, path to the checkpoint
         '''
         if checkpoint is not None:
-            self.model.load_state_dict(torch.load(checkpoint))
+            self.model.load_state_dict(torch.load(checkpoint, map_location=self.device, weights_only=False))
