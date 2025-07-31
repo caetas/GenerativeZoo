@@ -1,0 +1,50 @@
+[project]
+name = "generativezoo"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "accelerate>=1.9.0",
+    "bitsandbytes>=0.46.1",
+    "datasets>=4.0.0",
+    "diffusers>=0.34.0",
+    "dotenv>=0.9.9",
+    "einops>=0.8.1",
+    "flask>=3.1.1",
+    "fsspec>=2025.3.0",
+    "h5py>=3.14.0",
+    "lpips>=0.1.4",
+    "matplotlib>=3.10.3",
+    "mdurl>=0.1.2",
+    "medmnist>=3.0.2",
+    "ml-collections>=1.1.0",
+    "monai>=1.5.0",
+    "monai-generative>=0.2.3",
+    "ninja>=1.11.1.4",
+    "numpy>=2.3.2",
+    "opencv-python>=4.11.0.86",
+    "s3fs>=2025.3.0",
+    "scikit-image>=0.25.2",
+    "scikit-learn>=1.7.1",
+    "scipy>=1.16.1",
+    "toml>=0.10.2",
+    "torch>=2.6.0",
+    "torchdiffeq>=0.2.5",
+    "torchvision>=0.21.0",
+    "tqdm>=4.67.1",
+    "transformers>=4.54.1",
+    "wandb>=0.21.0",
+    "zuko>=1.4.1",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+  { index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]

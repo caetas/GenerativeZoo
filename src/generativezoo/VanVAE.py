@@ -47,7 +47,8 @@ if __name__ == '__main__':
         in_loader, in_shape, in_channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, size = size, mode='val')
         out_loader, _, _ = pick_dataset(args.out_dataset, batch_size = args.batch_size, normalize=True, size = in_shape, mode='val')
         model = VanillaVAE(input_shape=in_shape, input_channels=in_channels,args=args)
-        model.load_state_dict(torch.load(args.checkpoint))
+        if args.checkpoint is not None:
+            model.load_state_dict(torch.load(args.checkpoint))
         model.outlier_detection(in_loader, out_loader)
     else:
         raise ValueError("Invalid mode. Please specify train or sample")
