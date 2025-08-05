@@ -17,6 +17,8 @@ import copy
 from collections import OrderedDict
 from diffusers.models import AutoencoderKL
 from accelerate import Accelerator
+from torchdiffeq import odeint
+import numpy as np
 
 @torch.no_grad()
 def update_ema(ema_model, model, decay=0.5):
@@ -395,13 +397,13 @@ class RF(nn.Module):
         self.args = args
         self.conditional = args.conditional
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.vae =  AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-mse").to(self.device) if args.latent else None
+        self.vae =  AutoencoderKL.from_pretrained(f"stabilityai/stable-diffusion-3.5-medium", subfolder='vae').to(self.device) if args.latent else None
         self.channels = channels
         self.img_size = img_size
 
         # If using VAE, change the number of channels and image size accordingly
         if self.vae is not None:
-            self.channels = 4
+            self.channels = 16
             self.img_size = self.img_size // 8
 
         if self.conditional:
@@ -418,6 +420,8 @@ class RF(nn.Module):
         self.cfg = args.cfg
         self.warmup = args.warmup
         self.decay = args.decay
+        self.solver = args.solver
+        self.solver_lib = args.solver_lib
         model_size = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         print(f"Number of parameters: {model_size}, {model_size / 1e6}M")
         self.model.to(self.device)
@@ -428,6 +432,7 @@ class RF(nn.Module):
             self.ema_rate = args.ema_rate
             for param in self.ema.parameters():
                 param.requires_grad = False
+            self.ema.eval()
 
     def forward(self, x, cond):
         '''
@@ -476,7 +481,7 @@ class RF(nn.Module):
             return self.vae.decode(z)
 
     @torch.no_grad()
-    def get_sample(self, z, cond, null_cond=None, sample_steps=50, cfg=2.0, train=False, accelerate=None):
+    def get_sample(self, z, cond, null_cond=None, sample_steps=50, cfg=2.0, train=False, accelerate=None, fid=False):
         '''
         Generate samples from the model
         :param z: torch.Tensor, random noise
@@ -494,39 +499,71 @@ class RF(nn.Module):
         if self.conditional:
             cond = torch.cat([cond, null_cond], dim=0)
 
-        for i in tqdm(range(sample_steps, 0, -1), desc='Sampling', leave=False):
-            t = i / sample_steps
-            t = torch.tensor([t] * b).to(z.device)
-
-            if self.conditional:
-                z = z.repeat(2, 1, 1, 1)
-                t = t.repeat(2)
-                if train:
-                    v = self.ema(z, t, cond.long().to(z.device))
-                else:
-                    v = self.model(z, t, cond.long().to(z.device))
-                vc = v[:b]
-                vu = v[b:]
-                vc = vu + cfg * (vc - vu)
-                z = z[:b]
-            
-            else :
-                if train:
-                    vc = self.ema(z, t, torch.zeros_like(cond).long().to(z.device))
-                else:
-                    vc = self.model(z, t, torch.zeros_like(cond).long().to(z.device))
-
-            z = z - dt * vc
-            images.append(z)
+        if self.solver_lib == "torchdiffeq":
+            if train:
+                def f(t: float, x):
+                    if self.conditional:
+                        x = x.repeat(2,1,1,1)
+                        v = self.ema(x, torch.full(x.shape[:1], t, device=self.device), cond.long().to(z.device))
+                        vc = v[:b]
+                        vu = v[b:]
+                        return vu + (vc - vu)*self.cfg
+                    else:
+                        return self.ema(x, torch.full(x.shape[:1], t, device=self.device), torch.zeros_like(cond).long().to(z.device))
+            else:
+                def f(t: float, x):
+                    if self.conditional:
+                        x = x.repeat(2,1,1,1)
+                        v = self.model(x, torch.full(x.shape[:1], t, device=self.device), cond.long().to(z.device))
+                        vc = v[:b]
+                        vu = v[b:]
+                        return vu + (vc - vu)*self.cfg
+                    else:
+                        return self.model(x, torch.full(x.shape[:1], t, device=self.device), torch.zeros_like(cond).long().to(z.device))
+                
+            if self.solver == 'euler' or self.solver == 'rk4' or self.solver == 'midpoint' or self.solver == 'explicit_adams' or self.solver == 'implicit_adams' or self.solver == 'heun3':
+                samples = odeint(f, z, t=torch.linspace(1, 0, 2).to(self.device), options={'step_size': 1.0/sample_steps}, method=self.solver, rtol=1e-5, atol=1e-5)
+            else:
+                samples = odeint(f, z, t=torch.linspace(1, 0, 2).to(self.device), method=self.solver, options={'max_num_steps': sample_steps}, rtol=1e-5, atol=1e-5)
+            imgs = samples[-1]
         
-        imgs = images[-1]
+        else:
+            for i in tqdm(range(sample_steps, 0, -1), desc='Sampling', leave=False):
+                t = i / sample_steps
+                t = torch.tensor([t] * b).to(z.device)
+
+                if self.conditional:
+                    z = z.repeat(2, 1, 1, 1)
+                    t = t.repeat(2)
+                    if train:
+                        v = self.ema(z, t, cond.long().to(z.device))
+                    else:
+                        v = self.model(z, t, cond.long().to(z.device))
+                    vc = v[:b]
+                    vu = v[b:]
+                    vc = vu + cfg * (vc - vu)
+                    z = z[:b]
+                else:
+                    if train:
+                        vc = self.ema(z, t, torch.zeros_like(cond).long().to(z.device))
+                    else:
+                        vc = self.model(z, t, torch.zeros_like(cond).long().to(z.device))
+
+                z = z - dt * vc
+                images.append(z)
+            
+            imgs = images[-1]
 
         if self.vae is not None:
             imgs = self.decode(imgs / 0.18215).sample
 
         imgs = imgs*0.5 + 0.5
         imgs = imgs.clamp(0, 1)
-        grid = make_grid(imgs, nrow=4)
+        
+        if fid:
+            return imgs
+        
+        grid = make_grid(imgs, nrow=int(np.sqrt(imgs.shape[0])), padding=0)
         fig = plt.figure(figsize=(10, 10))
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
         plt.axis('off')
@@ -630,6 +667,7 @@ class RF(nn.Module):
                 accelerate.save(ema_to_save.state_dict(), os.path.join(models_dir, "RectifiedFlows", f"{'Lat' if self.vae is not None else ''}{'CondRF' if self.conditional else 'RF'}_{self.dataset}_epoch{epoch+1}.pt"))
         
             if epoch == 0 or ((epoch+1) % self.sample_and_save_freq == 0):
+                self.model.eval()
                 cond = torch.arange(0, 16).cuda() % self.num_classes
                 z = torch.randn(16, self.channels, self.img_size, self.img_size).to(self.device)
                 null_cond = self.num_classes*torch.ones_like(cond).long() if self.conditional else torch.zeros_like(cond).long()
@@ -649,10 +687,57 @@ class RF(nn.Module):
         null_cond = self.num_classes*torch.ones_like(cond).long() if self.conditional else torch.zeros_like(cond).long()
         self.get_sample(z, cond, train=False, sample_steps=self.sample_steps, cfg=self.cfg, null_cond=null_cond)
 
+    @torch.no_grad()
+    def fid_sample(self):
+        '''
+        Generate samples from the model and save them to a directory for FID calculation
+        '''
+        self.model.eval()
+
+        # if self.args.checkpoint contains epoch number, ep = epoch number
+        # else, ep = 0
+        ep = 0
+        if self.args.checkpoint is not None:
+            if 'epoch' in self.args.checkpoint:
+                ep = int(self.args.checkpoint.split('epoch')[1].split('.')[0])
+
+        if not os.path.exists('./../../fid_samples'):
+            os.makedirs('./../../fid_samples')
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}")
+        #add ddpm factor and timesteps
+        if not os.path.exists(f"./../../fid_samples/{self.dataset}/rf_{self.solver_lib}_solver_{self.solver}_steps_{self.sample_steps}_ep{ep}_w{self.cfg}{'_conditional' if self.conditional else '_unconditional'}"):
+            os.makedirs(f"./../../fid_samples/{self.dataset}/rf_{self.solver_lib}_solver_{self.solver}_steps_{self.sample_steps}_ep{ep}_w{self.cfg}{'_conditional' if self.conditional else '_unconditional'}")
+        cnt = 0
+
+        cond = torch.arange(0, 50000).cuda() % self.num_classes
+
+        for i in tqdm(range(0, 50000, self.args.batch_size), desc='FID Sampling'):
+            if i + self.args.batch_size > 50000:
+                j = 50000
+            else:
+                j = i + self.args.batch_size
+            z = torch.randn(j-i, self.channels, self.img_size, self.img_size).to(self.device)
+            null_cond = self.num_classes*torch.ones_like(cond[i:j]).long() if self.conditional else torch.zeros_like(cond[i:j]).long()
+            imgs = self.get_sample(z, cond[i:j], train=False, sample_steps=self.sample_steps, cfg=self.cfg, null_cond=null_cond, accelerate=None, fid=True)
+            imgs = imgs.cpu().numpy().transpose(0, 2, 3, 1)  # Change to HWC format
+            for img in imgs:
+                img = (img * 255).astype(np.uint8)
+                img_path = f"./../../fid_samples/{self.dataset}/rf_{self.solver_lib}_solver_{self.solver}_steps_{self.sample_steps}_ep{ep}_w{self.cfg}{'_conditional' if self.conditional else '_unconditional'}/{cnt}.png"
+                if img.shape[2] == 1:
+                    img = img[:, :, 0]
+                    plt.imsave(img_path, img, cmap='gray')
+                else:
+                    plt.imsave(img_path, img)
+                plt.close()
+                cnt += 1
+
+
+
     def load_checkpoint(self, checkpoint):
         '''
         Load a model checkpoint
         :param checkpoint: str, path to the checkpoint
         '''
         if checkpoint is not None:
-            self.model.load_state_dict(torch.load(checkpoint))
+            self.model.load_state_dict(torch.load(checkpoint, map_location=self.device, weights_only=False))

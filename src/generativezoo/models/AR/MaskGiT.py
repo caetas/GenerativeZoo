@@ -359,7 +359,7 @@ class MaskGIT(nn.Module):
 
                 # Save the model
                 model_to_save = accelerate.unwrap_model(self.vit)
-                accelerate.save(model_to_save.state_dict(), os.path.join(models_dir, "MaskGiT", f"MaskGIT_{self.args.dataset}_{epoch+1}.pth"))
+                accelerate.save(model_to_save.state_dict(), os.path.join(models_dir, "MaskGiT", f"MaskGIT_{self.args.dataset}_{epoch+1}.pt"))
 
                 self.vit.eval()
                 with torch.no_grad():
@@ -479,11 +479,6 @@ class MaskGIT(nn.Module):
                                r_temp=self.args.r_temp,
                                sched_mode=self.args.sched_mode,
                                step=self.args.step)[0]
-        
-        # Decode the generated code
-        samples = self.decode(samples, zshape=(self.num_samples, self.args.z_channels, self.patch_size, self.patch_size))
-        samples = samples * 0.5 + 0.5
-        samples = samples.clamp(0, 1)
         grid = vutils.make_grid(samples, nrow=int(np.sqrt(self.num_samples)), padding=0)
         fig = plt.figure(figsize=(8, 8))
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())

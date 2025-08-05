@@ -126,6 +126,7 @@ data/external/*
 data/raw/*
 src/generativezoo/garbage/
 src/generativezoo/wandb/
+models/Cosmos-Tokenizer
 
 # test data directory
 test/data

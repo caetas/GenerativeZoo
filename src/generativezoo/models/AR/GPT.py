@@ -5,6 +5,7 @@
 import math
 import inspect
 from dataclasses import dataclass
+from tracemalloc import start
 
 import torch
 import torch.nn as nn
@@ -16,6 +17,25 @@ from torchvision.utils import make_grid
 from accelerate import Accelerator
 import os
 from config import models_dir
+import numpy as np
+from sklearn.metrics import roc_auc_score
+import copy
+from collections import OrderedDict
+
+@torch.no_grad()
+def update_ema(ema_model, model, decay=0.5):
+    """
+    Step the EMA model towards the current model.
+    """
+    ema_params = OrderedDict(ema_model.named_parameters())
+    model_params = OrderedDict(model.named_parameters())
+    
+    for name, param in model_params.items():
+        # if name contains "module" then remove module
+        if "module" in name:
+            name = name.replace("module.", "")
+        # TODO: Consider applying only to params that require_grad to avoid small numerical changes of pos_embed
+        ema_params[name].mul_(decay).add_(param.data, alpha=1 - decay)
 
 def create_checkpoint_dir():
     if not os.path.exists(models_dir):
@@ -125,7 +145,7 @@ class GPT(nn.Module):
 
         self.transformer = nn.ModuleDict(dict(
             wte = nn.Embedding(args.n_embed + 1, args.embed_dim_t),
-            wpe = nn.Embedding(args.block_size, args.embed_dim_t),
+            wpe = nn.Embedding(input_size, args.embed_dim_t),
             drop = nn.Dropout(args.dropout_t),
             h = nn.ModuleList([Block(args) for _ in range(args.n_layer)]),
             ln_f = LayerNorm(args.embed_dim_t, bias=args.bias),
@@ -168,11 +188,13 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, targets=None):
+    def forward(self, idx, targets=None, ood=False, init_pos=None):
         device = idx.device
         b, t = idx.size()
         assert t <= self.args.block_size, f"Cannot forward sequence of length {t}, block size is only {self.args.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device) # shape (t)
+        if init_pos is not None:
+            pos = torch.arange(init_pos.cpu().item(), init_pos.cpu().item() + t, dtype=torch.long, device=device) # shape (t)
 
         # forward the GPT model itself
         tok_emb = self.transformer.wte(idx) # token embeddings of shape (b, t, embed_dim)
@@ -186,6 +208,10 @@ class GPT(nn.Module):
             # if we are given some desired targets also calculate the loss
             logits = self.lm_head(x)
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
+            if ood:
+                # loss per element in the batch
+                loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1, reduction='none')
+                loss = loss.view(b, t) # shape (b, t)
         else:
             # inference-time mini-optimization: only forward the lm_head on the very last position
             logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
@@ -238,10 +264,11 @@ class GPT(nn.Module):
         Most likely you'll want to make sure to be in model.eval() mode of operation for this.
         """
         for _ in range(max_new_tokens):
+            id_start = None if idx.size(1) <= self.args.block_size else torch.tensor(idx.size(1) - self.args.block_size).to(idx.device) # start position for the model
             # if the sequence context is growing too long we must crop it at block_size
             idx_cond = idx if idx.size(1) <= self.args.block_size else idx[:, -self.args.block_size:]
             # forward the model to get the logits for the index in the sequence
-            logits, _ = self(idx_cond)
+            logits, _ = self(idx_cond, init_pos=id_start)
             # pluck the logits at the final step and scale by desired temperature
             logits = logits[:, -1, :] / temperature
             # optionally crop the logits to only the top k options
@@ -262,11 +289,14 @@ class GPT(nn.Module):
 class VQGAN_GPT(nn.Module):
     def __init__(self, args, channels, input_size):
         super().__init__()
-        self.VAE = VQModel(args, channels, input_size)
-        self.GPT = GPT(args, channels, input_size)
-        self.VAE.load_checkpoint(args.checkpoint_vae)
         self.zshape = (args.num_samples, args.z_channels, input_size//(2**(len(args.ch_mult)-1)), input_size//(2**(len(args.ch_mult)-1)))
-        args.block_size = self.zshape[2] * self.zshape[3]
+        self.VAE = VQModel(args, channels, input_size)
+        self.GPT = GPT(args, channels, self.zshape[-1]*self.zshape[-2])
+        self.VAE.load_checkpoint(args.checkpoint_vae)
+        self.img_tokens = self.zshape[2] * self.zshape[3]
+        self.block_size = args.block_size
+        assert self.block_size <= self.img_tokens, f"Block size {self.block_size} must be less than or equal to the number of tokens in an image {self.img_tokens}."
+        print(f"Block size: {self.block_size}")
         self.args = args
         for param in self.VAE.parameters():
             param.requires_grad = False
@@ -274,6 +304,10 @@ class VQGAN_GPT(nn.Module):
         self.to(self.device)
         self.lr = args.lr
         self.resolution = input_size
+        self.ema_model = copy.deepcopy(self.GPT)
+        self.ema_model.eval()  # set to eval mode
+        for param in self.ema_model.parameters():
+            param.requires_grad = False
 
     def load_checkpoint(self, checkpoint):
         """
@@ -316,9 +350,12 @@ class VQGAN_GPT(nn.Module):
         scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.args.lr, total_steps=self.args.n_epochs*len(train_loader), pct_start=0.1, anneal_strategy='cos', cycle_momentum=False, div_factor=self.lr/1e-6, final_div_factor=1)
 
         # Move model and optimizer to the accelerator
-        self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader = accelerate.prepare(
-            self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader
-        )   
+        self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader, self.ema_model = accelerate.prepare(
+            self.GPT, self.VAE, optimizer, scheduler, train_loader, val_loader, self.ema_model
+        )
+
+        self.VAE.eval()
+        update_ema(self.ema_model, self.GPT, decay=0)   
 
         #iterate over the training data
         for epoch in tqdm(range(self.args.n_epochs), desc="Training Epochs"):
@@ -327,16 +364,29 @@ class VQGAN_GPT(nn.Module):
             for batch,_ in tqdm(train_loader, desc="Training Batches", leave=False):
                 batch = batch.to(self.device)
                 encoded, y = self.encode(batch)
+                start_idx = None
                 # x should be n-1 elements of y and append n_embed at the beginning
                 x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
+                # get only self.block_size tokens but randomly and y should get the same indices
+                if self.block_size < x.size(1):
+                    #start_idx = torch.randint(0, x.size(1) - self.block_size, (x.size(0), 1), device=self.device)
+                    # sample a single start index for all batch elements
+                    start_idx = torch.randint(0, x.size(1) - self.block_size, (1,1), device=self.device).squeeze(0)
+                    # Use advanced indexing to select block_size tokens for each batch element
+                    x = torch.stack([x[i, start_idx:start_idx+self.block_size] for i in range(x.size(0))])
+                    y = torch.stack([y[i, start_idx:start_idx+self.block_size] for i in range(y.size(0))])
+                    #x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
+                    #y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                 # forward pass
-                logits, loss = self.GPT(x, targets=y)
+                logits, loss = self.GPT(x, targets=y, init_pos=start_idx)
                 # backward pass
                 optimizer.zero_grad()
                 accelerate.backward(loss)
                 optimizer.step()
                 epoch_loss += loss.item()*len(batch)
                 scheduler.step()
+                # update the EMA model
+                update_ema(self.ema_model, self.GPT, decay=self.args.ema_decay)
 
             epoch_loss /= len(train_loader.dataset)
             accelerate.log({"epoch_loss": epoch_loss})
@@ -346,7 +396,7 @@ class VQGAN_GPT(nn.Module):
                 self.GPT.eval()
                 self.sample(train=True, accelerate=accelerate)
 
-                model_to_save = accelerate.unwrap_model(self.GPT)
+                model_to_save = accelerate.unwrap_model(self.ema_model)
                 # Save the model
                 accelerate.save(model_to_save.state_dict(), os.path.join(models_dir, "GPT", f"gpt_{self.args.dataset}_{epoch+1}.pt"))
                 epoch_loss = 0
@@ -354,10 +404,18 @@ class VQGAN_GPT(nn.Module):
                     for batch,_ in tqdm(val_loader, desc="Validation Batches", leave=False):
                         batch = batch.to(self.device)
                         encoded, y = self.encode(batch)
+                        start_idx = None
                         # x should be n-1 elements of y and append n_embed at the beginning
                         x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
+                        if self.block_size < x.size(1):
+                            start_idx = torch.randint(0, x.size(1) - self.block_size, (1,1), device=self.device).squeeze(0)
+                            # Use advanced indexing to select block_size tokens for each batch element
+                            x = torch.stack([x[i, start_idx:start_idx+self.block_size] for i in range(x.size(0))])
+                            y = torch.stack([y[i, start_idx:start_idx+self.block_size] for i in range(y.size(0))])
+                            #x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
+                            #y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                         # forward pass
-                        logits, loss = self.GPT(x, targets=y)
+                        logits, loss = self.ema_model(x, targets=y, init_pos=start_idx)
                         # backward pass
                         epoch_loss += loss.item()*len(batch)
                     epoch_loss /= len(val_loader.dataset)
@@ -368,15 +426,20 @@ class VQGAN_GPT(nn.Module):
         """
         Sample from the model.
         """
+        self.GPT.eval()
+        self.VAE.eval()
         # init token is just a single token with value n_embed
         idx = torch.full((self.args.num_samples,1), self.args.n_embed).to(self.device)
         # generate some samples
-        samples = self.GPT.generate(idx, 64, temperature=self.args.temperature, top_k=self.args.top_k)[:, 1:]
+        if train:
+            samples = self.ema_model.generate(idx, max_new_tokens=self.img_tokens, temperature=self.args.temperature, top_k=self.args.top_k)[:, 1:]
+        else:
+            samples = self.GPT.generate(idx, self.img_tokens, temperature=self.args.temperature, top_k=self.args.top_k)[:, 1:]
         decoded = self.decode(samples, self.zshape)
         decoded = decoded *0.5 + 0.5
         decoded = decoded.clamp(0, 1)
         # plot the samples
-        grid = make_grid(decoded, nrow=4, normalize=True)
+        grid = make_grid(decoded, nrow=4, normalize=True, padding=0)
         fig = plt.figure(figsize=(10, 10))
         plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
         plt.axis('off')
@@ -412,6 +475,88 @@ class VQGAN_GPT(nn.Module):
         
         return x
     
+    @torch.no_grad()
+    def outlier_detection(self, in_loader, out_loader):
+        """
+        Detect outliers in the input data using the VAE encoder.
+        """
+        self.GPT.eval()
+        self.VAE.eval()
+        in_scores = []
+        out_scores = []
+        in_patch_scores = []
+        out_patch_scores = []
+
+        # Iterate over the in-distribution data
+        for batch, _ in tqdm(in_loader, desc="In-distribution Batches", leave=False):
+            batch = batch.to(self.device)
+            encoded, y = self.encode(batch)
+            patch = np.zeros((encoded.shape[0], self.img_tokens), dtype=np.float32)
+            # x should be n-1 elements of y and append n_embed at the beginning
+            x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
+
+            if self.block_size < x.size(1):
+                #go on windows of self.block_size tokens until the end of the sequence
+                for i in range(0, x.size(1) - self.block_size + 1, self.block_size):
+                    x_tensor = torch.stack([x[j, i:i+self.block_size] for j in range(x.size(0))])
+                    y_tensor = torch.stack([y[j, i:i+self.block_size] for j in range(y.size(0))])
+                    logits, loss = self.GPT(x_tensor, targets=y_tensor, ood=True, init_pos=torch.tensor(i).to(self.device))
+                    patch[:,i:i+self.block_size] = loss.cpu().numpy()
+
+            else:
+                # if block_size is larger than the sequence length, we use the whole sequence
+                x_tensor = torch.stack([x[j, :self.img_tokens] for j in range(x.size(0))])
+                y_tensor = torch.stack([y[j, :self.img_tokens] for j in range(y.size(0))])
+                _, loss = self.GPT(x_tensor, targets=y_tensor, ood=True)
+                patch[:,:self.img_tokens] = loss.cpu().numpy()
+
+            in_patch_scores.append(patch)
+            in_scores.append(np.mean(patch, axis=1))
+
+        in_scores = np.concatenate(in_scores)
+
+        # Iterate over the out-of-distribution data
+        for batch, _ in tqdm(out_loader, desc="Out-of-distribution Batches", leave=False):
+            batch = batch.to(self.device)
+            encoded, y = self.encode(batch)
+            patch = np.zeros((encoded.shape[0], self.img_tokens), dtype=np.float32)
+            # x should be n-1 elements of y and append n_embed at the beginning
+            x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
+            
+            if self.block_size < x.size(1):
+                #go on windows of self.block_size tokens until the end of the sequence
+                for i in range(0, x.size(1) - self.block_size + 1, self.block_size):
+                    x_tensor = torch.stack([x[j, i:i+self.block_size] for j in range(x.size(0))])
+                    y_tensor = torch.stack([y[j, i:i+self.block_size] for j in range(y.size(0))])
+                    logits, loss = self.GPT(x_tensor, targets=y_tensor, ood=True, init_pos=torch.tensor(i).to(self.device))
+                    patch[:,i:i+self.block_size] = loss.cpu().numpy()
+            else:
+                # if block_size is larger than the sequence length, we use the whole sequence
+                x_tensor = torch.stack([x[j, :self.block_size] for j in range(x.size(0))])
+                y_tensor = torch.stack([y[j, :self.block_size] for j in range(y.size(0))])
+                _, loss = self.GPT(x_tensor, targets=y_tensor, ood=True)
+                patch[:,:self.block_size] = loss.cpu().numpy()
+
+            out_patch_scores.append(patch)
+            out_scores.append(np.mean(patch, axis=1))
+
+        out_scores = np.concatenate(out_scores)
+
+        # get auc
+        y_true = np.concatenate([np.zeros(len(in_scores)), np.ones(len(out_scores))])
+        y_scores = np.concatenate([in_scores, out_scores])
+        auc = roc_auc_score(y_true, y_scores)
+
+        # plot the scores
+        plt.hist(in_scores, bins=50, alpha=0.5, label='In-distribution', color='blue')
+        plt.hist(out_scores, bins=50, alpha=0.5, label='Out-of-distribution', color='red')
+        plt.xlabel('Negative Log Likelihood (NLL)')
+        plt.ylabel('Frequency')
+        plt.title('Negative Log Likelihood (NLL) Distribution')
+        plt.legend()
+        plt.show()
+        print(f"AUC: {auc:.4f}")
+        
     @torch.no_grad()
     def s_pattern_transform(self, tokens: torch.Tensor, height: int, width: int, inverse: bool = False) -> torch.Tensor:
         """

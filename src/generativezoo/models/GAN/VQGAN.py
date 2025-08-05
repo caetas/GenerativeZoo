@@ -891,7 +891,8 @@ class VQModel(nn.Module):
         self.loss = VQLPIPSWithDiscriminator(disc_in_channels=in_channels,
                                              disc_start=args.disc_start,
                                              disc_weight=args.disc_weight,
-                                             codebook_weight=args.codebook_weight)
+                                             codebook_weight=args.codebook_weight,
+                                             disc_num_layers=args.disc_num_layers)
         
         self.quantize = VectorQuantizer(args.n_embed, args.embed_dim, beta=0.25,
                                         remap=args.remap, sane_index_shape=args.sane_index_shape)
@@ -928,8 +929,13 @@ class VQModel(nn.Module):
 
     def load_checkpoint(self, path):
         if path is not None:
-            self.load_state_dict(torch.load(path, weights_only=False))
-            print(f"Loaded VAE")
+            #if it ends with .ckpt, it is a lightning checkpoint
+            if path.endswith(".ckpt"):
+                print(f"Loading VAE from {path}...")
+                self.load_state_dict(torch.load(path, map_location=self.device)["state_dict"], strict=False)
+            else:
+                self.load_state_dict(torch.load(path, weights_only=False))
+                print(f"Loaded VAE")
 
     def encode(self, x):
         h = self.encoder(x)
@@ -1014,6 +1020,7 @@ class VQModel(nn.Module):
             "z_channels": self.args.z_channels,
             "in_channels": self.in_channels,
             "dataset": self.args.dataset,
+            "disc_num_layers": self.args.disc_num_layers,
         },
         init_kwargs={"wandb":{"name": f"VQGAN_{self.args.dataset}"}})
 

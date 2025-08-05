@@ -31,6 +31,7 @@ def parse_args_VQGAN():
     argparser.add_argument('--lr', type=float, default=4.5e-6, help='Learning rate')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='Disable wandb logging')
     argparser.add_argument('--sample_and_save_freq', type=int, default=20, help='Sample and save frequency')
+    argparser.add_argument('--disc_num_layers', type=int, default=3, help='Number of layers in discriminator')
     return argparser.parse_args()
 
 def parse_args_GPT():
@@ -55,6 +56,7 @@ def parse_args_GPT():
     argparser.add_argument('--codebook_weight', type=float, default=1.0, help='Codebook loss weight')
     argparser.add_argument('--n_embed', type=int, default=128, help='Number of embeddings in codebook')
     argparser.add_argument('--embed_dim', type=int, default=64, help='Embedding dimension for VQGAN')
+    argparser.add_argument('--disc_num_layers', type=int, default=3, help='Number of layers in discriminator')
     argparser.add_argument('--embed_dim_t', type=int, default=64, help='Embedding dimension for transformer')
     argparser.add_argument('--remap', type=str, default=None, help='Remap indices for codebook')
     argparser.add_argument('--sane_index_shape', action='store_true', default=False, help='Use sane index shape for quantizer')
@@ -69,11 +71,14 @@ def parse_args_GPT():
     argparser.add_argument('--bias', action='store_true', default=False, help='Use bias in transformer')
     argparser.add_argument('--dropout_t', type=float, default=0.1, help='Dropout rate in transformer')
     argparser.add_argument('--betas', type=float, nargs='+', default=[0.9, 0.95], help='Betas for Adam optimizer')
-    argparser.add_argument('--weight_decay', type=float, default=0.1, help='Weight decay for Adam optimizer')
+    argparser.add_argument('--weight_decay', type=float, default=0.0, help='Weight decay for Adam optimizer')
     argparser.add_argument('--num_samples', type=int, default=16, help='Number of samples to generate')
     argparser.add_argument('--checkpoint_gpt', type=str, default=None, help='Path to checkpoint for transformer')
     argparser.add_argument('--temperature', type=float, default=1.0, help='Temperature for sampling')
     argparser.add_argument('--top_k', type=int, default=None, help='Top k for sampling')
+    argparser.add_argument('--outlier_detection', action='store_true', default=False, help='outlier detection')
+    argparser.add_argument('--out_dataset', type=str, default='fashionmnist', help='outlier dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'bloodmnist', 'dermamnist', 'dermamnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'retinamnist', 'svhn', 'tinyimagenet','imagenet'])
+    argparser.add_argument('--ema_decay', type=float, default=0.999, help='EMA decay for model parameters')
     return argparser.parse_args()
 
 def parse_args_MaskGiT():
@@ -98,7 +103,6 @@ def parse_args_MaskGiT():
     argparser.add_argument('--codebook_weight', type=float, default=1.0, help='Codebook loss weight')
     argparser.add_argument('--n_embed', type=int, default=128, help='Number of embeddings in codebook')
     argparser.add_argument('--embed_dim', type=int, default=64, help='Embedding dimension for VQGAN')
-    argparser.add_argument('--embed_dim_t', type=int, default=64, help='Embedding dimension for transformer')
     argparser.add_argument('--remap', type=str, default=None, help='Remap indices for codebook')
     argparser.add_argument('--sane_index_shape', action='store_true', default=False, help='Use sane index shape for quantizer')
     argparser.add_argument('--checkpoint_vae', type=str, default=None, help='Path to checkpoint')
@@ -122,6 +126,8 @@ def parse_args_MaskGiT():
     argparser.add_argument("--mask-value",   type=int,   default=None,       help="mask value for sampling")
     argparser.add_argument("--n_classes",       type=int,   default=10,        help="number of classes for sampling")
     argparser.add_argument('--num_samples', type=int, default=16, help='Number of samples to generate')
+    argparser.add_argument('--checkpoint_vit', type=str, default=None, help='Path to checkpoint for transformer')
+    argparser.add_argument('--disc_num_layers', type=int, default=3, help='Number of layers in discriminator')
     return argparser.parse_args()
 
 def parse_args_HierarchicalVAE():
@@ -337,13 +343,16 @@ def parse_args_RectifiedFlows():
     argparser.add_argument('--sample_steps', type=int, default=50, help='number of steps for sampling')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='disable wandb logging')
     argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
-    argparser.add_argument('--ema_rate', type=float, default=0.999, help='ema rate')
+    argparser.add_argument('--ema_rate', type=float, default=0.9999, help='ema rate')
     argparser.add_argument('--conditional', action='store_true', default=False, help='conditional')
     argparser.add_argument('--warmup', type=int, default=10, help='warmup epochs')
     argparser.add_argument('--decay', type=float, default=0.0, help='weight decay rate')
     argparser.add_argument('--latent', action='store_true', default=False, help='Use latent implementation')
     argparser.add_argument('--size', type=int, default=None, help='Size of the original image')
     argparser.add_argument('--snapshots', type=int, default=10, help='how many snapshots during training')
+    argparser.add_argument('--solver_lib', type=str, default='torchdiffeq', help='solver library', choices=['torchdiffeq', 'none'])
+    argparser.add_argument('--solver', type=str, default='euler', help='solver for ODE', choices=['dopri5', 'rk4', 'dopri8', 'euler', 'bosh3', 'adaptive_heun', 'midpoint', 'explicit_adams', 'implicit_adams', 'heun3'])
+    argparser.add_argument('--fid', action='store_true', default=False, help='calculate FID')
     return argparser.parse_args()
 
 def parse_args_VanillaFlow():
