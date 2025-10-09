@@ -382,6 +382,7 @@ class VQGAN_GPT(nn.Module):
                 # backward pass
                 optimizer.zero_grad()
                 accelerate.backward(loss)
+                accelerate.clip_grad_norm_(self.GPT.parameters(), 1.0)
                 optimizer.step()
                 epoch_loss += loss.item()*len(batch)
                 scheduler.step()
