@@ -40,7 +40,7 @@ Clone this repository (requires git ssh keys)
 
 Create the environment and install the dependencies:
 
-    uv sync --python3.12
+    uv sync --python 3.12
 
 #### Activate the environment on Linux
 

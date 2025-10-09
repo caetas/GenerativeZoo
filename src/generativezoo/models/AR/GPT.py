@@ -155,7 +155,7 @@ class GPT(nn.Module):
         # "UserWarning: functional_call was passed multiple values for tied weights.
         # This behavior is deprecated and will be an error in future versions"
         # not 100% sure what this is, so far seems to be harmless. TODO investigate
-        self.transformer.wte.weight = self.lm_head.weight # https://paperswithcode.com/method/weight-tying
+        #self.transformer.wte.weight = self.lm_head.weight # https://paperswithcode.com/method/weight-tying
 
         # init all weights
         self.apply(self._init_weights)
@@ -188,13 +188,13 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, targets=None, ood=False, init_pos=None):
+    def forward(self, idx, targets=None, ood=False):
         device = idx.device
         b, t = idx.size()
         assert t <= self.args.block_size, f"Cannot forward sequence of length {t}, block size is only {self.args.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device) # shape (t)
-        if init_pos is not None:
-            pos = torch.arange(init_pos.cpu().item(), init_pos.cpu().item() + t, dtype=torch.long, device=device) # shape (t)
+        #if init_pos is not None:
+            #pos = torch.arange(init_pos.cpu().item(), init_pos.cpu().item() + t, dtype=torch.long, device=device) # shape (t)
 
         # forward the GPT model itself
         tok_emb = self.transformer.wte(idx) # token embeddings of shape (b, t, embed_dim)
@@ -268,7 +268,7 @@ class GPT(nn.Module):
             # if the sequence context is growing too long we must crop it at block_size
             idx_cond = idx if idx.size(1) <= self.args.block_size else idx[:, -self.args.block_size:]
             # forward the model to get the logits for the index in the sequence
-            logits, _ = self(idx_cond, init_pos=id_start)
+            logits, _ = self(idx_cond)
             # pluck the logits at the final step and scale by desired temperature
             logits = logits[:, -1, :] / temperature
             # optionally crop the logits to only the top k options
@@ -378,7 +378,7 @@ class VQGAN_GPT(nn.Module):
                     #x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                     #y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                 # forward pass
-                logits, loss = self.GPT(x, targets=y, init_pos=start_idx)
+                logits, loss = self.GPT(x, targets=y)
                 # backward pass
                 optimizer.zero_grad()
                 accelerate.backward(loss)
@@ -415,7 +415,7 @@ class VQGAN_GPT(nn.Module):
                             #x = torch.stack([x[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                             #y = torch.stack([y[i, start.item():start.item()+self.block_size] for i, start in enumerate(start_idx.squeeze())])
                         # forward pass
-                        logits, loss = self.ema_model(x, targets=y, init_pos=start_idx)
+                        logits, loss = self.ema_model(x, targets=y)
                         # backward pass
                         epoch_loss += loss.item()*len(batch)
                     epoch_loss /= len(val_loader.dataset)
@@ -495,20 +495,11 @@ class VQGAN_GPT(nn.Module):
             # x should be n-1 elements of y and append n_embed at the beginning
             x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
 
-            if self.block_size < x.size(1):
-                #go on windows of self.block_size tokens until the end of the sequence
-                for i in range(0, x.size(1) - self.block_size + 1, self.block_size):
-                    x_tensor = torch.stack([x[j, i:i+self.block_size] for j in range(x.size(0))])
-                    y_tensor = torch.stack([y[j, i:i+self.block_size] for j in range(y.size(0))])
-                    logits, loss = self.GPT(x_tensor, targets=y_tensor, ood=True, init_pos=torch.tensor(i).to(self.device))
-                    patch[:,i:i+self.block_size] = loss.cpu().numpy()
-
-            else:
-                # if block_size is larger than the sequence length, we use the whole sequence
-                x_tensor = torch.stack([x[j, :self.img_tokens] for j in range(x.size(0))])
-                y_tensor = torch.stack([y[j, :self.img_tokens] for j in range(y.size(0))])
-                _, loss = self.GPT(x_tensor, targets=y_tensor, ood=True)
-                patch[:,:self.img_tokens] = loss.cpu().numpy()
+            # if block_size is larger than the sequence length, we use the whole sequence
+            x_tensor = torch.stack([x[j, :self.img_tokens] for j in range(x.size(0))])
+            y_tensor = torch.stack([y[j, :self.img_tokens] for j in range(y.size(0))])
+            _, loss = self.GPT(x_tensor, targets=y_tensor, ood=True)
+            patch[:,:self.img_tokens] = loss.cpu().numpy()
 
             in_patch_scores.append(patch)
             in_scores.append(np.mean(patch, axis=1))
@@ -523,19 +514,10 @@ class VQGAN_GPT(nn.Module):
             # x should be n-1 elements of y and append n_embed at the beginning
             x = torch.cat((torch.full((encoded.shape[0],1), self.args.n_embed).to(self.device), y[:,:-1]), dim=1)
             
-            if self.block_size < x.size(1):
-                #go on windows of self.block_size tokens until the end of the sequence
-                for i in range(0, x.size(1) - self.block_size + 1, self.block_size):
-                    x_tensor = torch.stack([x[j, i:i+self.block_size] for j in range(x.size(0))])
-                    y_tensor = torch.stack([y[j, i:i+self.block_size] for j in range(y.size(0))])
-                    logits, loss = self.GPT(x_tensor, targets=y_tensor, ood=True, init_pos=torch.tensor(i).to(self.device))
-                    patch[:,i:i+self.block_size] = loss.cpu().numpy()
-            else:
-                # if block_size is larger than the sequence length, we use the whole sequence
-                x_tensor = torch.stack([x[j, :self.block_size] for j in range(x.size(0))])
-                y_tensor = torch.stack([y[j, :self.block_size] for j in range(y.size(0))])
-                _, loss = self.GPT(x_tensor, targets=y_tensor, ood=True)
-                patch[:,:self.block_size] = loss.cpu().numpy()
+            x_tensor = torch.stack([x[j, :self.block_size] for j in range(x.size(0))])
+            y_tensor = torch.stack([y[j, :self.block_size] for j in range(y.size(0))])
+            _, loss = self.GPT(x_tensor, targets=y_tensor, ood=True)
+            patch[:,:self.block_size] = loss.cpu().numpy()
 
             out_patch_scores.append(patch)
             out_scores.append(np.mean(patch, axis=1))
