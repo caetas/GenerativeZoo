@@ -391,6 +391,8 @@ class VQGAN_GPT(nn.Module):
 
             epoch_loss /= len(train_loader.dataset)
             accelerate.log({"epoch_loss": epoch_loss})
+
+            accelerate.wait_for_everyone()
             # Validation step
             # generate some samples
             if (epoch+1) % self.args.sample_and_save_freq == 0:
