@@ -155,6 +155,7 @@ The listed models are already implemented and fully integrated in the model zoo.
 - Flow Matching<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/FM/FlowMatching.py)<sup>18,21</sup> | [`Script`](src/generativezoo/FM.py) | [`Documentation`](docs/FlowMatching.md)
 - Conditional Flow Matching<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2210.02747) | [`Code`](src/generativezoo/models/FM/CondFlowMatching.py)<sup>18,21</sup> | [`Script`](src/generativezoo/CondFM.py) | [`Documentation`](docs/ConditionalFlowMatching.md)
 - Rectified Flows<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2403.03206) | [`Code`](src/generativezoo/models/FM/RectifiedFlows.py)<sup>19</sup> | [`Script`](src/generativezoo/RF.py) | [`Documentation`](docs/RectifiedFlows.md)
+- JiT<sup>🚀📦</sup> [`Paper`](https://arxiv.org/abs/2511.13720) | [`Code`](src/generativezoo/models/FM/JiT.py)<sup>25</sup> | [`Script`](src/generativezoo/JiTransformer.py) | [`Documentation`](docs/JiT.md)
 
 #### Stable Diffusion
 
@@ -276,6 +277,7 @@ All the repositories used to generate this code are mentioned in each of the cor
 22. [nanoGPT](https://github.com/karpathy/nanoGPT)
 23. [Halton-MaskGIT](https://github.com/valeoai/Halton-MaskGIT/tree/v1.0)
 24. [taming-transformers](https://github.com/CompVis/taming-transformers)
+25. [JiT](https://github.com/LTH14/JiT)
 
 ## Citation
 

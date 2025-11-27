@@ -934,7 +934,7 @@ class VQModel(nn.Module):
                 print(f"Loading VAE from {path}...")
                 self.load_state_dict(torch.load(path, map_location=self.device)["state_dict"], strict=False)
             else:
-                self.load_state_dict(torch.load(path, weights_only=False))
+                self.load_state_dict(torch.load(path, weights_only=False)['model'])
                 print(f"Loaded VAE")
 
     def encode(self, x):

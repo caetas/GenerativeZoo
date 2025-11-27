@@ -34,6 +34,42 @@ def parse_args_VQGAN():
     argparser.add_argument('--disc_num_layers', type=int, default=3, help='Number of layers in discriminator')
     return argparser.parse_args()
 
+
+def parse_args_JiT():
+    """Argument parser for JiT model scripts.
+
+    Returns an argparse.Namespace with defaults matching the project's JiT Denoiser expectations.
+    """
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--train', action='store_true', default=False, help='train model')
+    argparser.add_argument('--sample', action='store_true', default=False, help='sample from model')
+    argparser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
+    argparser.add_argument('--dataset', type=str, default='celeba', help='dataset name', choices=['mnist', 'cifar10', 'cifar100', 'places365', 'dtd', 'fashionmnist', 'chestmnist', 'bloodmnist', 'dermamnist', 'dermamnist', 'octmnist', 'tissuemnist', 'pneumoniamnist', 'retinamnist', 'svhn', 'tinyimagenet','imagenet', 'celeba'])
+    argparser.add_argument('--batch_size', type=int, default=256, help='batch size')
+    argparser.add_argument('--n_epochs', type=int, default=100, help='number of epochs')
+    argparser.add_argument('--model', type=str, default='JiT-B/16', help='JiT model variant (e.g. JiT-B/16, JiT-B/32)')
+    argparser.add_argument('--img_size', type=int, default=256, help='input image size')
+    argparser.add_argument('--class_num', type=int, default=2, help='number of classes (for label embedding)')
+    argparser.add_argument('--attn_dropout', type=float, default=0.0, help='attention dropout')
+    argparser.add_argument('--proj_dropout', type=float, default=0.0, help='projection dropout')
+    argparser.add_argument('--label_drop_prob', type=float, default=0.1, help='probability to drop labels (classifier-free guidance)')
+    argparser.add_argument('--P_mean', type=float, default=-0.8, help='mean for timestep sampling (sigmoid space)')
+    argparser.add_argument('--P_std', type=float, default=0.8, help='std for timestep sampling (sigmoid space)')
+    argparser.add_argument('--t_eps', type=float, default=1e-5, help='epsilon for numerical stability in timesteps')
+    argparser.add_argument('--noise_scale', type=float, default=1.0, help='scale of initial noise for generation')
+    argparser.add_argument('--ema_decay', type=float, default=0.9999, help='ema decay (fast)')
+    argparser.add_argument('--sampling_method', type=str, default='euler', choices=['euler', 'heun'], help='ODE sampling method')
+    argparser.add_argument('--num_sampling_steps', type=int, default=50, help='number of sampling steps for generation')
+    argparser.add_argument('--cfg', type=float, default=2.9, help='classifier-free guidance scale')
+    argparser.add_argument('--interval_min', type=float, default=0.1, help='cfg interval min')
+    argparser.add_argument('--interval_max', type=float, default=1.0, help='cfg interval max')
+    argparser.add_argument('--num_workers', type=int, default=0, help='number of workers for dataloader')
+    argparser.add_argument('--weight_decay', type=float, default=0.0, help='Weight decay for Adam optimizer')
+    argparser.add_argument('--snapshot', type=int, default=10, help='how many snapshots during training')
+    argparser.add_argument('--no_wandb', action='store_true', default=False, help='Disable wandb logging')
+    argparser.add_argument('--sample_and_save_freq', type=int, default=50, help='Sample and save frequency')
+    return argparser.parse_args()
+
 def parse_args_GPT():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--train', action='store_true', default=False, help='train model')
