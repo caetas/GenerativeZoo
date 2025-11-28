@@ -749,7 +749,7 @@ class Denoiser(nn.Module):
             cycle_momentum=False
         )
 
-        accelerator = accelerate.Accelerator(log_with = "wandb")
+        accelerator = accelerate.Accelerator(log_with = "wandb", gradient_accumulation_steps=self.args.gradient_accumulation_steps)
         self.net, optimizer, dataloader, scheduler, self.ema = accelerator.prepare(
             self.net, optimizer, dataloader, scheduler, self.ema
         )
@@ -760,17 +760,16 @@ class Denoiser(nn.Module):
             self.net.train()
             loss_epoch = 0.0
             for images, labels in tqdm(dataloader, desc="Training Batches", leave=False):
-                images = images.to(self.device)
-                labels = labels.to(self.device)
+                with accelerator.accumulate(self.net):
 
-                with accelerator.autocast():
-                    loss = self.forward(images, labels)
-                    optimizer.zero_grad()
-                    accelerator.backward(loss)
-
-                optimizer.step()
-                scheduler.step()
-                loss_epoch += loss.item() * images.size(0)
+                    with accelerator.autocast():
+                        loss = self.forward(images, labels)
+                        optimizer.zero_grad()
+                        accelerator.backward(loss)
+                    
+                    optimizer.step()
+                    scheduler.step()
+                    loss_epoch += loss.item() * images.size(0)
 
                 if self.ema is not None:
                     self.update_ema()
@@ -806,7 +805,7 @@ class Denoiser(nn.Module):
                     self.net.load_state_dict(ema_params)
                 self.net.train()
 
-            if epoch + 1 % self.snapshot == 0:
+            if (epoch + 1) % self.snapshot == 0:
                 ema_to_save = accelerator.unwrap_model(self.ema)
                 accelerator.save(ema_to_save.state_dict(), os.path.join(models_dir, 'JiT', f"{self.args.model}_epoch_{epoch+1}_{self.dataset}.pt"))
 

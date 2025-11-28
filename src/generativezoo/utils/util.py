@@ -68,6 +68,7 @@ def parse_args_JiT():
     argparser.add_argument('--snapshot', type=int, default=10, help='how many snapshots during training')
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='Disable wandb logging')
     argparser.add_argument('--sample_and_save_freq', type=int, default=50, help='Sample and save frequency')
+    argparser.add_argument('--gradient_accumulation_steps', type=int, default=1, help='Number of gradient accumulation steps')
     return argparser.parse_args()
 
 def parse_args_GPT():
