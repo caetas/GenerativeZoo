@@ -746,6 +746,7 @@ class Denoiser(nn.Module):
     def train_model(self, dataloader):
 
         create_checkpoint_dir()
+        
         optimizer = torch.optim.AdamW(self.net.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer,
