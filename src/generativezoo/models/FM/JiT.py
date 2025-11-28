@@ -788,7 +788,7 @@ class Denoiser(nn.Module):
                 self.net.eval()
                 # safely sample with ema weights
                 if self.ema is not None:
-                    ema_params = copy.deepcopy(self.net.state_dict())
+                    ema_params = copy.deepcopy(self.net)
                     self.net.load_state_dict(self.ema.state_dict())
                 with torch.no_grad():
                     sample_labels = torch.randint(0, self.num_classes, (16,), device=self.device)
@@ -805,7 +805,7 @@ class Denoiser(nn.Module):
 
                 # restore training weights
                 if self.ema is not None:
-                    self.net.load_state_dict(ema_params)
+                    self.net.load_state_dict(ema_params.state_dict())
                 self.net.train()
 
             if (epoch + 1) % self.snapshot == 0:
