@@ -706,11 +706,17 @@ class Denoiser(nn.Module):
     @torch.no_grad()
     def _forward_sample(self, z, t, labels):
         # conditional
-        x_cond = self.net(z, t.flatten(), labels)
+        if self.ema is not None:
+            x_cond = self.ema(z, t.flatten(), labels)
+        else:
+            x_cond = self.net(z, t.flatten(), labels)
         v_cond = (x_cond - z) / (1.0 - t).clamp_min(self.t_eps)
 
         # unconditional
-        x_uncond = self.net(z, t.flatten(), torch.full_like(labels, self.num_classes))
+        if self.ema is not None:
+            x_uncond = self.ema(z, t.flatten(), torch.full_like(labels, self.num_classes))
+        else:
+            x_uncond = self.net(z, t.flatten(), torch.full_like(labels, self.num_classes))
         v_uncond = (x_uncond - z) / (1.0 - t).clamp_min(self.t_eps)
 
         # cfg interval
@@ -786,10 +792,7 @@ class Denoiser(nn.Module):
 
             if (epoch + 1) % self.args.sample_and_save_freq == 0 or epoch == 0:
                 self.net.eval()
-                # safely sample with ema weights
-                if self.ema is not None:
-                    ema_params = copy.deepcopy(self.net)
-                    self.net.load_state_dict(self.ema.state_dict())
+                self.ema.eval()
                 with torch.no_grad():
                     sample_labels = torch.randint(0, self.num_classes, (16,), device=self.device)
                     samples = self.generate(sample_labels)
@@ -802,10 +805,6 @@ class Denoiser(nn.Module):
                     if not self.args.no_wandb:
                         accelerator.log({"samples": fig}, step=epoch)
                     plt.close(fig)
-
-                # restore training weights
-                if self.ema is not None:
-                    self.net.load_state_dict(ema_params.state_dict())
                 self.net.train()
 
             if (epoch + 1) % self.snapshot == 0:
