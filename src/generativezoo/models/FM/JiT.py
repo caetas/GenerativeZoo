@@ -761,6 +761,8 @@ class Denoiser(nn.Module):
             loss_epoch = 0.0
             for images, labels in tqdm(dataloader, desc="Training Batches", leave=False):
                 with accelerator.accumulate(self.net):
+                    images = images.to(self.device)
+                    labels = labels.to(self.device)
 
                     with accelerator.autocast():
                         loss = self.forward(images, labels)
