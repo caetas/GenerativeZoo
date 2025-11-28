@@ -744,6 +744,8 @@ class Denoiser(nn.Module):
         return z_next
     
     def train_model(self, dataloader):
+
+        create_checkpoint_dir()
         optimizer = torch.optim.AdamW(self.net.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer,
@@ -768,8 +770,8 @@ class Denoiser(nn.Module):
             loss_epoch = 0.0
             for images, labels in tqdm(dataloader, desc="Training Batches", leave=False):
                 with accelerator.accumulate(self.net):
-                    images = images.to(self.device)
-                    labels = labels.to(self.device)
+                    #images = images.to(self.device)
+                    #labels = labels.to(self.device)
 
                     with accelerator.autocast():
                         loss = self.forward(images, labels)
