@@ -812,7 +812,7 @@ class Denoiser(nn.Module):
 
             if (epoch + 1) % self.snapshot == 0:
                 ema_to_save = accelerator.unwrap_model(self.ema)
-                accelerator.save(ema_to_save.state_dict(), os.path.join(models_dir, 'JiT', f"{self.args.model}_epoch_{epoch+1}_{self.dataset}.pt"))
+                accelerator.save(ema_to_save.state_dict(), os.path.join(models_dir, 'JiT', f"{self.args.model.replace('/', '_')}_epoch_{epoch+1}_{self.dataset}.pt"))
 
         accelerator.end_training()
 
