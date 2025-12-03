@@ -619,6 +619,10 @@ class Denoiser(nn.Module):
             attn_drop=args.attn_dropout,
             proj_drop=args.proj_dropout,
         )
+
+        #trainable parameters 
+        print(f'Trainable parameters in the model: {sum(p.numel() for p in self.net.parameters() if p.requires_grad)/1e6}M')
+
         self.img_size = args.img_size
         self.num_classes = args.class_num
 
