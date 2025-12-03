@@ -646,6 +646,8 @@ class Denoiser(nn.Module):
         self.net.to(self.device)
         self.snapshot = self.n_epochs // args.snapshot
         self.sample_and_save_freq = args.sample_and_save_freq
+        if self.num_classes == 0:
+            self.label_drop_prob = 1.0
 
         if args.train:
             self.ema = copy.deepcopy(self.net)
@@ -705,12 +707,6 @@ class Denoiser(nn.Module):
 
     @torch.no_grad()
     def _forward_sample(self, z, t, labels):
-        # conditional
-        if self.ema is not None:
-            x_cond = self.ema(z, t.flatten(), labels)
-        else:
-            x_cond = self.net(z, t.flatten(), labels)
-        v_cond = (x_cond - z) / (1.0 - t).clamp_min(self.t_eps)
 
         # unconditional
         if self.ema is not None:
@@ -718,6 +714,16 @@ class Denoiser(nn.Module):
         else:
             x_uncond = self.net(z, t.flatten(), torch.full_like(labels, self.num_classes))
         v_uncond = (x_uncond - z) / (1.0 - t).clamp_min(self.t_eps)
+
+        if self.num_classes == 0:
+            return v_uncond
+
+        # conditional
+        if self.ema is not None:
+            x_cond = self.ema(z, t.flatten(), labels)
+        else:
+            x_cond = self.net(z, t.flatten(), labels)
+        v_cond = (x_cond - z) / (1.0 - t).clamp_min(self.t_eps)
 
         # cfg interval
         low, high = self.cfg_interval
@@ -797,7 +803,7 @@ class Denoiser(nn.Module):
                 self.net.eval()
                 self.ema.eval()
                 with torch.no_grad():
-                    sample_labels = torch.randint(0, self.num_classes, (16,), device=self.device)
+                    sample_labels = (torch.arange(0, 16, device=self.device) % self.num_classes) if self.num_classes > 0 else torch.zeros(16, device=self.device, dtype=torch.long)
                     samples = self.generate(sample_labels)
                     samples = torch.clamp(samples, -1.0, 1.0)
                     samples = (samples + 1.0) / 2.0  # to [0, 1]
