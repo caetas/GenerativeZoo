@@ -681,6 +681,28 @@ class Denoiser(nn.Module):
         loss = loss.mean(dim=(1, 2, 3)).mean()
 
         return loss
+    
+    @torch.no_grad()
+    def sample(self):
+        self.net.eval()
+        device = self.device
+        bsz = self.args.num_samples
+        labels = torch.arange(0, bsz, device=device) % self.num_classes if self.num_classes > 0 else torch.zeros(bsz, device=device, dtype=torch.long)
+        samples = self.generate(labels)
+
+        samples = samples*0.5 + 0.5
+        samples = torch.clamp(samples, 0.0, 1.0)
+
+        grid = make_grid(samples, nrow=int(bsz**0.5))
+        plt.imshow(grid.permute(1, 2, 0).cpu().numpy())
+        plt.axis('off')
+        plt.show()
+
+    def load_checkpoint(self):
+        if self.args.checkpoint is not None:
+            if os.path.isfile(self.args.checkpoint):
+                self.net.load_state_dict(torch.load(self.args.checkpoint, map_location=self.device))
+                print(f"Loaded checkpoint from {self.args.checkpoint}")
 
     @torch.no_grad()
     def generate(self, labels):
@@ -697,7 +719,7 @@ class Denoiser(nn.Module):
             raise NotImplementedError
 
         # ode
-        for i in range(self.steps - 1):
+        for i in tqdm(range(self.steps - 1), desc="Sampling Steps"):
             t = timesteps[i]
             t_next = timesteps[i + 1]
             z = stepper(z, t, t_next, labels)

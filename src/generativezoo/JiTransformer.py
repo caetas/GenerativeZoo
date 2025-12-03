@@ -11,3 +11,8 @@ if __name__ == "__main__":
         train_loader, in_shape, in_channels = pick_dataset(args.dataset, batch_size = args.batch_size, normalize=True, size = args.img_size, num_workers=args.num_workers)
         model = Denoiser(args)
         model.train_model(train_loader)
+
+    elif args.sample:
+        model = Denoiser(args)
+        model.load_checkpoint()
+        model.sample()

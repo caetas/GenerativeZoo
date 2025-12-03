@@ -69,6 +69,8 @@ def parse_args_JiT():
     argparser.add_argument('--no_wandb', action='store_true', default=False, help='Disable wandb logging')
     argparser.add_argument('--sample_and_save_freq', type=int, default=50, help='Sample and save frequency')
     argparser.add_argument('--gradient_accumulation_steps', type=int, default=1, help='Number of gradient accumulation steps')
+    argparser.add_argument('--checkpoint', type=str, default=None, help='Path to model checkpoint')
+    argparser.add_argument('--num_samples', type=int, default=16, help='Number of samples to generate')
     return argparser.parse_args()
 
 def parse_args_GPT():
